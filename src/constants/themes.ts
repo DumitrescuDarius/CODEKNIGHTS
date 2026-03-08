@@ -1,0 +1,22 @@
+import { Theme } from "../types";
+
+export const THEMES: Theme[] = [
+  { name: "Ayu Mirage", bg: "#1f2430", accent: "#ffcc66", line: "rgba(112, 122, 138, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'ffa759' }, { token: 'identifier', foreground: 'ffcc66' }, { token: 'string', foreground: 'bae67e' }] },
+  { name: "Catppuccin", bg: "#1e1e2e", accent: "#cba6f7", line: "rgba(205, 214, 244, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'cba6f7' }, { token: 'identifier', foreground: '89b4fa' }, { token: 'string', foreground: 'a6e3a1' }] },
+  { name: "Cyberpunk", bg: "#000000", accent: "#fdf500", line: "rgba(255, 0, 255, 0.2)", light: false, rules: [{ token: 'keyword', foreground: 'ff00ff' }, { token: 'identifier', foreground: '00ffff' }, { token: 'string', foreground: 'fdf500' }] },
+  { name: "Dark Side", bg: "#000000", accent: "#ff79c6", line: "rgba(255, 121, 198, 0.15)", light: false, rules: [{ token: 'keyword', foreground: 'ff79c6' }, { token: 'identifier', foreground: 'bd93f9' }, { token: 'string', foreground: 'f1fa8c' }] },
+  { name: "Deep Black", bg: "#000000", accent: "#7aa2f7", line: "rgba(255,255,255,0.1)", light: false, rules: [{ token: 'keyword', foreground: 'ff79c6' }, { token: 'identifier', foreground: 'F2B84B' }, { token: 'string', foreground: 'f1fa8c' }] },
+  { name: "Dracula", bg: "#282a36", accent: "#bd93f9", line: "rgba(248, 248, 242, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'ff79c6' }, { token: 'identifier', foreground: '50fa7b' }, { token: 'string', foreground: 'f1fa8c' }] },
+  { name: "Everforest", bg: "#2d353b", accent: "#a7c080", line: "rgba(211, 198, 170, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'dbbc7f' }, { token: 'identifier', foreground: 'd3c6aa' }, { token: 'string', foreground: 'a7c080' }] },
+  { name: "Gruvbox", bg: "#282828", accent: "#fabd2f", line: "rgba(235, 219, 178, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'fb4934' }, { token: 'identifier', foreground: '83a598' }, { token: 'string', foreground: 'b8bb26' }] },
+  { name: "Latte", bg: "#eff1f5", accent: "#8839ef", line: "rgba(76, 79, 105, 0.1)", light: true, rules: [{ token: 'keyword', foreground: '8839ef' }, { token: 'identifier', foreground: '1e66f5' }, { token: 'string', foreground: '40a02b' }] },
+  { name: "Monokai", bg: "#272822", accent: "#a6e22e", line: "rgba(255,255,255,0.1)", light: false, rules: [{ token: 'keyword', foreground: 'f92672' }, { token: 'identifier', foreground: '66d9ef' }, { token: 'string', foreground: 'e6db74' }] },
+  { name: "Night Owl", bg: "#011627", accent: "#82aaff", line: "rgba(127, 219, 202, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'c792ea' }, { token: 'identifier', foreground: '82aaff' }, { token: 'string', foreground: 'ecc48d' }] },
+  { name: "Nord", bg: "#2e3440", accent: "#88c0d0", line: "rgba(255,255,255,0.05)", light: false, rules: [{ token: 'keyword', foreground: '81a1c1' }, { token: 'identifier', foreground: '88c0d0' }, { token: 'string', foreground: 'a3be8c' }] },
+  { name: "One Dark", bg: "#282c34", accent: "#61afef", line: "rgba(171, 178, 191, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'c678dd' }, { token: 'identifier', foreground: '61afef' }, { token: 'string', foreground: '98c379' }] },
+  { name: "Pure Light", bg: "#ffffff", accent: "#3b82f6", line: "rgba(0,0,0,0.1)", light: true, rules: [{ token: 'keyword', foreground: '0000ff' }, { token: 'identifier', foreground: '000000' }, { token: 'string', foreground: 'a31515' }] },
+  { name: "Rose Pine", bg: "#191724", accent: "#ebbcba", line: "rgba(156, 141, 203, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'c4a7e7' }, { token: 'identifier', foreground: 'ebbcba' }, { token: 'string', foreground: 'f6c177' }] },
+  { name: "Sakura", bg: "#fff5f7", accent: "#ff79c6", line: "rgba(255, 121, 198, 0.2)", light: true, rules: [{ token: 'keyword', foreground: 'd33682' }, { token: 'identifier', foreground: '6c71c4' }, { token: 'string', foreground: '2aa198' }] },
+  { name: "Solarized", bg: "#002b36", accent: "#268bd2", line: "rgba(147, 161, 161, 0.1)", light: false, rules: [{ token: 'keyword', foreground: '859900' }, { token: 'identifier', foreground: '268bd2' }, { token: 'string', foreground: '2aa198' }] },
+  { name: "Tokyo Night", bg: "#1a1b26", accent: "#7aa2f7", line: "rgba(169, 177, 214, 0.1)", light: false, rules: [{ token: 'keyword', foreground: 'bb9af7' }, { token: 'identifier', foreground: '7aa2f7' }, { token: 'string', foreground: '9ece6a' }] },
+];
