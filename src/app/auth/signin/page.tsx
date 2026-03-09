@@ -28,7 +28,6 @@ const THEMES = [
 ];
 
 export default function SignIn() {
-  const [isLoaded, setIsLoaded] = useState(false);
   const [theme, setTheme] = useState(THEMES[0]);
 
   useEffect(() => {
@@ -47,22 +46,31 @@ export default function SignIn() {
     root.style.setProperty('--text', isLightTheme ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)');
     root.style.setProperty('--text-muted', isLightTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)');
     root.style.setProperty('--header-bg', isLightTheme ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)');
-
-    setTimeout(() => setIsLoaded(true), 800);
   }, []);
 
   return (
     <div className="main-header" style={{ padding: 'var(--gap)', height: '100dvh', width: '100vw', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', gap: 'var(--gap)', background: 'var(--bg)', color: 'var(--text)' }}>
-      <div className={`loading-overlay ${isLoaded ? "loading-overlay--hidden" : ""}`}>
-        <div className="loading-spinner" />
-        <div><span style={{ color: 'var(--accent)' }}>CODE</span>&nbsp;KNIGHTS</div>
-      </div>
-
       <nav className="nav">
         <div className="nav-inner">
-          <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontWeight: 600, fontSize: '1.2rem' }}><span style={{ color: 'var(--accent)' }}>Code</span> Knights</span>
-          </div>
+          <Link href="/" className="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', color: 'inherit' }}>
+            <div 
+              style={{ 
+                height: '40px', 
+                width: '40px',
+                backgroundColor: 'var(--accent)',
+                WebkitMaskImage: 'url(/assets/logo_white.png)',
+                maskImage: 'url(/assets/logo_white.png)',
+                WebkitMaskSize: 'contain',
+                maskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                maskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+                maskPosition: 'center',
+                filter: 'drop-shadow(0 0 10px var(--accent))'
+              }}
+            />
+            <span style={{ fontWeight: 700, fontSize: '1.4rem', letterSpacing: '-0.02em' }}><span style={{ color: 'var(--accent)' }}>Code</span> Knights</span>
+          </Link>
           <div className="nav-actions">
             <Link href="/" className="btn btn-ghost" style={{ fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <LogIn size={14} style={{ transform: 'rotate(180deg)' }} /> BACK

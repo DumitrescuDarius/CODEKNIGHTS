@@ -1,5 +1,6 @@
 export type Language = "c" | "cpp" | "python" | "java";
-export type WindowId = "editor" | "practice" | "contests" | "leaderboard" | "discuss" | "settings" | "battle" | "friends" | "profile" | "problem";
+export type SupportedLanguage = "en" | "ro" | "fr" | "de" | "hi" | "ru" | "hu" | "es" | "it" | "zh" | "ja";
+export type WindowId = "editor" | "practice" | "contests" | "leaderboard" | "discuss" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin";
 
 export interface Theme {
   name: string;
@@ -21,6 +22,7 @@ export interface Question {
   description: string;
   difficulty: string;
   testCases: string | any[];
+  hiddenTestCases?: string | any[];
 }
 
 export interface UserStats {

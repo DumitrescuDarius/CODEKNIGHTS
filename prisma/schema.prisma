@@ -47,6 +47,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   submissions   Submission[]
+  hostDuels     Duel[]    @relation("HostDuels")
+  guestDuels    Duel[]    @relation("GuestDuels")
 }
 
 model Question {
@@ -54,10 +56,35 @@ model Question {
   title       String
   description String
   difficulty  String
-  testCases   String   // JSON string of input/output pairs
+  testCases   String   // JSON string of visible input/output pairs
+  hiddenTestCases String? // JSON string of hidden input/output pairs
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   submissions Submission[]
+  duels       Duel[]
+}
+
+model Duel {
+  id          String   @id @default(cuid())
+  pin         String   @unique
+  questionId  String
+  status      String   // "WAITING", "ACTIVE", "FINISHED"
+  
+  hostId      String
+  guestId     String?
+  
+  hostReady   Boolean  @default(false)
+  guestReady  Boolean  @default(false)
+  
+  hostSolveTime  Int?    // time in milliseconds
+  guestSolveTime Int?    // time in milliseconds
+  
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  question    Question @relation(fields: [questionId], references: [id])
+  host        User     @relation("HostDuels", fields: [hostId], references: [id])
+  guest       User?    @relation("GuestDuels", fields: [guestId], references: [id])
 }
 
 model Submission {

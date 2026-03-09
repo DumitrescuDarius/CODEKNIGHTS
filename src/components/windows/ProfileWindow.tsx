@@ -1,22 +1,25 @@
 "use client";
 
 import React from "react";
-import { User, Shield } from "lucide-react";
+import { User, ShieldCheck } from "lucide-react";
 import { UserStats } from "../../types";
+import { TranslationKey } from "../../constants/translations";
 
 interface ProfileWindowProps {
   session: any;
   userStats: UserStats;
+  t: (key: TranslationKey) => string;
 }
 
-export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session, userStats }) => {
+export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session, userStats, t }) => {
   const winRate = userStats.battlesTotal > 0 ? ((userStats.battlesWon / userStats.battlesTotal) * 100).toFixed(1) : "0.0";
+  const isAdmin = !!session?.user?.isAdmin;
   
-  const getRank = (wins: number) => {
-    if (wins > 50) return "Grandmaster";
-    if (wins > 20) return "Knight";
-    if (wins > 5) return "Squire";
-    return "Beginner Peasant";
+  const getRankLabel = (wins: number) => {
+    if (wins > 50) return t("grandmaster");
+    if (wins > 20) return t("knight");
+    if (wins > 5) return t("squire");
+    return t("peasant");
   };
 
   return (
@@ -28,11 +31,19 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={40} /></div>
         )}
         <div>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>{(session?.user as any)?.username || session?.user?.name || "Knight"}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+            <h2 style={{ fontSize: '1.5rem', margin: 0 }}>{(session?.user as any)?.username || session?.user?.name || "Knight"}</h2>
+            {isAdmin && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--accent)', color: '#000', padding: '0.1rem 0.5rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                <ShieldCheck size={12} />
+                ADMIN
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            <span>Rank: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{getRank(userStats.battlesWon)}</span></span>
-            <span>Battles: <span style={{ color: 'var(--text)', fontWeight: 600 }}>{userStats.battlesTotal}</span></span>
-            <span>Wins: <span style={{ color: '#50fa7b', fontWeight: 600 }}>{userStats.battlesWon}</span></span>
+            <span>{t("rank")}: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{getRankLabel(userStats.battlesWon)}</span></span>
+            <span>{t("battle")}: <span style={{ color: 'var(--text)', fontWeight: 600 }}>{userStats.battlesTotal}</span></span>
+            <span>{t("battlesWon")}: <span style={{ color: '#50fa7b', fontWeight: 600 }}>{userStats.battlesWon}</span></span>
           </div>
         </div>
       </div>
@@ -79,15 +90,15 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
         <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Battles Fought</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("battlesFought")}</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>{userStats.battlesTotal}</div>
         </div>
         <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Win Rate</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("winRate")}</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>{winRate}%</div>
         </div>
         <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Battles Won</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("battlesWon")}</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>{userStats.battlesWon}</div>
         </div>
       </div>

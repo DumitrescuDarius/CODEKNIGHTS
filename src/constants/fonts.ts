@@ -17,4 +17,17 @@ export const FONTS: Font[] = [
   { name: "Space Mono (Geometric)", value: '"Space Mono", monospace' },
   { name: "Ubuntu Mono", value: '"Ubuntu Mono", monospace' },
   { name: "VT323 (Retro)", value: '"VT323", monospace' },
+  
+  // New Fonts
+  { name: "Anonymous Pro", value: '"Anonymous Pro", monospace' },
+  { name: "Cousine", value: '"Cousine", monospace' },
+  { name: "Droid Sans Mono", value: '"Droid Sans Mono", monospace' },
+  { name: "Monofett (Decorative)", value: '"Monofett", monospace' },
+  { name: "Overpass Mono", value: '"Overpass Mono", monospace' },
+  { name: "Oxygen Mono", value: '"Oxygen Mono", monospace' },
+  { name: "PT Mono", value: '"PT Mono", monospace' },
+  { name: "Red Hat Mono", value: '"Red Hat Mono", monospace' },
+  { name: "Syne Mono (Handwritten)", value: '"Syne Mono", monospace' },
+  { name: "Ubuntu Sans Mono", value: '"Ubuntu Sans Mono", monospace' },
+  { name: "Victor Mono (Italic)", value: '"Victor Mono", monospace' },
 ];
