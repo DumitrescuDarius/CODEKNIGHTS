@@ -42,6 +42,13 @@ export default function SignIn() {
     root.style.setProperty('--line', activeTheme.line);
     root.style.setProperty('--window-bg', activeTheme.bg);
     
+    // Add RGB version of accent for transparent backgrounds
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : "122, 162, 247";
+    };
+    root.style.setProperty('--accent-rgb', hexToRgb(activeTheme.accent));
+
     const isLightTheme = activeTheme.light;
     root.style.setProperty('--text', isLightTheme ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)');
     root.style.setProperty('--text-muted', isLightTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)');
@@ -85,6 +92,7 @@ export default function SignIn() {
           <motion.section 
             initial={{ opacity: 0, scale: 0.95, x: -20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
             className="twm-window"
             style={{ flex: 0.8 }}
           >
@@ -114,6 +122,7 @@ export default function SignIn() {
           <motion.section 
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
             className="twm-window"
             style={{ flex: 1.5 }}
           >
@@ -196,6 +205,7 @@ export default function SignIn() {
           <motion.section 
             initial={{ opacity: 0, scale: 0.95, x: 20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
             className="twm-window"
             style={{ flex: 1 }}
           >

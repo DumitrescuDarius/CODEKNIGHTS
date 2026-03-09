@@ -20,6 +20,7 @@ export interface Question {
   id: string;
   title: string;
   description: string;
+  restrictions?: string;
   difficulty: string;
   testCases: string | any[];
   hiddenTestCases?: string | any[];

@@ -55,6 +55,7 @@ model Question {
   id          String   @id @default(cuid())
   title       String
   description String
+  restrictions String? // New field for problem constraints
   difficulty  String
   testCases   String   // JSON string of visible input/output pairs
   hiddenTestCases String? // JSON string of hidden input/output pairs

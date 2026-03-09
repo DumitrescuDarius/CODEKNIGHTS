@@ -31,7 +31,8 @@ const DEFAULT_QUESTION: Question = {
   id: "default",
   title: "Sum of Two Integers",
   difficulty: "Easy",
-  description: "Write a program that reads pairs of integers from standard input and prints their sum to standard output.\n\nInput: Pairs of integers a and b.\nOutput: The sum of each pair on a new line.",
+  description: "Write a program that reads pairs of integers from standard input and prints their sum to standard output.\n\nInput: Pairs of integers **a** and **b**.\nOutput: The sum of each pair on a new line.",
+  restrictions: "Time complexity ==O(1)== per pair.",
   testCases: JSON.stringify([
     { input: "5 7", output: "12" },
     { input: "10 -2", output: "8" },
@@ -62,7 +63,14 @@ const MainMenu: React.FC = () => {
   const [terminalHeight, setTerminalHeight] = useState(180);
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [newQuestion, setNewQuestion] = useState<{ title: string; description: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[] }>({ title: "", description: "", difficulty: "Easy", testCases: [{ input: "", output: "" }], hiddenTestCases: [] });
+  const [newQuestion, setNewQuestion] = useState<{ title: string; description: string; restrictions: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[] }>({ 
+    title: "", 
+    description: "", 
+    restrictions: "",
+    difficulty: "Easy", 
+    testCases: [{ input: "", output: "" }], 
+    hiddenTestCases: [] 
+  });
   const [isAdminView, setIsAdminView] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
@@ -87,6 +95,7 @@ const MainMenu: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeDuel, setActiveDuel] = useState<any | null>(null);
   const [duelPin, setDuelPin] = useState<string>("");
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   const t = useCallback((key: TranslationKey): string => {
     return (TRANSLATIONS[uiLang] as any)[key] || (TRANSLATIONS["en"] as any)[key] || key;
@@ -233,6 +242,27 @@ const MainMenu: React.FC = () => {
   }, [activeDuel, pollDuel]);
 
   useEffect(() => {
+    let interval: NodeJS.Timeout | undefined;
+    if (activeDuel && activeDuel.status === "ACTIVE" && battleStartTime && !solveTime) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - battleStartTime) / 1000);
+        const remaining = 180 - elapsed; // 3 minutes
+        if (remaining <= 0) {
+          setTimeLeft(0);
+          clearInterval(interval);
+        } else {
+          setTimeLeft(remaining);
+        }
+      }, 1000);
+    } else {
+      setTimeLeft(null);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeDuel, battleStartTime, solveTime]);
+
+  useEffect(() => {
     if (activeDuel?.status === "ACTIVE" && !activeQuestion) {
       startBattle(activeDuel.question);
     }
@@ -284,8 +314,16 @@ const MainMenu: React.FC = () => {
       root.style.setProperty('--accent', theme.accent);
       root.style.setProperty('--line', theme.line);
       root.style.setProperty('--window-bg', theme.bg);
-      
+
+      // Add RGB version of accent for transparent backgrounds
+      const hexToRgb = (hex: string) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : "122, 162, 247";
+      };
+      root.style.setProperty('--accent-rgb', hexToRgb(theme.accent));
+
       const isLightTheme = theme.light;
+
       root.style.setProperty('--text', isLightTheme ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)');
       root.style.setProperty('--text-muted', isLightTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)');
       root.style.setProperty('--header-bg', isLightTheme ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)');
@@ -403,7 +441,14 @@ const MainMenu: React.FC = () => {
         body: JSON.stringify(newQuestion),
       });
       if (res.ok) {
-        setNewQuestion({ title: "", description: "", difficulty: "Easy", testCases: [{ input: "", output: "" }], hiddenTestCases: [] });
+        setNewQuestion({ 
+          title: "", 
+          description: "", 
+          restrictions: "",
+          difficulty: "Easy", 
+          testCases: [{ input: "", output: "" }], 
+          hiddenTestCases: [] 
+        });
         fetchQuestions();
         setIsAdminView(false);
         alert("Question published successfully!");
@@ -831,6 +876,7 @@ const MainMenu: React.FC = () => {
             session={session} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest}
             t={t} onDeleteQuestion={handleDeleteQuestion}
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
+            setActiveDuel={setActiveDuel} setDuelPin={setDuelPin}
             showCancelDuel={showCancelDuel} setShowCancelDuel={setShowCancelDuel}
             handleCancelDuel={() => { 
               setActiveDuel(null); 
@@ -865,6 +911,8 @@ const MainMenu: React.FC = () => {
               setActiveQuestion(null); 
               setTestResults(null); 
               setAnalysis(null); 
+              setActiveDuel(null);
+              setDuelPin("");
               setShowQuitConfirmation(false); 
               const idx = openWindows.indexOf("problem");
               if (idx !== -1) {
@@ -882,6 +930,8 @@ const MainMenu: React.FC = () => {
               setActiveQuestion(null); 
               setTestResults(null); 
               setAnalysis(null); 
+              setActiveDuel(null);
+              setDuelPin("");
               setOpenWindows(prev => prev.filter(w => w !== "problem").concat("battle"));
               // windowFlexes stays the same length as we replaced one with another
             }}
@@ -889,6 +939,10 @@ const MainMenu: React.FC = () => {
             t={t}
             analysis={analysis}
             isAnalyzing={isAnalyzing}
+            activeDuel={activeDuel}
+            timeLeft={timeLeft}
+            setActiveDuel={setActiveDuel}
+            setDuelPin={setDuelPin}
           />
         );
       case "profile":
@@ -902,7 +956,7 @@ const MainMenu: React.FC = () => {
   };
 
   return (
-    <div className="main-header" onMouseMove={handleMouseMove} onMouseUp={stopResizing}>
+    <div className="main-header" onMouseMove={(e) => handleMouseMove(e as any)} onMouseUp={() => stopResizing()}>
       <AnimatePresence>
         {showCelebration && (
           <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999, overflow: 'hidden' }}>
@@ -1064,9 +1118,9 @@ const MainMenu: React.FC = () => {
                   }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ 
-                    layout: { type: "spring", stiffness: 350, damping: 30, mass: 1 },
-                    scale: { duration: 0.2 },
-                    opacity: { duration: 0.2 }
+                    layout: { type: "spring", stiffness: 400, damping: 35, mass: 1 },
+                    scale: { duration: 0.1 },
+                    opacity: { duration: 0.1 }
                   }}
                   className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''}`}
                   style={{ flex: isMax ? 1 : (windowFlexes[idx] || 1) }}

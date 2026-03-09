@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Question } from "../../types";
 import { signIn } from "next-auth/react";
-import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X } from "lucide-react";
+import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
 
 interface BattleWindowProps {
@@ -17,6 +17,8 @@ interface BattleWindowProps {
   createDuel: () => void;
   joinDuel: (pin: string) => void;
   activeDuel: any;
+  setActiveDuel: (val: any) => void;
+  setDuelPin: (val: string) => void;
   showCancelDuel: boolean;
   setShowCancelDuel: (val: boolean) => void;
   handleCancelDuel: () => void;
@@ -24,7 +26,7 @@ interface BattleWindowProps {
 
 export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   startBattle, questions, session, isGuest, handlePlayAsGuest, t, onDeleteQuestion,
-  createDuel, joinDuel, activeDuel, showCancelDuel, setShowCancelDuel, handleCancelDuel
+  createDuel, joinDuel, activeDuel, setActiveDuel, setDuelPin, showCancelDuel, setShowCancelDuel, handleCancelDuel
 }) => {
   const [joinPin, setJoinPin] = useState("");
 
@@ -141,82 +143,167 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         {/* Quick Battle */}
-        <button 
-          onClick={() => startBattle()}
-          style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '1.25rem', borderRadius: '0.5rem', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginBottom: '1rem', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
-        >
-          {t("startQuickBattle")}
-        </button>
+        <div className="settings-group">
+          <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Sword size={14} /> Arena Quick Duel
+          </span>
+          <button 
+            onClick={() => startBattle()}
+            className="btn"
+            style={{ 
+              width: '100%', 
+              background: 'var(--accent)', 
+              color: '#000', 
+              border: 'none', 
+              padding: '1.25rem', 
+              borderRadius: '0.4rem', 
+              fontWeight: 800, 
+              fontSize: '1rem', 
+              cursor: 'pointer', 
+              marginTop: '1rem',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem'
+            }}
+          >
+            <Zap size={18} fill="currentColor" /> {t("startQuickBattle")}
+          </button>
+        </div>
 
         {/* Private Duel Section */}
         <div className="settings-group">
           <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Users size={14} /> Invite a Friend
+            <Users size={14} /> Private Combat
           </span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem' }}>
-            <button 
-              onClick={createDuel}
-              className="btn"
-              style={{ flex: 1, minWidth: '150px', height: '44px', gap: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Plus size={16} /> GENERATE PIN
-            </button>
-            <div style={{ flex: 1.5, minWidth: '200px', display: 'flex', gap: '0.5rem' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Hash size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input 
-                  type="text" 
-                  maxLength={6}
-                  placeholder="Enter PIN to join"
-                  value={joinPin}
-                  onChange={(e) => setJoinPin(e.target.value)}
-                  style={{ width: '100%', height: '44px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', color: 'inherit', padding: '0 1rem 0 2.25rem', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem' }}>
               <button 
-                onClick={() => joinDuel(joinPin)}
+                onClick={createDuel}
                 className="btn"
-                style={{ height: '44px', background: 'var(--text)', color: '#000', border: 'none', fontWeight: 700, padding: '0 1.5rem' }}
+                style={{ 
+                  flex: 1, 
+                  height: '48px', 
+                  borderRadius: '0.4rem',
+                  border: '1px solid var(--line)',
+                  background: 'rgba(255,255,255,0.02)',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
               >
-                JOIN
+                <Plus size={16} /> GENERATE PIN
               </button>
+              <div style={{ flex: 1.5, display: 'flex', gap: '0.5rem' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <Hash size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="text" 
+                    maxLength={6}
+                    placeholder="Enter PIN"
+                    value={joinPin}
+                    onChange={(e) => setJoinPin(e.target.value)}
+                    style={{ 
+                      width: '100%', 
+                      height: '48px', 
+                      background: '#000', 
+                      border: '1px solid var(--line)', 
+                      borderRadius: '0.4rem', 
+                      color: 'inherit', 
+                      padding: '0 1rem 0 2.25rem', 
+                      outline: 'none', 
+                      boxSizing: 'border-box',
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                </div>
+                <button 
+                  onClick={() => joinDuel(joinPin)}
+                  className="btn"
+                  style={{ 
+                    height: '48px', 
+                    background: 'var(--text)', 
+                    color: '#000', 
+                    border: 'none', 
+                    fontWeight: 700, 
+                    padding: '0 1.5rem',
+                    borderRadius: '0.4rem'
+                  }}
+                >
+                  JOIN
+                </button>
+              </div>
             </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Create or join a private room to battle with a direct opponent.</p>
           </div>
         </div>
         
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t("availableChallenges")}</div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {questions.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)' }}>{t("availableChallenges") === "Provocări Disponibile" ? "Nicio întrebare disponibilă momentan. Provoacă cavaleri în dueluri de programare." : "No questions available yet. Challenge knights in coding duels."}</p>
-          ) : (
-            questions.map((q) => {
-              const diffLabel = q.difficulty === 'Easy' ? 'Target Practice' : q.difficulty === 'Medium' ? 'Trial Duel' : 'Royal Challenge';
-              return (
-                <div key={q.id} style={{ padding: '1rem', border: '1px solid var(--line)', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.01)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '1rem' }}>{q.title}</div>
-                    <div style={{ fontSize: '0.75rem', color: q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555', marginTop: '0.2rem' }}>{diffLabel}</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {isAdmin && onDeleteQuestion && (
+        <div className="settings-group">
+          <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Target size={14} /> {t("availableChallenges")}
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+            {questions.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t("availableChallenges") === "Provocări Disponibile" ? "Nicio întrebare disponibilă momentan." : "No questions available yet."}</p>
+            ) : (
+              questions.map((q) => {
+                const diffLabel = q.difficulty === 'Easy' ? 'Target Practice' : q.difficulty === 'Medium' ? 'Trial Duel' : 'Royal Challenge';
+                const diffColor = q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555';
+                return (
+                  <div key={q.id} style={{ 
+                    padding: '1rem', 
+                    border: '1px solid var(--line)', 
+                    borderRadius: '0.4rem', 
+                    background: 'rgba(255,255,255,0.01)', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{q.title}</div>
+                      <div style={{ fontSize: '0.7rem', color: diffColor, marginTop: '0.2rem', fontWeight: 600 }}>{diffLabel}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {isAdmin && onDeleteQuestion && (
+                        <button 
+                          onClick={() => onDeleteQuestion(q.id)}
+                          className="twm-btn" 
+                          style={{ color: '#ff5555', padding: '0.4rem' }}
+                          title="Delete Question"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                       <button 
-                        onClick={() => onDeleteQuestion(q.id)}
-                        className="twm-btn" 
-                        style={{ color: '#ff5555', padding: '0.4rem' }}
-                        title="Delete Question"
+                        onClick={() => startBattle(q)} 
+                        className="btn" 
+                        style={{ 
+                          fontSize: '0.75rem', 
+                          height: '32px',
+                          padding: '0 1rem',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--line)',
+                          color: 'var(--accent)',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          borderRadius: '0.3rem'
+                        }}
                       >
-                        <Trash2 size={16} />
+                        {t("battle").toUpperCase()}
                       </button>
-                    )}
-                    <button onClick={() => startBattle(q)} className="btn btn-outline" style={{ fontSize: '0.75rem', borderColor: 'var(--accent)', color: 'var(--accent)', cursor: 'pointer' }}>{t("battle").toUpperCase()}</button>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
     </div>

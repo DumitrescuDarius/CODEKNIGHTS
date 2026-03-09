@@ -25,15 +25,76 @@ interface ProblemWindowProps {
   t: (key: TranslationKey) => string;
   analysis: any | null;
   isAnalyzing: boolean;
+  activeDuel?: any;
+  timeLeft?: number | null;
+  setActiveDuel?: (val: any) => void;
+  setDuelPin?: (val: string) => void;
 }
 
 export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   activeQuestion, testResults, showQuitConfirmation, setShowQuitConfirmation,
   handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
-  analysis, isAnalyzing
+  analysis, isAnalyzing, activeDuel, timeLeft, setActiveDuel, setDuelPin
 }) => {
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
+  const isDuelFinished = activeDuel?.status === "FINISHED";
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const renderFormattedText = (text: string) => {
+    if (!text) return null;
+    
+    // Split by both **bold** and ==highlight==
+    const parts = text.split(/(\*\*.*?\*\*|==.*?==)/g);
+    
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('==') && part.endsWith('==')) {
+        return <mark key={i} style={{ background: 'var(--accent)', color: '#000', padding: '0 0.2rem', borderRadius: '0.1rem' }}>{part.slice(2, -2)}</mark>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  if (isDuelFinished) {
+    const hostWin = activeDuel.hostSolveTime !== null && (activeDuel.guestSolveTime === null || activeDuel.hostSolveTime < activeDuel.guestSolveTime);
+    const guestWin = activeDuel.guestSolveTime !== null && (activeDuel.hostSolveTime === null || activeDuel.guestSolveTime < activeDuel.hostSolveTime);
+    const draw = activeDuel.hostSolveTime !== null && activeDuel.guestSolveTime !== null && activeDuel.hostSolveTime === activeDuel.guestSolveTime;
+
+    return (
+      <div style={{ padding: '2rem', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ background: 'var(--accent)', color: '#000', padding: '1rem', borderRadius: '50%', marginBottom: '1.5rem', boxShadow: '0 0 20px var(--accent)' }}>
+          <Trophy size={48} />
+        </div>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>DUEL RESULT</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem' }}>{activeDuel.question.title}</p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', width: '100%', maxWidth: '500px', marginBottom: '3rem' }}>
+          <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
+            {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
+            <div style={{ marginBottom: '1rem' }}>{activeDuel.host.image ? <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <Zap size={32} style={{ opacity: 0.5 }} />}</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.host.username || activeDuel.host.name}</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: hostWin ? '#50fa7b' : 'inherit' }}>{activeDuel.hostSolveTime ? formatTime(Math.floor(activeDuel.hostSolveTime/1000)) : "--:--"}</div>
+          </div>
+          <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
+            {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
+            <div style={{ marginBottom: '1rem' }}>{activeDuel.guest?.image ? <img src={activeDuel.guest.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <Zap size={32} style={{ opacity: 0.5 }} />}</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest Knight"}</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: guestWin ? '#50fa7b' : 'inherit' }}>{activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime/1000)) : "--:--"}</div>
+          </div>
+        </div>
+        {draw && <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '2rem' }}>⚔️ IT'S A FAIR DRAW! ⚔️</p>}
+        <button onClick={() => { setActiveDuel?.(null); setDuelPin?.(""); handleQuitBattle(); }} className="btn" style={{ width: '100%', maxWidth: '300px', background: 'var(--line)', border: 'none', padding: '1rem' }}>BACK TO ARENA</button>
+      </div>
+    );
+  }
 
   if (allPassed) {
     return (
@@ -171,14 +232,30 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>{activeQuestion.title}</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{activeQuestion.title}</h2>
             </div>
-            <div style={{ lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
-              {activeQuestion.description}
-            </div>
+            {timeLeft !== null && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: timeLeft < 30 ? '#ff5555' : 'var(--accent)', fontWeight: 800, fontSize: '1.2rem', fontFamily: 'monospace' }}>
+                <Zap size={18} fill="currentColor" /> {formatTime(timeLeft)}
+              </div>
+            )}
           </div>
+          <div style={{ lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+            {renderFormattedText(activeQuestion.description)}
+          </div>
+
+          {activeQuestion.restrictions && (
+            <div style={{ padding: '1rem', background: 'rgba(var(--accent-rgb, 122, 162, 247), 0.05)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <ShieldCheck size={14} /> RESTRICTIONS
+              </div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text)', lineHeight: 1.5 }}>
+                {renderFormattedText(activeQuestion.restrictions)}
+              </div>
+            </div>
+          )}
 
           <div className="settings-group">
             <span className="settings-label">{t("examples")}</span>

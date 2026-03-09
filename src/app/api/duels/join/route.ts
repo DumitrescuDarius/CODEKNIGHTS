@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Only registered hosts can be protected against self-joining easily
-    if (session?.user && duel.hostId === (session.user as any).id) {
+    if (userId !== "guest" && session?.user && duel.hostId === (session.user as any).id) {
       return NextResponse.json({ error: "You cannot join your own duel" }, { status: 400 });
     }
 

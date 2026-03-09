@@ -6,7 +6,7 @@ import { TranslationKey } from "../../constants/translations";
 import { Question } from "../../types";
 
 interface AdminWindowProps {
-  newQuestion: { title: string; description: string; difficulty: string; testCases: any[]; hiddenTestCases: any[] };
+  newQuestion: { title: string; description: string; restrictions: string; difficulty: string; testCases: any[]; hiddenTestCases: any[] };
   setNewQuestion: (val: any) => void;
   handleAddQuestion: () => void;
   t: (key: TranslationKey) => string;
@@ -92,8 +92,22 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                   value={newQuestion.description} 
                   onChange={(e) => { setError(null); setNewQuestion((prev: any) => ({ ...prev, description: e.target.value })); }}
                   onKeyDown={(e) => handleTabKey(e, (val) => setNewQuestion((prev: any) => ({ ...prev, description: val })))}
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.75rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '150px', resize: 'vertical', outline: 'none', lineHeight: 1.5 }}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.75rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '120px', resize: 'vertical', outline: 'none', lineHeight: 1.5 }}
                   placeholder="Describe the challenge rules and constraints..."
+                />
+                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                  Use <b>**bold**</b> for bold and <b>==highlight==</b> for highlights.
+                </p>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>RESTRICTIONS</label>
+                <textarea 
+                  value={newQuestion.restrictions} 
+                  onChange={(e) => { setError(null); setNewQuestion((prev: any) => ({ ...prev, restrictions: e.target.value })); }}
+                  onKeyDown={(e) => handleTabKey(e, (val) => setNewQuestion((prev: any) => ({ ...prev, restrictions: val })))}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.75rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '80px', resize: 'vertical', outline: 'none', lineHeight: 1.5 }}
+                  placeholder="e.g., Time complexity O(N), Space complexity O(1)"
                 />
               </div>
 

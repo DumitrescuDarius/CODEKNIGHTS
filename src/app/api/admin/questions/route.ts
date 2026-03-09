@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { title, description, difficulty, testCases, hiddenTestCases } = await req.json();
+    const { title, description, restrictions, difficulty, testCases, hiddenTestCases } = await req.json();
 
     if (!title || !description || !difficulty || !testCases) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     const data: any = {
       title,
       description,
+      restrictions,
       difficulty,
       testCases: JSON.stringify(testCases),
       hiddenTestCases: hiddenTestCases ? JSON.stringify(hiddenTestCases) : "[]",

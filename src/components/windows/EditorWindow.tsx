@@ -5,6 +5,7 @@ import Editor, { useMonaco } from "@monaco-editor/react";
 import { Terminal as TerminalIcon, X } from "lucide-react";
 import { Language } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
+import { TranslationKey } from "../../constants/translations";
 
 interface EditorWindowProps {
   lang: Language;
@@ -31,6 +32,7 @@ interface EditorWindowProps {
   cursorPos: { ln: number; col: number };
   setCursorPos: (pos: { ln: number; col: number }) => void;
   compileErrors: any[];
+  t: (key: TranslationKey) => string;
 }
 
 export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
@@ -38,7 +40,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
   showTerminal, setShowTerminal, terminalHeight, startTerminalResizing,
   stdin, setStdin, terminalOutput, terminalFontSize, vimMode,
   vimStatusBarRef, editorRef, langSelectorOpen, setLangSelectorOpen,
-  cursorPos, setCursorPos, compileErrors
+  cursorPos, setCursorPos, compileErrors, t
 }) => {
   const monaco = useMonaco();
 
@@ -100,7 +102,6 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
             quickSuggestions: { other: true, comments: true, strings: true }, 
             parameterHints: { enabled: true }, 
             formatOnType: true, 
-            semanticHighlighting: { enabled: true }, 
             tabCompletion: "on", 
             autoClosingBrackets: "always", 
             autoClosingQuotes: "always", 
