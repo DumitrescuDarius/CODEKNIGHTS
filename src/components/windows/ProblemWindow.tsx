@@ -39,8 +39,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 }) => {
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
   const isDuelFinished = activeDuel?.status === "FINISHED";
+  const SURRENDER_TIME = 999999999;
 
   const formatTime = (seconds: number) => {
+    if (seconds * 1000 === SURRENDER_TIME) return "SURRENDERED";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -64,9 +66,12 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   };
 
   if (isDuelFinished) {
-    const hostWin = activeDuel.hostSolveTime !== null && (activeDuel.guestSolveTime === null || activeDuel.hostSolveTime < activeDuel.guestSolveTime);
-    const guestWin = activeDuel.guestSolveTime !== null && (activeDuel.hostSolveTime === null || activeDuel.guestSolveTime < activeDuel.hostSolveTime);
-    const draw = activeDuel.hostSolveTime !== null && activeDuel.guestSolveTime !== null && activeDuel.hostSolveTime === activeDuel.guestSolveTime;
+    const hostSurrendered = activeDuel.hostSolveTime === SURRENDER_TIME;
+    const guestSurrendered = activeDuel.guestSolveTime === SURRENDER_TIME;
+
+    const hostWin = !hostSurrendered && (guestSurrendered || (activeDuel.hostSolveTime !== null && (activeDuel.guestSolveTime === null || activeDuel.hostSolveTime < activeDuel.guestSolveTime)));
+    const guestWin = !guestSurrendered && (hostSurrendered || (activeDuel.guestSolveTime !== null && (activeDuel.hostSolveTime === null || activeDuel.guestSolveTime < activeDuel.hostSolveTime)));
+    const draw = !hostWin && !guestWin && activeDuel.hostSolveTime !== null && activeDuel.guestSolveTime !== null && activeDuel.hostSolveTime === activeDuel.guestSolveTime;
 
     return (
       <div style={{ padding: '2rem', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -81,13 +86,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
             <div style={{ marginBottom: '1rem' }}>{activeDuel.host.image ? <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <Zap size={32} style={{ opacity: 0.5 }} />}</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.host.username || activeDuel.host.name}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: hostWin ? '#50fa7b' : 'inherit' }}>{activeDuel.hostSolveTime ? formatTime(Math.floor(activeDuel.hostSolveTime/1000)) : "--:--"}</div>
+            <div style={{ fontSize: hostSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : 'inherit') }}>{activeDuel.hostSolveTime ? formatTime(Math.floor(activeDuel.hostSolveTime/1000)) : "--:--"}</div>
           </div>
           <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
             <div style={{ marginBottom: '1rem' }}>{activeDuel.guest?.image ? <img src={activeDuel.guest.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <Zap size={32} style={{ opacity: 0.5 }} />}</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest Knight"}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: guestWin ? '#50fa7b' : 'inherit' }}>{activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime/1000)) : "--:--"}</div>
+            <div style={{ fontSize: guestSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : 'inherit') }}>{activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime/1000)) : "--:--"}</div>
           </div>
         </div>
         {draw && <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '2rem' }}>⚔️ IT'S A FAIR DRAW! ⚔️</p>}
@@ -138,7 +143,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               <div className="loading-spinner" style={{ margin: '0 auto 1rem' }} />
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Gemini is analyzing your source code...</p>
             </div>
-          ) : analysis ? (
+          ) : (analysis && !analysis.error) ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
               {/* Bars Graph */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -179,7 +184,18 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               </div>
             </div>
           ) : (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Analysis data unavailable.</p>
+            <div style={{ padding: '1.5rem', background: 'rgba(255, 85, 85, 0.05)', border: '1px solid #ff555544', borderRadius: '0.5rem', textAlign: 'center' }}>
+              <p style={{ color: '#ff5555', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                {analysis?.error || "AI Analysis data unavailable."}
+              </p>
+              <button 
+                onClick={runTests}
+                className="btn"
+                style={{ fontSize: '0.75rem', borderColor: '#ff555544', color: '#ff5555' }}
+              >
+                RETRY ANALYSIS
+              </button>
+            </div>
           )}
         </div>
 

@@ -39,6 +39,45 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !(session.user as any).isAdmin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { id, title, description, restrictions, difficulty, testCases, hiddenTestCases } = await req.json();
+
+    if (!id || !title || !description || !difficulty || !testCases) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const data: any = {
+      title,
+      description,
+      restrictions,
+      difficulty,
+      testCases: JSON.stringify(testCases),
+      hiddenTestCases: hiddenTestCases ? JSON.stringify(hiddenTestCases) : "[]",
+    };
+
+    const question = await prisma.question.update({
+      where: { id },
+      data,
+    });
+
+    return NextResponse.json(question);
+  } catch (err: any) {
+    console.error("Prisma Error:", err);
+    return NextResponse.json({ 
+      error: "Failed to update question", 
+      details: err.message,
+      code: err.code 
+    }, { status: 500 });
+  }
+}
+
 export async function GET() {
   try {
     const questions = await prisma.question.findMany({

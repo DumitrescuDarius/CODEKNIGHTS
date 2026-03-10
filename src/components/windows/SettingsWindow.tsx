@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Theme, Font, SupportedLanguage } from "../../types";
+import { Theme, Font, SupportedLanguage, AnimationSpeed } from "../../types";
 import { THEMES } from "../../constants/themes";
 import { FONTS } from "../../constants/fonts";
 import { TranslationKey } from "../../constants/translations";
@@ -19,12 +19,15 @@ interface SettingsWindowProps {
   setVimMode: (val: boolean) => void;
   uiLang: SupportedLanguage;
   setUiLang: (lang: SupportedLanguage) => void;
+  animationSpeed: AnimationSpeed;
+  setAnimationSpeed: (speed: AnimationSpeed) => void;
   t: (key: TranslationKey) => string;
 }
 
 export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
   themeIndex, setThemeIndex, fontFamily, setFontFamily, fontSize, setFontSize,
-  terminalFontSize, setTerminalFontSize, vimMode, setVimMode, uiLang, setUiLang, t
+  terminalFontSize, setTerminalFontSize, vimMode, setVimMode, uiLang, setUiLang,
+  animationSpeed, setAnimationSpeed, t
 }) => {
   return (
     <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto' }}>
@@ -32,11 +35,11 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
       <div className="settings-group">
         <span className="settings-label">{t("language")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
-          {(['en', 'ro', 'fr', 'de', 'hi', 'ru', 'hu', 'es', 'it', 'zh', 'ja'] as SupportedLanguage[]).map((l) => {
+          {(['en', 'ro', 'fr', 'de', 'hi', 'ru', 'hu', 'es', 'it', 'zh', 'ja', 'pt'] as SupportedLanguage[]).map((l) => {
             const labels: Record<SupportedLanguage, string> = {
               en: "English", ro: "Română", fr: "Français", de: "Deutsch", 
               hi: "हिन्दी", ru: "Русский", hu: "Magyar", es: "Español",
-              it: "Italiano", zh: "中文", ja: "日本語"
+              it: "Italiano", zh: "中文", ja: "日本語", pt: "Português (BR)"
             };
             return (
               <button 
@@ -63,7 +66,57 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
         </div>
       </div>
 
-      {/* 2. Text Size */}
+      {/* 2. Window Animations */}
+      <div className="settings-group">
+        <span className="settings-label">{t("windowAnimations")}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
+          {(['snappy', 'fast', 'smooth', 'none', 'bouncy', 'elastic', 'dramatic', 'jello', 'lazy', 'ghost', 'teleport', 'boing', 'float', 'erased', 'flip', 'glitch', 'swapVertical'] as const).map((speed) => {
+            const labels = {
+              snappy: t("animationSnappy"),
+              fast: t("animationFast"),
+              smooth: t("animationSmooth"),
+              none: t("animationNone"),
+              bouncy: t("animationBouncy"),
+              elastic: t("animationElastic"),
+              dramatic: t("animationDramatic"),
+              jello: t("animationJello"),
+              lazy: t("animationLazy"),
+              ghost: t("animationGhost"),
+              teleport: t("animationTeleport"),
+              boing: t("animationBoing"),
+              float: t("animationFloat"),
+              erased: t("animationErased"),
+              flip: t("animationFlip"),
+              glitch: t("animationGlitch"),
+              swapVertical: t("animationSwapVertical")
+            };
+            return (
+              <button 
+                key={speed} 
+                onClick={() => setAnimationSpeed(speed)} 
+                className={`btn`}
+                style={{ 
+                  flex: 1,
+                  height: '44px',
+                  borderRadius: '0.4rem',
+                  border: `1px solid ${animationSpeed === speed ? 'var(--accent)' : 'var(--line)'}`,
+                  color: animationSpeed === speed ? 'var(--accent)' : 'var(--text)',
+                  boxShadow: animationSpeed === speed ? `inset 0 0 0 2px var(--accent)` : 'none',
+                  transition: 'all 0.2s ease',
+                  background: 'rgba(255,255,255,0.02)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.8rem'
+                }}
+              >
+                {labels[speed]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. Text Size */}
       <div className="settings-group">
         <span className="settings-label">{t("textSize")}</span>
         <div style={{ display: 'flex', gap: '2rem' }}>

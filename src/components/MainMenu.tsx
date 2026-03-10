@@ -8,7 +8,7 @@ import { Settings, Code, Trophy, MessageSquare, ArrowLeft, ArrowRight, X, Sword,
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { Language, WindowId, UserStats, Question, SupportedLanguage } from "../types";
+import { Language, WindowId, UserStats, Question, SupportedLanguage, AnimationSpeed } from "../types";
 import { THEMES } from "../constants/themes";
 import { FONTS } from "../constants/fonts";
 import { LANG_CONFIG, CPP_STL } from "../constants/languages";
@@ -20,6 +20,7 @@ import { BattleWindow } from "./windows/BattleWindow";
 import { ProblemWindow } from "./windows/ProblemWindow";
 import { ProfileWindow } from "./windows/ProfileWindow";
 import { AdminWindow } from "./windows/AdminWindow";
+import { ContestWindow } from "./windows/ContestWindow";
 
 declare global {
   interface Window {
@@ -63,7 +64,7 @@ const MainMenu: React.FC = () => {
   const [terminalHeight, setTerminalHeight] = useState(180);
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [newQuestion, setNewQuestion] = useState<{ title: string; description: string; restrictions: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[] }>({ 
+  const [newQuestion, setNewQuestion] = useState<{ id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[] }>({ 
     title: "", 
     description: "", 
     restrictions: "",
@@ -95,7 +96,37 @@ const MainMenu: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeDuel, setActiveDuel] = useState<any | null>(null);
   const [duelPin, setDuelPin] = useState<string>("");
+  const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("snappy");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('animationSpeed') as AnimationSpeed;
+    if (saved) setAnimationSpeed(saved);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('animationSpeed', animationSpeed);
+  }, [animationSpeed]);
+
+  const getTransition = (): any => {
+    if (animationSpeed === "none") return { type: "tween", duration: 0 };
+    if (animationSpeed === "smooth") return { type: "spring", stiffness: 300, damping: 40, mass: 1 };
+    if (animationSpeed === "bouncy") return { type: "spring", stiffness: 600, damping: 15, mass: 1 };
+    if (animationSpeed === "elastic") return { type: "spring", stiffness: 400, damping: 8, mass: 1.2 };
+    if (animationSpeed === "dramatic") return { type: "spring", stiffness: 50, damping: 25, mass: 2 };
+    if (animationSpeed === "snappy") return { type: "spring", stiffness: 1000, damping: 50, mass: 1 };
+    if (animationSpeed === "jello") return { type: "spring", stiffness: 500, damping: 5, mass: 1 };
+    if (animationSpeed === "lazy") return { type: "spring", stiffness: 100, damping: 40, mass: 3 };
+    if (animationSpeed === "ghost") return { type: "spring", stiffness: 300, damping: 30, mass: 1 };
+    if (animationSpeed === "teleport") return { type: "spring", stiffness: 2000, damping: 100, mass: 1 };
+    if (animationSpeed === "boing") return { type: "spring", stiffness: 800, damping: 10, mass: 1.5 };
+    if (animationSpeed === "float") return { type: "spring", stiffness: 40, damping: 15, mass: 1 };
+    if (animationSpeed === "erased") return { type: "tween", ease: "easeInOut", duration: 0.4 };
+    if (animationSpeed === "flip") return { type: "spring", stiffness: 300, damping: 20, mass: 1 };
+    if (animationSpeed === "glitch") return { type: "spring", stiffness: 1000, damping: 10, mass: 0.5 };
+    if (animationSpeed === "swapVertical") return { type: "spring", stiffness: 400, damping: 25, mass: 1 };
+    return { type: "spring", stiffness: 500, damping: 30, mass: 1 };
+  };
 
   const t = useCallback((key: TranslationKey): string => {
     return (TRANSLATIONS[uiLang] as any)[key] || (TRANSLATIONS["en"] as any)[key] || key;
@@ -405,6 +436,14 @@ const MainMenu: React.FC = () => {
     }
   }, [vimMode, isLoaded]);
 
+  useEffect(() => {
+    if (isDragging || draggedWindow) {
+      document.body.classList.add('resizing');
+    } else {
+      document.body.classList.remove('resizing');
+    }
+  }, [isDragging, draggedWindow]);
+
   const runCode = useCallback(async () => {
     setIsRunning(true);
     setShowTerminal(true);
@@ -461,6 +500,57 @@ const MainMenu: React.FC = () => {
       setAdminError("A server error occurred while publishing.");
     }
   };
+
+  const handleUpdateQuestion = async () => {
+    setAdminError(null);
+    if (!newQuestion.id || !newQuestion.title || !newQuestion.description) {
+      setAdminError("ID, title and description are required.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/questions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newQuestion),
+      });
+      if (res.ok) {
+        setNewQuestion({ 
+          title: "", 
+          description: "", 
+          restrictions: "",
+          difficulty: "Easy", 
+          testCases: [{ input: "", output: "" }], 
+          hiddenTestCases: [] 
+        });
+        fetchQuestions();
+        alert("Question updated successfully!");
+      } else {
+        const data = await res.json();
+        setAdminError(data.details || data.error || "Failed to update question.");
+      }
+    } catch (err) {
+      console.error("Failed to update question:", err);
+      setAdminError("A server error occurred while updating.");
+    }
+  };
+
+  const onEditQuestion = useCallback((q: Question) => {
+    setNewQuestion({
+      id: q.id,
+      title: q.title,
+      description: q.description,
+      restrictions: q.restrictions || "",
+      difficulty: q.difficulty,
+      testCases: typeof q.testCases === 'string' ? JSON.parse(q.testCases) : q.testCases,
+      hiddenTestCases: q.hiddenTestCases ? (typeof q.hiddenTestCases === 'string' ? JSON.parse(q.hiddenTestCases) : q.hiddenTestCases) : []
+    });
+    
+    if (!openWindows.includes("admin")) {
+      setOpenWindows(prev => [...prev, "admin"]);
+      setWindowFlexes(prev => [...prev, 1]);
+    }
+  }, [openWindows]);
 
   const handleDeleteQuestion = useCallback(async (id: string) => {
     if (!confirm("Are you sure you want to delete this question? This cannot be undone.")) return;
@@ -634,52 +724,59 @@ const MainMenu: React.FC = () => {
     }
   }, [code, lang, setStdin]);
 
+  const rafRef = useRef<number | null>(null);
+
   const handleMouseMove = useCallback((e: MouseEvent) => {
     ignoreHoverRef.current = false;
     if (resizingRef.current !== null && workspaceRef.current) {
-      const idx = resizingRef.current;
-      const rect = workspaceRef.current.getBoundingClientRect();
-      
-      setWindowFlexes(prev => {
-        const totalWidth = rect.width;
-        const totalFlex = prev.reduce((a, b) => a + b, 0);
-        
-        // 0.75rem = 12px. Total gaps = prev.length - 1
-        const totalGapsWidth = (prev.length - 1) * 12;
-        const availableFlexWidth = totalWidth - totalGapsWidth;
-        
-        if (availableFlexWidth <= 0) return prev;
-        
-        const flexPerPx = totalFlex / availableFlexWidth;
-        
-        // Mouse position relative to workspace
-        const relativeX = e.clientX - rect.left;
-        
-        // Flex space before the current resizer (at idx)
-        // There are idx full gaps before this resizer, plus the half-gap the resizer is in
-        const marginsBefore = idx * 12 + 6;
-        const flexSpaceBefore = relativeX - marginsBefore;
-        
-        const currentFlexBefore = prev.slice(0, idx + 1).reduce((a, b) => a + b, 0);
-        const targetFlexBefore = flexSpaceBefore * flexPerPx;
-        const delta = targetFlexBefore - currentFlexBefore;
-        
-        const newFlexes = [...prev];
-        if (newFlexes[idx] + delta > 0.1 && newFlexes[idx+1] - delta > 0.1) {
-          newFlexes[idx] += delta;
-          newFlexes[idx+1] -= delta;
-          return newFlexes;
-        }
-        return prev;
-      });
+      if (rafRef.current) return;
 
-      if (editorRef.current) editorRef.current.layout();
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const idx = resizingRef.current;
+        if (idx === null || !workspaceRef.current) return;
+        
+        const rect = workspaceRef.current.getBoundingClientRect();
+        
+        setWindowFlexes(prev => {
+          const totalWidth = rect.width;
+          const totalFlex = prev.reduce((a, b) => a + b, 0);
+          const totalGapsWidth = (prev.length - 1) * 12;
+          const availableFlexWidth = totalWidth - totalGapsWidth;
+          
+          if (availableFlexWidth <= 0) return prev;
+          const flexPerPx = totalFlex / availableFlexWidth;
+          const relativeX = e.clientX - rect.left;
+          const marginsBefore = idx * 12 + 6;
+          const flexSpaceBefore = relativeX - marginsBefore;
+          const currentFlexBefore = prev.slice(0, idx + 1).reduce((a, b) => a + b, 0);
+          const targetFlexBefore = flexSpaceBefore * flexPerPx;
+          const delta = targetFlexBefore - currentFlexBefore;
+          
+          const newFlexes = [...prev];
+          if (newFlexes[idx] + delta > 0.1 && newFlexes[idx+1] - delta > 0.1) {
+            newFlexes[idx] += delta;
+            newFlexes[idx+1] -= delta;
+            return newFlexes;
+          }
+          return prev;
+        });
+
+        if (editorRef.current && openWindows.includes("editor")) {
+          editorRef.current.layout();
+        }
+      });
     } else if (terminalResizingRef.current) {
-      const deltaY = e.movementY;
-      setTerminalHeight(prev => Math.max(40, Math.min(window.innerHeight * 0.8, prev - deltaY)));
-      if (editorRef.current) editorRef.current.layout();
+      if (rafRef.current) return;
+      
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const deltaY = e.movementY;
+        setTerminalHeight(prev => Math.max(40, Math.min(window.innerHeight * 0.8, prev - deltaY)));
+        if (editorRef.current && openWindows.includes("editor")) editorRef.current.layout();
+      });
     }
-  }, []);
+  }, [openWindows]);
 
   const handlePlayAsGuest = useCallback(() => {
     const randomId = Math.floor(1000 + Math.random() * 9000);
@@ -697,7 +794,8 @@ const MainMenu: React.FC = () => {
     document.body.style.cursor = '';
   }, [handleMouseMove]);
 
-  const startResizing = (index: number) => {
+  const startResizing = (e: React.MouseEvent, index: number) => {
+    e.preventDefault();
     resizingRef.current = index;
     setIsDragging(true);
     document.addEventListener('mousemove', handleMouseMove);
@@ -705,7 +803,8 @@ const MainMenu: React.FC = () => {
     document.body.style.cursor = 'col-resize';
   };
 
-  const startTerminalResizing = useCallback(() => {
+  const startTerminalResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
     terminalResizingRef.current = true;
     setIsDragging(true);
     document.addEventListener('mousemove', handleMouseMove);
@@ -732,6 +831,7 @@ const MainMenu: React.FC = () => {
 
     if (openWindows.includes(id)) {
       if (id === "editor") return;
+      if (maximizedWindow === id) setMaximizedWindow(null);
       const idx = openWindows.indexOf(id);
       setOpenWindows(openWindows.filter(w => w !== id));
       const newFlexes = [...windowFlexes];
@@ -741,7 +841,7 @@ const MainMenu: React.FC = () => {
       setOpenWindows([...openWindows, id]);
       setWindowFlexes([...windowFlexes, 1]);
     }
-  }, [openWindows, windowFlexes, activeQuestion, testResults, activeDuel]);
+  }, [openWindows, windowFlexes, activeQuestion, testResults, activeDuel, maximizedWindow]);
 
   const moveWindow = (id: WindowId, direction: 'left' | 'right') => {
     ignoreHoverRef.current = true;
@@ -778,6 +878,11 @@ const MainMenu: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept Enter if focusing an input or textarea
+      if (e.key === "Enter" && !e.altKey && (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA")) {
+        return;
+      }
+
       // Alt + ' to run code
       if (e.altKey && e.key === "'") {
         e.preventDefault();
@@ -825,6 +930,14 @@ const MainMenu: React.FC = () => {
         }
       }
 
+      // Shift + Alt + Up to maximize window
+      if (e.altKey && e.shiftKey && e.key === "ArrowUp") {
+        e.preventDefault();
+        if (hoveredWindow) {
+          toggleMaximize(hoveredWindow);
+        }
+      }
+
       if (vimMode && e.key === "Escape") {
         const vimState = editorRef.current?.vimState;
         if (vimState) {
@@ -841,7 +954,7 @@ const MainMenu: React.FC = () => {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [vimMode, activeQuestion, hoveredWindow, runCode, runTests, openWindows, moveWindow, toggleWindow]);
+  }, [vimMode, activeQuestion, hoveredWindow, runCode, runTests, openWindows, moveWindow, toggleWindow, maximizedWindow]);
 
   const renderWindowContent = (id: WindowId) => {
     switch (id) {
@@ -866,15 +979,17 @@ const MainMenu: React.FC = () => {
             fontSize={fontSize} setFontSize={setFontSize} terminalFontSize={terminalFontSize} 
             setTerminalFontSize={setTerminalFontSize} vimMode={vimMode} setVimMode={setVimMode}
             uiLang={uiLang} setUiLang={setUiLang}
+            animationSpeed={animationSpeed} setAnimationSpeed={setAnimationSpeed}
             t={t}
           />
         );
+
       case "battle":
         return (
           <BattleWindow 
             startBattle={startBattle} questions={questions}
             session={session} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest}
-            t={t} onDeleteQuestion={handleDeleteQuestion}
+            t={t} onDeleteQuestion={handleDeleteQuestion} onEditQuestion={onEditQuestion}
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
             setActiveDuel={setActiveDuel} setDuelPin={setDuelPin}
             showCancelDuel={showCancelDuel} setShowCancelDuel={setShowCancelDuel}
@@ -882,6 +997,7 @@ const MainMenu: React.FC = () => {
               setActiveDuel(null); 
               setDuelPin(""); 
               setShowCancelDuel(false); 
+              if (maximizedWindow === "battle") setMaximizedWindow(null);
               const idx = openWindows.indexOf("battle");
               if (idx !== -1) {
                 setOpenWindows(openWindows.filter(w => w !== "battle")); 
@@ -897,7 +1013,8 @@ const MainMenu: React.FC = () => {
       case "admin":
         return (
           <AdminWindow 
-            newQuestion={newQuestion} setNewQuestion={setNewQuestion} handleAddQuestion={handleAddQuestion}
+            newQuestion={newQuestion} setNewQuestion={setNewQuestion} 
+            handleAddQuestion={handleAddQuestion} handleUpdateQuestion={handleUpdateQuestion}
             t={t} error={adminError} setError={setAdminError}
             questions={questions} onDeleteQuestion={handleDeleteQuestion}
           />
@@ -907,16 +1024,34 @@ const MainMenu: React.FC = () => {
           <ProblemWindow 
             activeQuestion={activeQuestion} testResults={testResults} showQuitConfirmation={showQuitConfirmation}
             setShowQuitConfirmation={setShowQuitConfirmation} 
-            handleQuitBattle={() => { 
-              setActiveQuestion(null); 
-              setTestResults(null); 
-              setAnalysis(null); 
+            handleQuitBattle={async () => {
+              if (activeDuel && activeDuel.status === "ACTIVE") {
+                try {
+                  await fetch("/api/duels/submit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ duelId: activeDuel.id, surrender: true })
+                  });
+                  // After surrendering, the status will become FINISHED.
+                  // We'll let the polling or the next fetch update the UI.
+                  // But for immediate feedback, we can just close the confirmation.
+                  setShowQuitConfirmation(false);
+                  return;
+                } catch (err) {
+                  console.error("Failed to surrender:", err);
+                }
+              }
+
+              setActiveQuestion(null);
+              setTestResults(null);
+              setAnalysis(null);
               setActiveDuel(null);
               setDuelPin("");
-              setShowQuitConfirmation(false); 
+              setShowQuitConfirmation(false);
+              if (maximizedWindow === "problem") setMaximizedWindow(null);
               const idx = openWindows.indexOf("problem");
               if (idx !== -1) {
-                setOpenWindows(openWindows.filter(w => w !== "problem")); 
+                setOpenWindows(openWindows.filter(w => w !== "problem"));
                 setWindowFlexes(prev => {
                   const next = [...prev];
                   next.splice(idx, 1);
@@ -924,6 +1059,7 @@ const MainMenu: React.FC = () => {
                 });
               }
             }}
+
             runTests={runTests} isTesting={isTesting} setStdin={setStdin} setShowTerminal={setShowTerminal}
             setTerminalOutput={setTerminalOutput} solveTime={solveTime} lang={lang}
             startNewBattle={() => { 
@@ -932,6 +1068,7 @@ const MainMenu: React.FC = () => {
               setAnalysis(null); 
               setActiveDuel(null);
               setDuelPin("");
+              if (maximizedWindow === "problem") setMaximizedWindow(null);
               setOpenWindows(prev => prev.filter(w => w !== "problem").concat("battle"));
               // windowFlexes stays the same length as we replaced one with another
             }}
@@ -947,7 +1084,8 @@ const MainMenu: React.FC = () => {
         );
       case "profile":
         return <ProfileWindow session={session} userStats={userStats} t={t} />;
-      case "contests": return <div style={{ padding: '1.5rem' }}><h2>Upcoming</h2><div style={{ marginTop: '1rem', border: '1px solid var(--line)', padding: '1rem' }}>Weekly Contest 42</div></div>;
+      case "contests":
+        return <ContestWindow questions={questions} t={t} isAdmin={!!session?.user?.isAdmin} />;
       case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>Global</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
       case "discuss": return <div style={{ padding: '1.5rem' }}><h2>Discussion</h2><div style={{ marginTop: '1rem' }}>How to learn DP?</div></div>;
       case "friends": return <div style={{ padding: '1.5rem' }}><h2>Friends</h2><p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>You have no friends yet.</p></div>;
@@ -984,7 +1122,7 @@ const MainMenu: React.FC = () => {
             <div 
               style={{ 
                 height: '40px', 
-                width: '40px',
+                width: '60px',
                 backgroundColor: 'var(--accent)',
                 WebkitMaskImage: 'url(/assets/logo_white.png)',
                 maskImage: 'url(/assets/logo_white.png)',
@@ -1091,7 +1229,7 @@ const MainMenu: React.FC = () => {
       <main className="twm-workspace" ref={workspaceRef}>
         <AnimatePresence initial={true}>
           {openWindows
-            .filter(id => maximizedWindow ? id === maximizedWindow : true)
+            .filter(id => (maximizedWindow && openWindows.includes(maximizedWindow)) ? id === maximizedWindow : true)
             .map((id, idx) => {
             const navItem = navLinks.find(l => l.id === id);
             let icon = navItem?.icon;
@@ -1108,19 +1246,40 @@ const MainMenu: React.FC = () => {
               <React.Fragment key={id}>
                 <motion.section 
                   key={id}
-                  layout={!isDragging}
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  layout={animationSpeed !== "none" && !isDragging}
+                  initial={
+                    animationSpeed === "none" ? false : 
+                    animationSpeed === "erased" ? { clipPath: 'inset(0% 100% 0% 0%)', opacity: 0 } :
+                    animationSpeed === "flip" ? { rotateY: 90, opacity: 0 } :
+                    animationSpeed === "glitch" ? { x: 50, skewX: 20, opacity: 0 } :
+                    { opacity: 0, scale: 0.95 }
+                  }
                   animate={{ 
-                    opacity: 1, 
-                    scale: isReordering ? 0.98 : 1,
+                    opacity: (animationSpeed === "ghost" && isReordering) ? 0.4 : 1, 
+                    scale: isReordering ? (animationSpeed === "boing" ? 1.1 : 0.98) : 1,
+                    rotate: isReordering ? (animationSpeed === "jello" ? 2 : (animationSpeed === "boing" ? -2 : 0)) : 0,
+                    rotateY: 0,
+                    x: 0,
+                    skewX: 0,
+                    clipPath: 'inset(0% 0% 0% 0%)',
+                    y: isReordering ? (
+                      animationSpeed === "float" ? -20 : 
+                      animationSpeed === "swapVertical" ? (id.length % 2 === 0 ? -150 : 150) : 0
+                    ) : 0,
                     zIndex: draggedWindow === id ? 50 : 1,
                     boxShadow: isReordering ? "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)" : "none"
                   }}
-                  exit={{ opacity: 0, scale: 0.95 }}
+                  exit={
+                    animationSpeed === "none" ? { opacity: 0 } : 
+                    animationSpeed === "erased" ? { clipPath: 'inset(0% 0% 0% 100%)', opacity: 0 } :
+                    animationSpeed === "flip" ? { rotateY: -90, opacity: 0 } :
+                    animationSpeed === "glitch" ? { x: -50, skewX: -20, opacity: 0 } :
+                    { opacity: 0, scale: 0.95 }
+                  }
                   transition={{ 
-                    layout: { type: "spring", stiffness: 400, damping: 35, mass: 1 },
-                    scale: { duration: 0.1 },
-                    opacity: { duration: 0.1 }
+                    layout: getTransition(),
+                    scale: { duration: animationSpeed === "none" ? 0 : 0.1 },
+                    opacity: { duration: animationSpeed === "none" ? 0 : 0.1 }
                   }}
                   className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''}`}
                   style={{ flex: isMax ? 1 : (windowFlexes[idx] || 1) }}
@@ -1160,15 +1319,16 @@ const MainMenu: React.FC = () => {
                           <button className="twm-btn" onClick={() => moveWindow(id, 'right')}><ArrowRight size={14} /></button>
                         </>
                       )}
-                      {id !== 'editor' && !isMax && <button className="twm-btn" onClick={() => toggleWindow(id)}><X size={14} /></button>}
+                      {id !== 'editor' && <button className="twm-btn" onClick={() => toggleWindow(id)}><X size={14} /></button>}
                     </div>
                   </div>
                   <div className="twm-content" style={{ overflow: 'hidden' }}>
                     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
                       {renderWindowContent(id)}
                     </div>
-                  </div>                </motion.section>
-                {!maximizedWindow && idx < openWindows.length - 1 && <div className="twm-resizer" onMouseDown={() => startResizing(idx)} />}
+                  </div>
+                </motion.section>
+                {!maximizedWindow && idx < openWindows.length - 1 && <div className="twm-resizer" onMouseDown={(e) => startResizing(e, idx)} />}
               </React.Fragment>
             );
           })}

@@ -33,4 +33,5 @@ export const THEMES: Theme[] = [
   { name: "Oceanic", bg: "#1b2b34", accent: "#6699cc", line: "rgba(102, 153, 204, 0.1)", light: false, rules: [{ token: 'keyword', foreground: '#c594c5' }, { token: 'identifier', foreground: '#6699cc' }, { token: 'string', foreground: '#99c794' }] },
   { name: "Minimalist Dark", bg: "#121212", accent: "#ffffff", line: "rgba(255, 255, 255, 0.05)", light: false, rules: [{ token: 'keyword', foreground: '#888888' }, { token: 'identifier', foreground: '#ffffff' }, { token: 'string', foreground: '#aaaaaa' }] },
   { name: "Royal Crimson", bg: "#1a0000", accent: "#ffd700", line: "rgba(255, 215, 0, 0.1)", light: false, rules: [{ token: 'keyword', foreground: '#ff0000' }, { token: 'identifier', foreground: '#ffd700' }, { token: 'string', foreground: '#ffffff' }] },
+  { name: "The Matrix", bg: "#000000", accent: "#00ff41", line: "rgba(0, 255, 65, 0.15)", light: false, rules: [{ token: 'keyword', foreground: '#00ff41' }, { token: 'identifier', foreground: '#008f11' }, { token: 'string', foreground: '#003b00' }] },
 ];

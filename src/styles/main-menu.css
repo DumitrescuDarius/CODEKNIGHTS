@@ -31,6 +31,12 @@ html, body {
   transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body.resizing,
+body.resizing * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
 .main-header {
   height: 100vh;
   height: 100dvh;

@@ -19,7 +19,7 @@ interface EditorWindowProps {
   showTerminal: boolean;
   setShowTerminal: (val: boolean) => void;
   terminalHeight: number;
-  startTerminalResizing: () => void;
+  startTerminalResizing: (e: React.MouseEvent) => void;
   stdin: string;
   setStdin: (val: string) => void;
   terminalOutput: string;
@@ -116,7 +116,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
       
       {showTerminal && (
         <div className="terminal-panel" style={{ height: terminalHeight }}>
-          <div className="terminal-resizer" onMouseDown={startTerminalResizing} />
+          <div className="terminal-resizer" onMouseDown={(e) => startTerminalResizing(e)} />
           <div className="terminal-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <TerminalIcon size={12} />

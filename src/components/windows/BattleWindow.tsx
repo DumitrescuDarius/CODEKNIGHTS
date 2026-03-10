@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Question } from "../../types";
 import { signIn } from "next-auth/react";
-import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target } from "lucide-react";
+import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2 } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
 
 interface BattleWindowProps {
@@ -14,6 +14,7 @@ interface BattleWindowProps {
   handlePlayAsGuest: () => void;
   t: (key: TranslationKey) => string;
   onDeleteQuestion?: (id: string) => void;
+  onEditQuestion?: (q: Question) => void;
   createDuel: () => void;
   joinDuel: (pin: string) => void;
   activeDuel: any;
@@ -25,10 +26,18 @@ interface BattleWindowProps {
 }
 
 export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
-  startBattle, questions, session, isGuest, handlePlayAsGuest, t, onDeleteQuestion,
+  startBattle, questions, session, isGuest, handlePlayAsGuest, t, onDeleteQuestion, onEditQuestion,
   createDuel, joinDuel, activeDuel, setActiveDuel, setDuelPin, showCancelDuel, setShowCancelDuel, handleCancelDuel
 }) => {
   const [joinPin, setJoinPin] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const isAdmin = !!session?.user?.isAdmin;
+
+  const filteredQuestions = questions.filter(q => 
+    q.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    q.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (!session && !isGuest) {
     return (
@@ -69,8 +78,6 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
       </div>
     );
   }
-
-  const isAdmin = !!session?.user?.isAdmin;
 
   if (showCancelDuel) {
     return (
@@ -244,67 +251,99 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           </div>
         </div>
         
-        <div className="settings-group">
-          <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Target size={14} /> {t("availableChallenges")}
-          </span>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
-            {questions.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t("availableChallenges") === "Provocări Disponibile" ? "Nicio întrebare disponibilă momentan." : "No questions available yet."}</p>
-            ) : (
-              questions.map((q) => {
-                const diffLabel = q.difficulty === 'Easy' ? 'Target Practice' : q.difficulty === 'Medium' ? 'Trial Duel' : 'Royal Challenge';
-                const diffColor = q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555';
-                return (
-                  <div key={q.id} style={{ 
-                    padding: '1rem', 
+        {isAdmin && (
+          <div className="settings-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <Target size={14} /> {t("availableChallenges")}
+              </span>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="text" 
+                  placeholder="Search challenges..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ 
+                    background: 'rgba(255,255,255,0.02)', 
                     border: '1px solid var(--line)', 
+                    padding: '0.4rem 0.8rem', 
                     borderRadius: '0.4rem', 
-                    background: 'rgba(255,255,255,0.01)', 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{q.title}</div>
-                      <div style={{ fontSize: '0.7rem', color: diffColor, marginTop: '0.2rem', fontWeight: 600 }}>{diffLabel}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      {isAdmin && onDeleteQuestion && (
+                    color: 'inherit', 
+                    outline: 'none',
+                    fontSize: '0.75rem',
+                    width: '180px'
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {filteredQuestions.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{searchQuery ? "No challenges match your search." : (t("availableChallenges") === "Provocări Disponibile" ? "Nicio întrebare disponibilă momentan." : "No questions available yet.")}</p>
+              ) : (
+                filteredQuestions.map((q) => {
+                  const diffLabel = q.difficulty === 'Easy' ? 'Target Practice' : q.difficulty === 'Medium' ? 'Trial Duel' : 'Royal Challenge';
+                  const diffColor = q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555';
+                  return (
+                    <div key={q.id} style={{ 
+                      padding: '1rem', 
+                      border: '1px solid var(--line)', 
+                      borderRadius: '0.4rem', 
+                      background: 'rgba(255,255,255,0.01)', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      transition: 'all 0.2s ease'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{q.title}</div>
+                        <div style={{ fontSize: '0.7rem', color: diffColor, marginTop: '0.2rem', fontWeight: 600 }}>{diffLabel}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        {onEditQuestion && (
+                          <button 
+                            onClick={() => onEditQuestion(q)}
+                            className="twm-btn" 
+                            style={{ color: 'var(--accent)', padding: '0.4rem' }}
+                            title="Edit Question"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        )}
+                        {onDeleteQuestion && (
+                          <button 
+                            onClick={() => onDeleteQuestion(q.id)}
+                            className="twm-btn" 
+                            style={{ color: '#ff5555', padding: '0.4rem' }}
+                            title="Delete Question"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                         <button 
-                          onClick={() => onDeleteQuestion(q.id)}
-                          className="twm-btn" 
-                          style={{ color: '#ff5555', padding: '0.4rem' }}
-                          title="Delete Question"
+                          onClick={() => startBattle(q)} 
+                          className="btn" 
+                          style={{ 
+                            fontSize: '0.75rem', 
+                            height: '32px',
+                            padding: '0 1rem',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid var(--line)',
+                            color: 'var(--accent)',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            borderRadius: '0.3rem'
+                          }}
                         >
-                          <Trash2 size={16} />
+                          {t("battle").toUpperCase()}
                         </button>
-                      )}
-                      <button 
-                        onClick={() => startBattle(q)} 
-                        className="btn" 
-                        style={{ 
-                          fontSize: '0.75rem', 
-                          height: '32px',
-                          padding: '0 1rem',
-                          background: 'rgba(255,255,255,0.05)',
-                          border: '1px solid var(--line)',
-                          color: 'var(--accent)',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          borderRadius: '0.3rem'
-                        }}
-                      >
-                        {t("battle").toUpperCase()}
-                      </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

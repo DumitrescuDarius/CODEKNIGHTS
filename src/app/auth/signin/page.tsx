@@ -63,7 +63,7 @@ export default function SignIn() {
             <div 
               style={{ 
                 height: '40px', 
-                width: '40px',
+                width: '60px',
                 backgroundColor: 'var(--accent)',
                 WebkitMaskImage: 'url(/assets/logo_white.png)',
                 maskImage: 'url(/assets/logo_white.png)',

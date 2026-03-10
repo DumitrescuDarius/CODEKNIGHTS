@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const userId = session?.user ? (session.user as any).id : "guest";
 
   try {
-    const { duelId, solveTime } = await req.json();
+    const { duelId, solveTime, surrender } = await req.json();
 
     const duel = await prisma.duel.findUnique({
       where: { id: duelId }
@@ -26,16 +26,25 @@ export async function POST(req: NextRequest) {
     }
 
     const updateData: any = {};
-    if (isHost) updateData.hostSolveTime = solveTime;
-    if (isGuest) updateData.guestSolveTime = solveTime;
+    if (surrender) {
+      // If surrendering, set a very high solve time or use a marker
+      // Using 999999999 to represent a "lost" state or surrender
+      const LOST_TIME = 999999999;
+      if (isHost) updateData.hostSolveTime = LOST_TIME;
+      if (isGuest) updateData.guestSolveTime = LOST_TIME;
+      updateData.status = "FINISHED";
+    } else {
+      if (isHost) updateData.hostSolveTime = solveTime;
+      if (isGuest) updateData.guestSolveTime = solveTime;
+    }
 
     const updatedDuel = await prisma.duel.update({
       where: { id: duelId },
       data: updateData,
     });
 
-    // Check if both finished
-    if (updatedDuel.hostSolveTime !== null && updatedDuel.guestSolveTime !== null) {
+    // Check if both finished (only relevant if not surrendering)
+    if (!surrender && updatedDuel.hostSolveTime !== null && updatedDuel.guestSolveTime !== null) {
       await prisma.duel.update({
         where: { id: duelId },
         data: { status: "FINISHED" }

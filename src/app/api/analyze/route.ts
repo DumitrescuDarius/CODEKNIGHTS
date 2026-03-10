@@ -43,24 +43,38 @@ export async function POST(req: Request) {
     const response = await result.response;
     const text = response.text();
     
-    console.log("Analyze API: Gemini Raw Response:", text);
+    console.log("Analyze API: Gemini Raw Response length:", text.length);
 
-    // Robust JSON extraction
-    let jsonStr = text;
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[0];
+    // Robust JSON extraction: look for the first '{' and the last '}'
+    let jsonStr = "";
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = text.substring(firstBrace, lastBrace + 1);
+    } else {
+      jsonStr = text;
     }
     
     try {
+      // Clean up potential markdown or junk around the JSON
       const analysis = JSON.parse(jsonStr);
       console.log("Analyze API: Successfully parsed JSON");
-      return NextResponse.json(analysis);
+      
+      // Ensure all required fields exist
+      const fallback = {
+        timeComplexity: "O(N)",
+        spaceComplexity: "O(N)",
+        scores: { efficiency: 70, readability: 70, maintainability: 70, security: 70 },
+        feedback: "Code analysis completed."
+      };
+
+      return NextResponse.json({ ...fallback, ...analysis });
     } catch (parseErr) {
-      console.error("Analyze API: JSON Parse Error", parseErr);
+      console.error("Analyze API: JSON Parse Error", parseErr, "Raw text excerpt:", text.substring(0, 100));
       return NextResponse.json({ 
-        error: "Invalid JSON from AI", 
-        raw: text 
+        error: "Invalid response format from AI",
+        details: "The AI did not return valid JSON. Please try again."
       }, { status: 500 });
     }
   } catch (err: any) {
