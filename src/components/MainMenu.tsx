@@ -486,11 +486,11 @@ const MainMenu: React.FC = () => {
         if (data.compileErrors) setCompileErrors(data.compileErrors);
         setTerminalOutput(data.error ? `Error:\n${data.error}` : data.output || "Program finished with no output.");
       } else {
-        const data = await res.json();
-        setTerminalOutput(data.error || "Failed to run code.");
+        const data = await res.json().catch(() => ({}));
+        setTerminalOutput(data.error || `Server returned ${res.status}: ${res.statusText}`);
       }
-    } catch (err) {
-      setTerminalOutput("Failed to connect to execution server.");
+    } catch (err: any) {
+      setTerminalOutput(`Network Error: ${err.message || "Failed to connect to execution server."}`);
     } finally {
       setIsRunning(false);
     }
@@ -675,7 +675,7 @@ const MainMenu: React.FC = () => {
         setSolveTime(formatted);
         setShowCelebration(true);
         setTimeout(() => setShowCelebration(false), 5000);
-        
+
         analyzeCode(code, lang, activeQuestion.description);
         fetchUserStats();
 
@@ -687,7 +687,8 @@ const MainMenu: React.FC = () => {
           });
         }
       }
-    } catch (err) {
+    } catch (err: any) {
+      setTerminalOutput(`Network Error: ${err.message || "Failed to connect to execution server."}`);
       console.error(err);
     } finally {
       setIsTesting(false);
@@ -700,10 +701,15 @@ const MainMenu: React.FC = () => {
     setTerminalOutput(`Running Example ${index + 1}...`);
     try {
       const res = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, language: lang, stdin: input }) });
-      const data = await res.json();
-      setTerminalOutput(data.error ? `Error:\n${data.error}` : data.output || "Program finished with no output.");
-    } catch (err) {
-      setTerminalOutput("Failed to connect to execution server.");
+      if (res.ok) {
+        const data = await res.json();
+        setTerminalOutput(data.error ? `Error:\n${data.error}` : data.output || "Program finished with no output.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setTerminalOutput(data.error || `Server returned ${res.status}: ${res.statusText}`);
+      }
+    } catch (err: any) {
+      setTerminalOutput(`Network Error: ${err.message || "Failed to connect to execution server."}`);
     } finally {
       setIsRunning(false);
     }
@@ -911,7 +917,7 @@ const MainMenu: React.FC = () => {
             lang={lang} setLang={setLang} code={code} setCode={setCode} fontSize={fontSize} fontFamily={fontFamily}
             isRunning={isRunning} runCode={runCode} showTerminal={showTerminal} setShowTerminal={setShowTerminal}
             terminalHeight={terminalHeight} startTerminalResizing={startTerminalResizing} stdin={stdin}
-            setStdin={setStdin} terminalOutput={terminalOutput} terminalOutput={terminalOutput} terminalFontSize={terminalFontSize}
+            setStdin={setStdin} terminalOutput={terminalOutput} terminalFontSize={terminalFontSize}
             vimMode={vimMode} vimStatusBarRef={vimStatusBarRef} editorRef={editorRef}
             langSelectorOpen={langSelectorOpen} setLangSelectorOpen={setLangSelectorOpen}
             cursorPos={cursorPos} setCursorPos={setCursorPos}
