@@ -490,6 +490,7 @@ const MainMenu: React.FC = () => {
         setTerminalOutput(data.error || `Server returned ${res.status}: ${res.statusText}`);
       }
     } catch (err: any) {
+      console.error("Fetch Error:", err);
       setTerminalOutput(`Network Error: ${err.message || "Failed to connect to execution server."}`);
     } finally {
       setIsRunning(false);
@@ -709,6 +710,7 @@ const MainMenu: React.FC = () => {
         setTerminalOutput(data.error || `Server returned ${res.status}: ${res.statusText}`);
       }
     } catch (err: any) {
+      console.error("Fetch Error:", err);
       setTerminalOutput(`Network Error: ${err.message || "Failed to connect to execution server."}`);
     } finally {
       setIsRunning(false);

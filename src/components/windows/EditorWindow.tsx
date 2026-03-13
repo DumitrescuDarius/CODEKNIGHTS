@@ -86,6 +86,28 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
   }, [isResizing, editorRef]);
 
   useEffect(() => {
+    const handleResize = () => {
+      if (editorRef.current) editorRef.current.layout();
+    };
+    window.addEventListener('resize', handleResize);
+    
+    // Also use ResizeObserver if available for the container
+    let resizeObserver: ResizeObserver | null = null;
+    const editorContainer = document.querySelector('.twm-workspace');
+    if (editorContainer && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        if (editorRef.current) editorRef.current.layout();
+      });
+      resizeObserver.observe(editorContainer);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [editorRef]);
+
+  useEffect(() => {
     if (monaco && editorRef.current) {
       const model = editorRef.current.getModel();
       if (model) {
@@ -116,8 +138,10 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
             editor.onDidChangeCursorPosition((e: any) => {
               setCursorPos({ ln: e.position.lineNumber, col: e.position.column });
             });
-            // Force layout calculation
+            // Force layout calculation multiple times to handle animations and initial rendering
             setTimeout(() => editor.layout(), 50);
+            setTimeout(() => editor.layout(), 200);
+            setTimeout(() => editor.layout(), 500);
           }}
           options={editorOptions}
         />

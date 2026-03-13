@@ -30,25 +30,32 @@ export async function POST(req: Request) {
   let language = "";
   
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+
     const { code, stdin } = body;
     language = body.language;
+
+    console.log(`[API/RUN] Received request for ${language}`);
 
     if (!code) {
       return NextResponse.json({ error: "No code provided" }, { status: 400 });
     }
 
+    // Ensure base temp directory exists
     const tempRoot = path.join(os.tmpdir(), "code_knights_exec");
-    if (!fs.existsSync(tempRoot)) {
-      try {
+    try {
+      if (!fs.existsSync(tempRoot)) {
         fs.mkdirSync(tempRoot, { recursive: true });
-      } catch (err) {
-        // Fallback to os.tmpdir directly if needed
       }
+    } catch (err) {
+      console.error("[API/RUN] Failed to create tempRoot:", err);
     }
 
     const jobId = crypto.randomUUID();
-    jobDir = path.join(fs.existsSync(tempRoot) ? tempRoot : os.tmpdir(), jobId);
+    jobDir = path.join(fs.existsSync(tempRoot) ? tempRoot : os.tmpdir(), `job_${jobId}`);
+    
+    console.log(`[API/RUN] Creating job directory: ${jobDir}`);
     fs.mkdirSync(jobDir, { recursive: true });
 
     let fileName = "";
@@ -71,11 +78,9 @@ export async function POST(req: Request) {
         runCmd = `python3 "${path.join(jobDir, fileName)}"`;
         break;
       case "java":
-        // Extract public class name or use first class found
         const classMatch = code.match(/public\s+class\s+([a-zA-Z0-9_$]+)/) || code.match(/class\s+([a-zA-Z0-9_$]+)/);
         const className = classMatch ? classMatch[1] : "Solution";
         fileName = `${className}.java`;
-        // Use --release 25 to match system java runtime version
         compileCmd = `javac --release 25 "${path.join(jobDir, fileName)}"`;
         runCmd = `java -cp "${jobDir}" ${className}`;
         break;
@@ -83,21 +88,22 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
     }
 
-    // Write code to file
+    console.log(`[API/RUN] Writing file: ${fileName}`);
     fs.writeFileSync(path.join(jobDir, fileName), code);
 
     // Compile if needed
     if (compileCmd) {
+      console.log(`[API/RUN] Compiling with: ${compileCmd}`);
       await new Promise((resolve, reject) => {
-        exec(compileCmd, async (error, stdout, stderr) => {
+        exec(compileCmd, { timeout: 10000 }, async (error, stdout, stderr) => {
           if (error) {
+            console.error(`[API/RUN] Compilation failed: ${stderr || error.message}`);
             reject({ stderr: stderr || error.message });
           } else {
-            // Ensure the binary is executable for compiled languages
             if (language === "cpp" || language === "c") {
               exec(`chmod +x "${path.join(jobDir, "solution")}"`, (err) => {
-                if (err) reject(err);
-                else resolve(stdout);
+                if (err) console.error("[API/RUN] chmod failed:", err);
+                resolve(stdout);
               });
             } else {
               resolve(stdout);
@@ -108,9 +114,11 @@ export async function POST(req: Request) {
     }
 
     // Run code with stdin
+    console.log(`[API/RUN] Running with: ${runCmd}`);
     const output = await new Promise((resolve, reject) => {
       const child = exec(runCmd, { timeout: 5000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
         if (error && (error as any).killed) {
+          console.error("[API/RUN] Execution timed out");
           reject({ stderr: "Execution timed out (5s)" });
         } else {
           resolve(stdout + (stderr ? "\n" + stderr : ""));
@@ -123,9 +131,11 @@ export async function POST(req: Request) {
       }
     });
     
+    console.log("[API/RUN] Execution successful");
     return NextResponse.json({ output });
 
   } catch (error: any) {
+    console.error("[API/RUN] Error caught:", error.stderr || error.message || error);
     const stderr = error.stderr || error.message || String(error);
     let compileErrors: any[] = [];
     
@@ -140,12 +150,13 @@ export async function POST(req: Request) {
     });
   } finally {
     // Cleanup
-    try {
-      if (jobDir && fs.existsSync(jobDir)) {
+    if (jobDir && fs.existsSync(jobDir)) {
+      try {
+        console.log(`[API/RUN] Cleaning up: ${jobDir}`);
         fs.rmSync(jobDir, { recursive: true, force: true });
+      } catch (cleanupErr) {
+        console.error("[API/RUN] Cleanup error:", cleanupErr);
       }
-    } catch (cleanupErr) {
-      console.error("Cleanup error:", cleanupErr);
     }
   }
 }
