@@ -34,4 +34,5 @@ export const THEMES: Theme[] = [
   { name: "Minimalist Dark", bg: "#121212", accent: "#ffffff", line: "rgba(255, 255, 255, 0.05)", light: false, rules: [{ token: 'keyword', foreground: '#888888' }, { token: 'identifier', foreground: '#ffffff' }, { token: 'string', foreground: '#aaaaaa' }] },
   { name: "Royal Crimson", bg: "#1a0000", accent: "#ffd700", line: "rgba(255, 215, 0, 0.1)", light: false, rules: [{ token: 'keyword', foreground: '#ff0000' }, { token: 'identifier', foreground: '#ffd700' }, { token: 'string', foreground: '#ffffff' }] },
   { name: "The Matrix", bg: "#000000", accent: "#00ff41", line: "rgba(0, 255, 65, 0.15)", light: false, rules: [{ token: 'keyword', foreground: '#00ff41' }, { token: 'identifier', foreground: '#008f11' }, { token: 'string', foreground: '#003b00' }] },
+  { name: "Roblox", bg: "#1e1e1e", accent: "#e2231a", line: "rgba(255, 255, 255, 0.05)", light: false, rules: [{ token: 'keyword', foreground: '#e2231a' }, { token: 'identifier', foreground: '#ffffff' }, { token: 'string', foreground: '#bdbdbd' }] },
 ];

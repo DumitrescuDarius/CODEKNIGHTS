@@ -1,7 +1,7 @@
 export type Language = "c" | "cpp" | "python" | "java";
 export type SupportedLanguage = "en" | "ro" | "fr" | "de" | "hi" | "ru" | "hu" | "es" | "it" | "zh" | "ja" | "pt";
-export type WindowId = "editor" | "practice" | "contests" | "leaderboard" | "discuss" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin";
-export type AnimationSpeed = "fast" | "smooth" | "none" | "bouncy" | "elastic" | "dramatic" | "snappy" | "jello" | "lazy" | "ghost" | "teleport" | "boing" | "float" | "erased" | "flip" | "glitch" | "swapVertical";
+export type WindowId = "editor" | "practice" | "tournaments" | "leaderboard" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin";
+export type AnimationSpeed = "none" | "smooth" | "bouncy" | "elastic" | "dramatic" | "snappy" | "jello" | "lazy" | "ghost" | "teleport" | "boing" | "float" | "erased" | "flip" | "glitch" | "swapVertical" | "six seven" | "fast";
 
 export interface Theme {
   name: string;
@@ -41,10 +41,19 @@ export interface Match {
   nextMatchId: string | null;
 }
 
-export interface Contest {
+export interface Tournament {
   id: string;
   title: string;
   participants: string[];
   matches: Match[];
   status: "DRAFT" | "ACTIVE" | "FINISHED";
+}
+
+export interface User {
+  id: string;
+  name?: string | null;
+  username?: string | null;
+  image?: string | null;
+  battlesWon: number;
+  battlesTotal: number;
 }

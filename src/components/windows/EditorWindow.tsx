@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import { Terminal as TerminalIcon, X } from "lucide-react";
 import { Language } from "../../types";
@@ -33,6 +33,7 @@ interface EditorWindowProps {
   setCursorPos: (pos: { ln: number; col: number }) => void;
   compileErrors: any[];
   t: (key: TranslationKey) => string;
+  isResizing: boolean;
 }
 
 export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
@@ -40,9 +41,49 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
   showTerminal, setShowTerminal, terminalHeight, startTerminalResizing,
   stdin, setStdin, terminalOutput, terminalFontSize, vimMode,
   vimStatusBarRef, editorRef, langSelectorOpen, setLangSelectorOpen,
-  cursorPos, setCursorPos, compileErrors, t
+  cursorPos, setCursorPos, compileErrors, t, isResizing
 }) => {
   const monaco = useMonaco();
+
+  const editorOptions = useMemo(() => ({
+    fontSize: fontSize, 
+    fontFamily: fontFamily, 
+    minimap: { enabled: false }, 
+    automaticLayout: true, 
+    padding: { top: 0 }, 
+    scrollBeyondLastLine: false, 
+    roundedSelection: false, 
+    fixedOverflowWidgets: false, 
+    stickyScroll: { enabled: false },
+    cursorSmoothCaretAnimation: "off" as const, 
+    smoothScrolling: true, 
+    suggest: { 
+      showWords: true, 
+      preview: true, 
+      showIcons: true, 
+      snippetsPreventQuickSuggestions: false, 
+      insertMode: 'replace' as const, 
+      localityBonus: true, 
+      shareSuggestSelections: true 
+    }, 
+    quickSuggestions: { other: true, comments: true, strings: true }, 
+    parameterHints: { enabled: true }, 
+    formatOnType: true, 
+    tabCompletion: "on" as const, 
+    autoClosingBrackets: "always" as const, 
+    autoClosingQuotes: "always" as const, 
+    autoClosingOvertype: "always" as const, 
+    autoSurround: "languageDefined" as const, 
+    bracketPairColorization: { enabled: true }, 
+    wordBasedSuggestions: "allDocuments" as const, 
+    wordBasedSuggestionsOnlySameLanguage: false 
+  }), [fontSize, fontFamily, isResizing]);
+
+  useEffect(() => {
+    if (!isResizing && editorRef.current) {
+      setTimeout(() => editorRef.current.layout(), 100);
+    }
+  }, [isResizing, editorRef]);
 
   useEffect(() => {
     if (monaco && editorRef.current) {
@@ -63,7 +104,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 0, position: 'relative', background: 'var(--bg)' }}>
         <Editor
           height="100%"
           language={lang}
@@ -78,39 +119,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
             // Force layout calculation
             setTimeout(() => editor.layout(), 50);
           }}
-          options={{ 
-            fontSize: fontSize, 
-            fontFamily: fontFamily, 
-            minimap: { enabled: false }, 
-            automaticLayout: true, 
-            padding: { top: 0 }, 
-            scrollBeyondLastLine: false, 
-            roundedSelection: false, 
-            fixedOverflowWidgets: false,
-            stickyScroll: { enabled: false },
-            cursorSmoothCaretAnimation: "off", 
-            smoothScrolling: true, 
-            suggest: { 
-              showWords: true, 
-              preview: true, 
-              showIcons: true, 
-              snippetsPreventQuickSuggestions: false, 
-              insertMode: 'replace', 
-              localityBonus: true, 
-              shareSuggestSelections: true 
-            }, 
-            quickSuggestions: { other: true, comments: true, strings: true }, 
-            parameterHints: { enabled: true }, 
-            formatOnType: true, 
-            tabCompletion: "on", 
-            autoClosingBrackets: "always", 
-            autoClosingQuotes: "always", 
-            autoClosingOvertype: "always", 
-            autoSurround: "languageDefined", 
-            bracketPairColorization: { enabled: true }, 
-            wordBasedSuggestions: "allDocuments", 
-            wordBasedSuggestionsOnlySameLanguage: false 
-          }}
+          options={editorOptions}
         />
       </div>
       

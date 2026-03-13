@@ -20,7 +20,8 @@ import { BattleWindow } from "./windows/BattleWindow";
 import { ProblemWindow } from "./windows/ProblemWindow";
 import { ProfileWindow } from "./windows/ProfileWindow";
 import { AdminWindow } from "./windows/AdminWindow";
-import { ContestWindow } from "./windows/ContestWindow";
+import { TournamentWindow } from "./windows/TournamentWindow";
+import { FriendsWindow } from "./windows/FriendsWindow";
 
 declare global {
   interface Window {
@@ -110,22 +111,23 @@ const MainMenu: React.FC = () => {
 
   const getTransition = (): any => {
     if (animationSpeed === "none") return { type: "tween", duration: 0 };
-    if (animationSpeed === "smooth") return { type: "spring", stiffness: 300, damping: 40, mass: 1 };
-    if (animationSpeed === "bouncy") return { type: "spring", stiffness: 600, damping: 15, mass: 1 };
-    if (animationSpeed === "elastic") return { type: "spring", stiffness: 400, damping: 8, mass: 1.2 };
-    if (animationSpeed === "dramatic") return { type: "spring", stiffness: 50, damping: 25, mass: 2 };
-    if (animationSpeed === "snappy") return { type: "spring", stiffness: 1000, damping: 50, mass: 1 };
-    if (animationSpeed === "jello") return { type: "spring", stiffness: 500, damping: 5, mass: 1 };
-    if (animationSpeed === "lazy") return { type: "spring", stiffness: 100, damping: 40, mass: 3 };
-    if (animationSpeed === "ghost") return { type: "spring", stiffness: 300, damping: 30, mass: 1 };
-    if (animationSpeed === "teleport") return { type: "spring", stiffness: 2000, damping: 100, mass: 1 };
-    if (animationSpeed === "boing") return { type: "spring", stiffness: 800, damping: 10, mass: 1.5 };
-    if (animationSpeed === "float") return { type: "spring", stiffness: 40, damping: 15, mass: 1 };
+    if (animationSpeed === "smooth") return { type: "spring", stiffness: 400, damping: 50, mass: 1 };
+    if (animationSpeed === "bouncy") return { type: "spring", stiffness: 500, damping: 20, mass: 1 };
+    if (animationSpeed === "elastic") return { type: "spring", stiffness: 400, damping: 10, mass: 1 };
+    if (animationSpeed === "dramatic") return { type: "spring", stiffness: 60, damping: 25, mass: 1.5 };
+    if (animationSpeed === "snappy") return { type: "spring", stiffness: 1000, damping: 60, mass: 1 };
+    if (animationSpeed === "jello") return { type: "spring", stiffness: 500, damping: 8, mass: 1 };
+    if (animationSpeed === "lazy") return { type: "spring", stiffness: 120, damping: 40, mass: 1.5 };
+    if (animationSpeed === "ghost") return { type: "spring", stiffness: 300, damping: 40, mass: 1 };
+    if (animationSpeed === "teleport") return { type: "spring", stiffness: 2000, damping: 120, mass: 1 };
+    if (animationSpeed === "boing") return { type: "spring", stiffness: 800, damping: 15, mass: 1.2 };
+    if (animationSpeed === "float") return { type: "spring", stiffness: 60, damping: 20, mass: 1 };
     if (animationSpeed === "erased") return { type: "tween", ease: "easeInOut", duration: 0.4 };
-    if (animationSpeed === "flip") return { type: "spring", stiffness: 300, damping: 20, mass: 1 };
-    if (animationSpeed === "glitch") return { type: "spring", stiffness: 1000, damping: 10, mass: 0.5 };
-    if (animationSpeed === "swapVertical") return { type: "spring", stiffness: 400, damping: 25, mass: 1 };
-    return { type: "spring", stiffness: 500, damping: 30, mass: 1 };
+    if (animationSpeed === "flip") return { type: "spring", stiffness: 350, damping: 25, mass: 1 };
+    if (animationSpeed === "glitch") return { type: "spring", stiffness: 1000, damping: 12, mass: 0.5 };
+    if (animationSpeed === "swapVertical") return { type: "spring", stiffness: 450, damping: 30, mass: 1 };
+    if (animationSpeed === "six seven") return { type: "spring", stiffness: 150, damping: 5, mass: 1 };
+    return { type: "spring", stiffness: 500, damping: 40, mass: 1 };
   };
 
   const t = useCallback((key: TranslationKey): string => {
@@ -164,12 +166,19 @@ const MainMenu: React.FC = () => {
   const vimStatusBarRef = useRef<HTMLDivElement>(null);
   const ignoreHoverRef = useRef(false);
 
-  const navLinks = useMemo(() => [
-    { label: t("battle"), id: "battle" as WindowId, icon: <Sword size={16} /> },
-    { label: t("contests"), id: "contests" as WindowId, icon: <Trophy size={16} /> },
-    { label: t("discuss"), id: "discuss" as WindowId, icon: <MessageSquare size={16} /> },
-    { label: t("friends"), id: "friends" as WindowId, icon: <Users size={16} /> },
-  ], [t]);
+  const navLinks = useMemo(() => {
+    const links = [
+      { label: t("battle"), id: "battle" as WindowId, icon: <Sword size={16} /> },
+      { label: t("tournaments"), id: "tournaments" as WindowId, icon: <Trophy size={16} /> },
+      { label: t("friends"), id: "friends" as WindowId, icon: <Users size={16} /> },
+    ];
+    
+    if (!session) {
+      return links.filter(link => link.id === "battle");
+    }
+    
+    return links;
+  }, [t, session, isGuest]);
 
   useEffect(() => {
     // Expose current code for the "Run Example" feature in ProblemWindow
@@ -316,6 +325,7 @@ const MainMenu: React.FC = () => {
     setThemeIndex(tIdx);
     
     const finalWindows = savedWindows.filter((w: string) => w !== "terminal" && w !== "results");
+    if (!finalWindows.includes("editor")) finalWindows.unshift("editor");
     setOpenWindows(finalWindows);
     
     if (savedFlexes.length === finalWindows.length) setWindowFlexes(savedFlexes);
@@ -324,8 +334,11 @@ const MainMenu: React.FC = () => {
     setTimeout(() => setIsLoaded(true), 800);
   }, []);
 
+  // PERSISTENCE EFFECT
   useEffect(() => {
-    if (isLoaded) {
+    if (!isLoaded) return;
+    
+    const timeout = setTimeout(() => {
       localStorage.setItem("ck-lang", lang);
       localStorage.setItem("ck-code", code);
       localStorage.setItem("ck-windows", JSON.stringify(openWindows));
@@ -338,28 +351,44 @@ const MainMenu: React.FC = () => {
       localStorage.setItem("ck-term-height", terminalHeight.toString());
       localStorage.setItem("ck-stdin", stdin);
       localStorage.setItem("ck-ui-lang", uiLang);
-      
-      const theme = THEMES[themeIndex];
-      const root = document.documentElement;
-      root.style.setProperty('--bg', theme.bg);
-      root.style.setProperty('--accent', theme.accent);
-      root.style.setProperty('--line', theme.line);
-      root.style.setProperty('--window-bg', theme.bg);
+    }, 500);
 
-      // Add RGB version of accent for transparent backgrounds
-      const hexToRgb = (hex: string) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : "122, 162, 247";
-      };
-      root.style.setProperty('--accent-rgb', hexToRgb(theme.accent));
+    return () => clearTimeout(timeout);
+  }, [lang, code, openWindows, windowFlexes, themeIndex, fontSize, fontFamily, terminalFontSize, vimMode, terminalHeight, stdin, isLoaded, uiLang]);
 
-      const isLightTheme = theme.light;
+  // CSS VARIABLES EFFECT
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    const theme = THEMES[themeIndex];
+    const root = document.documentElement;
+    root.style.setProperty('--bg', theme.bg);
+    root.style.setProperty('--accent', theme.accent);
+    root.style.setProperty('--line', theme.line);
+    root.style.setProperty('--window-bg', theme.bg);
 
-      root.style.setProperty('--text', isLightTheme ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)');
-      root.style.setProperty('--text-muted', isLightTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)');
-      root.style.setProperty('--header-bg', isLightTheme ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)');
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : "122, 162, 247";
+    };
+    root.style.setProperty('--accent-rgb', hexToRgb(theme.accent));
 
-      loader.init().then(monaco => {
+    const isLightTheme = theme.light;
+    root.style.setProperty('--text', isLightTheme ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)');
+    root.style.setProperty('--text-muted', isLightTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)');
+    root.style.setProperty('--header-bg', isLightTheme ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)');
+  }, [themeIndex, isLoaded]);
+
+  // MONACO THEME EFFECT
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    const theme = THEMES[themeIndex];
+    const isLightTheme = theme.light;
+
+    loader.init().then(monaco => {
+      // Register C++ completion provider once
+      if (!(monaco.languages as any).cppRegistered) {
         monaco.languages.registerCompletionItemProvider('cpp', {
           provideCompletionItems: (model, position) => {
             const word = model.getWordUntilPosition(position);
@@ -367,24 +396,25 @@ const MainMenu: React.FC = () => {
             return { suggestions: CPP_STL.map(item => ({ label: item, kind: monaco.languages.CompletionItemKind.Keyword, insertText: item, range })) };
           }
         });
+        (monaco.languages as any).cppRegistered = true;
+      }
 
-        monaco.editor.defineTheme('dynamic-theme', {
-          base: isLightTheme ? 'vs' : 'vs-dark',
-          inherit: true,
-          rules: theme.rules,
-          colors: {
-            'editor.background': '#00000000',
-            'editor.lineHighlightBackground': isLightTheme ? '#0000000a' : '#ffffff0a',
-            'editorCursor.foreground': isLightTheme ? '#000000' : '#ffffff',
-            'editor.selectionBackground': theme.accent + '66',
-            'editor.selectionHighlightBackground': theme.accent + '33',
-            'editorLineNumber.foreground': isLightTheme ? '#00000059' : '#ffffff59',
-          }
-        });
-        monaco.editor.setTheme('dynamic-theme');
+      monaco.editor.defineTheme('dynamic-theme', {
+        base: isLightTheme ? 'vs' : 'vs-dark',
+        inherit: true,
+        rules: theme.rules,
+        colors: {
+          'editor.background': '#00000000',
+          'editor.lineHighlightBackground': isLightTheme ? '#0000000a' : '#ffffff0a',
+          'editorCursor.foreground': isLightTheme ? '#000000' : '#ffffff',
+          'editor.selectionBackground': theme.accent + '66',
+          'editor.selectionHighlightBackground': theme.accent + '33',
+          'editorLineNumber.foreground': isLightTheme ? '#00000059' : '#ffffff59',
+        }
       });
-    }
-  }, [lang, code, openWindows, windowFlexes, themeIndex, fontSize, fontFamily, terminalFontSize, vimMode, terminalHeight, stdin, isLoaded, uiLang]);
+      monaco.editor.setTheme('dynamic-theme');
+    });
+  }, [themeIndex, isLoaded]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -546,11 +576,14 @@ const MainMenu: React.FC = () => {
       hiddenTestCases: q.hiddenTestCases ? (typeof q.hiddenTestCases === 'string' ? JSON.parse(q.hiddenTestCases) : q.hiddenTestCases) : []
     });
     
-    if (!openWindows.includes("admin")) {
-      setOpenWindows(prev => [...prev, "admin"]);
-      setWindowFlexes(prev => [...prev, 1]);
-    }
-  }, [openWindows]);
+    setOpenWindows(prev => {
+      if (!prev.includes("admin")) {
+        setWindowFlexes(f => [...f, 1]);
+        return [...prev, "admin"];
+      }
+      return prev;
+    });
+  }, []);
 
   const handleDeleteQuestion = useCallback(async (id: string) => {
     if (!confirm("Are you sure you want to delete this question? This cannot be undone.")) return;
@@ -576,19 +609,17 @@ const MainMenu: React.FC = () => {
     setBattleStartTime(Date.now());
     setSolveTime(null);
     
-    // Close battle/results window and ensure problem/editor are open
-    let newWindows = openWindows.filter(w => w !== "battle");
-    
-    if (!newWindows.includes("problem")) {
-      newWindows.push("problem");
-    }
-    if (!newWindows.includes("editor")) {
-      newWindows.push("editor");
-    }
-    
-    setOpenWindows(newWindows);
-    setWindowFlexes(newWindows.map((w) => w === "editor" ? 1.5 : 1));
-  }, [questions, openWindows]);
+    if (maximizedWindow === "battle") setMaximizedWindow(null);
+
+    setOpenWindows(prev => {
+      let next = prev.filter(w => w !== "battle");
+      if (!next.includes("problem")) next.push("problem");
+      if (!next.includes("editor")) next.unshift("editor");
+      
+      setWindowFlexes(next.map(w => w === "editor" ? 1.5 : 1));
+      return next;
+    });
+  }, [questions, maximizedWindow]);
 
   const runTests = useCallback(async () => {
     if (!activeQuestion) return;
@@ -623,156 +654,96 @@ const MainMenu: React.FC = () => {
         
         if (res.ok) {
           const data = await res.json();
-          if (data.compileErrors && i === 0) setCompileErrors(data.compileErrors);
-          
-          const actual = (data.output || "").trim();
-          const expected = (tc.output || "").trim();
-          const isPassed = actual === expected && !data.error;
-          
-          if (isPassed) passed++;
-          details.push({ input: tc.input, expected, actual, passed: isPassed, error: data.error, isHidden: i >= publicTests.length });
-        } else {
-          details.push({ input: tc.input, expected: tc.output, actual: "", passed: false, error: "Server error", isHidden: i >= publicTests.length });
+          if (data.compileErrors) {
+            setCompileErrors(data.compileErrors);
+            setTerminalOutput(`Compilation Error:\n${data.error}`);
+            setIsTesting(false);
+            return;
+          }
+          const isCorrect = data.output?.trim() === tc.output?.trim();
+          if (isCorrect) passed++;
+          details.push({ input: tc.input, expected: tc.output, actual: data.output, passed: isCorrect });
         }
       }
-
-      const allPassed = passed === allTests.length;
+      
       setTestResults({ passed, total: allTests.length, details });
-      setTerminalOutput(`Test Results: ${passed}/${allTests.length} Passed\n\n` + 
-        details.filter(d => !d.isHidden).map((d, i) => `Test ${i+1}: ${d.passed ? "✅ PASSED" : "❌ FAILED"}${d.error ? ` (Error: ${d.error})` : ""}`).join("\n") +
-        (hiddenTests.length > 0 ? `\n\n(+ ${hiddenTests.length} Hidden Tests)` : ""));
-
-      if (allPassed && battleStartTime) {
-        const duration = Date.now() - battleStartTime;
-        const mins = Math.floor(duration / 60000);
-        const secs = ((duration % 60000) / 1000).toFixed(0);
-        setSolveTime(`${mins}:${secs.padStart(2, '0')}`);
-        
-        // Trigger celebration
+      if (passed === allTests.length) {
+        const time = Math.floor((Date.now() - (battleStartTime || Date.now())) / 1000);
+        const mins = Math.floor(time / 60);
+        const secs = time % 60;
+        const formatted = `${mins}:${secs.toString().padStart(2, '0')}`;
+        setSolveTime(formatted);
         setShowCelebration(true);
         setTimeout(() => setShowCelebration(false), 5000);
+        
+        analyzeCode(code, lang, activeQuestion.description);
+        fetchUserStats();
 
-        // If in a duel, submit the result
-        if (activeDuel) {
+        if (activeDuel && activeDuel.status === "ACTIVE") {
           await fetch("/api/duels/submit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ duelId: activeDuel.id, solveTime: duration })
+            body: JSON.stringify({ duelId: activeDuel.id, solveTime: time * 1000 })
           });
         }
-
-        // Trigger AI Analysis
-        analyzeCode(code, lang, activeQuestion.description);
-      }
-
-      // Record submission to database
-      if (session) {
-        await fetch("/api/user/submissions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            questionId: activeQuestion.id,
-            code,
-            language: lang,
-            status: allPassed ? "PASSED" : "FAILED"
-          })
-        });
-        fetchUserStats();
-        if (update) update(); // Refresh next-auth session if available
       }
     } catch (err) {
       console.error(err);
-      setTerminalOutput("Failed to run tests.");
     } finally {
       setIsTesting(false);
     }
-  }, [activeQuestion, code, lang, battleStartTime, session, fetchUserStats, update, analyzeCode, activeDuel]);
+  }, [activeQuestion, code, lang, battleStartTime, analyzeCode, fetchUserStats, activeDuel]);
 
-  const handleRevert = useCallback(() => {
-    if (confirm("Reset code to default? All current changes will be lost.")) {
-      setCode(LANG_CONFIG[lang].defaultCode);
-    }
-  }, [lang]);
-
-  const handleBeautify = useCallback(() => {
-    if (editorRef.current) {
-      editorRef.current.trigger('source', 'editor.action.formatDocument');
-    }
-  }, []);
-
-  const runSingleTest = useCallback(async (testInput: string, testIndex: number) => {
-    setStdin(testInput);
+  const runSingleTest = useCallback(async (input: string, index: number) => {
+    setIsRunning(true);
     setShowTerminal(true);
-    setCompileErrors([]);
-    setTerminalOutput(`Running Example ${testIndex + 1}...\n`);
+    setTerminalOutput(`Running Example ${index + 1}...`);
     try {
-      const res = await fetch("/api/run", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ code, language: lang, stdin: testInput }) 
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.compileErrors) setCompileErrors(data.compileErrors);
-        setTerminalOutput(data.error ? `Error:\n${data.error}` : data.output || "Program finished with no output.");
-      } else {
-        const data = await res.json();
-        setTerminalOutput(data.error || "Failed to run test.");
-      }
+      const res = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, language: lang, stdin: input }) });
+      const data = await res.json();
+      setTerminalOutput(data.error ? `Error:\n${data.error}` : data.output || "Program finished with no output.");
     } catch (err) {
       setTerminalOutput("Failed to connect to execution server.");
+    } finally {
+      setIsRunning(false);
     }
-  }, [code, lang, setStdin]);
+  }, [code, lang]);
 
-  const rafRef = useRef<number | null>(null);
+  const handleRevert = () => {
+    if (confirm("Revert to default code for this language?")) {
+      setCode(LANG_CONFIG[lang].defaultCode);
+    }
+  };
+
+  const handleBeautify = async () => {
+    // Basic beautify logic or call an API
+    console.log("Beautify requested");
+  };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    ignoreHoverRef.current = false;
-    if (resizingRef.current !== null && workspaceRef.current) {
-      if (rafRef.current) return;
-
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = null;
-        const idx = resizingRef.current;
-        if (idx === null || !workspaceRef.current) return;
-        
-        const rect = workspaceRef.current.getBoundingClientRect();
-        
-        setWindowFlexes(prev => {
-          const totalWidth = rect.width;
-          const totalFlex = prev.reduce((a, b) => a + b, 0);
-          const totalGapsWidth = (prev.length - 1) * 12;
-          const availableFlexWidth = totalWidth - totalGapsWidth;
-          
-          if (availableFlexWidth <= 0) return prev;
-          const flexPerPx = totalFlex / availableFlexWidth;
-          const relativeX = e.clientX - rect.left;
-          const marginsBefore = idx * 12 + 6;
-          const flexSpaceBefore = relativeX - marginsBefore;
-          const currentFlexBefore = prev.slice(0, idx + 1).reduce((a, b) => a + b, 0);
-          const targetFlexBefore = flexSpaceBefore * flexPerPx;
-          const delta = targetFlexBefore - currentFlexBefore;
-          
-          const newFlexes = [...prev];
-          if (newFlexes[idx] + delta > 0.1 && newFlexes[idx+1] - delta > 0.1) {
-            newFlexes[idx] += delta;
-            newFlexes[idx+1] -= delta;
-            return newFlexes;
-          }
-          return prev;
-        });
-
-        if (editorRef.current && openWindows.includes("editor")) {
-          editorRef.current.layout();
-        }
-      });
-    } else if (terminalResizingRef.current) {
-      if (rafRef.current) return;
+    if (resizingRef.current !== null) {
+      const index = resizingRef.current;
+      const movementX = e.movementX;
       
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = null;
-        const deltaY = e.movementY;
-        setTerminalHeight(prev => Math.max(40, Math.min(window.innerHeight * 0.8, prev - deltaY)));
+      setWindowFlexes(prev => {
+        const next = [...prev];
+        const totalFlex = next[index] + next[index + 1];
+        const factor = 0.002;
+        const change = movementX * factor;
+        
+        const newLeftFlex = Math.max(0.2, Math.min(totalFlex - 0.2, next[index] + change));
+        const newRightFlex = totalFlex - newLeftFlex;
+        
+        next[index] = newLeftFlex;
+        next[index + 1] = newRightFlex;
+        return next;
+      });
+    }
+
+    if (terminalResizingRef.current) {
+      const movementY = e.movementY;
+      window.requestAnimationFrame(() => {
+        setTerminalHeight(prev => Math.max(40, Math.min(window.innerHeight * 0.8, prev - movementY)));
         if (editorRef.current && openWindows.includes("editor")) editorRef.current.layout();
       });
     }
@@ -789,17 +760,27 @@ const MainMenu: React.FC = () => {
     resizingRef.current = null;
     terminalResizingRef.current = false;
     setIsDragging(false);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', stopResizing);
     document.body.style.cursor = '';
-  }, [handleMouseMove]);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', stopResizing);
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', stopResizing);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [isDragging, handleMouseMove, stopResizing]);
 
   const startResizing = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
     resizingRef.current = index;
     setIsDragging(true);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', stopResizing);
     document.body.style.cursor = 'col-resize';
   };
 
@@ -807,10 +788,8 @@ const MainMenu: React.FC = () => {
     e.preventDefault();
     terminalResizingRef.current = true;
     setIsDragging(true);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', stopResizing);
     document.body.style.cursor = 'ns-resize';
-  }, [handleMouseMove, stopResizing]);
+  }, []);
 
   const toggleWindow = useCallback((id: WindowId) => {
     if (id === "problem" && activeQuestion) {
@@ -829,32 +808,47 @@ const MainMenu: React.FC = () => {
       return;
     }
 
-    if (openWindows.includes(id)) {
-      if (id === "editor") return;
-      if (maximizedWindow === id) setMaximizedWindow(null);
-      const idx = openWindows.indexOf(id);
-      setOpenWindows(openWindows.filter(w => w !== id));
-      const newFlexes = [...windowFlexes];
-      newFlexes.splice(idx, 1);
-      setWindowFlexes(newFlexes);
-    } else {
-      setOpenWindows([...openWindows, id]);
-      setWindowFlexes([...windowFlexes, 1]);
-    }
-  }, [openWindows, windowFlexes, activeQuestion, testResults, activeDuel, maximizedWindow]);
+    setOpenWindows(prev => {
+      const isClosing = prev.includes(id);
+      if (isClosing) {
+        if (id === "editor") return prev;
+        const idx = prev.indexOf(id);
+        setWindowFlexes(flexes => {
+          const next = [...flexes];
+          if (idx !== -1 && next.length > idx) {
+            next.splice(idx, 1);
+          }
+          return next;
+        });
+        if (maximizedWindow === id) setMaximizedWindow(null);
+        const nextWindows = prev.filter(w => w !== id);
+        // Safety: always ensure editor is there
+        if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
+        return nextWindows;
+      } else {
+        setWindowFlexes(flexes => [...flexes, 1]);
+        if (maximizedWindow) setMaximizedWindow(null);
+        const nextWindows = [...prev, id];
+        if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
+        return nextWindows;
+      }
+    });
+  }, [activeQuestion, testResults, activeDuel, maximizedWindow]);
 
   const moveWindow = (id: WindowId, direction: 'left' | 'right') => {
     ignoreHoverRef.current = true;
     setIsReordering(true);
-    const index = openWindows.indexOf(id);
-    const newWindows = [...openWindows];
-    if (direction === 'left' && index > 0) {
-      [newWindows[index - 1], newWindows[index]] = [newWindows[index], newWindows[index - 1]];
-    } else if (direction === 'right' && index < openWindows.length - 1) {
-      [newWindows[index + 1], newWindows[index]] = [newWindows[index], newWindows[index + 1]];
-    }
-    setOpenWindows(newWindows);
-    // windowFlexes stays exactly as it is, so the sizes stay fixed to the positions
+    setOpenWindows(prev => {
+      const index = prev.indexOf(id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      if (direction === 'left' && index > 0) {
+        [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      } else if (direction === 'right' && index < next.length - 1) {
+        [next[index + 1], next[index]] = [next[index], next[index + 1]];
+      }
+      return next;
+    });
     setTimeout(() => setIsReordering(false), 300);
   };
 
@@ -862,12 +856,14 @@ const MainMenu: React.FC = () => {
     if (!draggedWindow || draggedWindow === targetId) return;
     ignoreHoverRef.current = true;
     setIsReordering(true);
-    const oldIndex = openWindows.indexOf(draggedWindow);
-    const newIndex = openWindows.indexOf(targetId);
-    const newWindows = [...openWindows];
-    [newWindows[oldIndex], newWindows[newIndex]] = [newWindows[newIndex], newWindows[oldIndex]];
-    setOpenWindows(newWindows);
-    // windowFlexes stays exactly as it is
+    setOpenWindows(prev => {
+      const oldIndex = prev.indexOf(draggedWindow);
+      const newIndex = prev.indexOf(targetId);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const next = [...prev];
+      [next[oldIndex], next[newIndex]] = [next[newIndex], next[oldIndex]];
+      return next;
+    });
     setDraggedWindow(null);
     setTimeout(() => setIsReordering(false), 300);
   };
@@ -889,55 +885,6 @@ const MainMenu: React.FC = () => {
         runCode();
       }
       
-      // Alt + Enter to run tests (submit) when in battle
-      if (e.altKey && e.key === "Enter" && activeQuestion) {
-        e.preventDefault();
-        runTests();
-      }
-
-      // Alt + q to quit current hovering window
-      if (e.altKey && e.key === "q" && hoveredWindow) {
-        e.preventDefault();
-        toggleWindow(hoveredWindow);
-      }
-
-      // Alt + t to toggle terminal
-      if (e.altKey && e.key === "t") {
-        e.preventDefault();
-        setShowTerminal(prev => !prev);
-      }
-
-      // Explicitly disable Alt+1
-      if (e.altKey && e.key === "1") {
-        e.preventDefault();
-      }
-
-      // Alt + Left/Right to change focus
-      if (e.altKey && !e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-        e.preventDefault();
-        const currentIndex = hoveredWindow ? openWindows.indexOf(hoveredWindow) : 0;
-        let nextIndex = e.key === "ArrowLeft" ? currentIndex - 1 : currentIndex + 1;
-        if (nextIndex < 0) nextIndex = openWindows.length - 1;
-        if (nextIndex >= openWindows.length) nextIndex = 0;
-        setHoveredWindow(openWindows[nextIndex]);
-      }
-
-      // Shift + Alt + Left/Right to swap windows
-      if (e.altKey && e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-        e.preventDefault();
-        if (hoveredWindow) {
-          moveWindow(hoveredWindow, e.key === "ArrowLeft" ? "left" : "right");
-        }
-      }
-
-      // Shift + Alt + Up to maximize window
-      if (e.altKey && e.shiftKey && e.key === "ArrowUp") {
-        e.preventDefault();
-        if (hoveredWindow) {
-          toggleMaximize(hoveredWindow);
-        }
-      }
-
       if (vimMode && e.key === "Escape") {
         const vimState = editorRef.current?.vimState;
         if (vimState) {
@@ -954,7 +901,7 @@ const MainMenu: React.FC = () => {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [vimMode, activeQuestion, hoveredWindow, runCode, runTests, openWindows, moveWindow, toggleWindow, maximizedWindow]);
+  }, [vimMode, runCode]);
 
   const renderWindowContent = (id: WindowId) => {
     switch (id) {
@@ -964,12 +911,13 @@ const MainMenu: React.FC = () => {
             lang={lang} setLang={setLang} code={code} setCode={setCode} fontSize={fontSize} fontFamily={fontFamily}
             isRunning={isRunning} runCode={runCode} showTerminal={showTerminal} setShowTerminal={setShowTerminal}
             terminalHeight={terminalHeight} startTerminalResizing={startTerminalResizing} stdin={stdin}
-            setStdin={setStdin} terminalOutput={terminalOutput} terminalFontSize={terminalFontSize}
+            setStdin={setStdin} terminalOutput={terminalOutput} terminalOutput={terminalOutput} terminalFontSize={terminalFontSize}
             vimMode={vimMode} vimStatusBarRef={vimStatusBarRef} editorRef={editorRef}
             langSelectorOpen={langSelectorOpen} setLangSelectorOpen={setLangSelectorOpen}
             cursorPos={cursorPos} setCursorPos={setCursorPos}
             compileErrors={compileErrors}
             t={t}
+            isResizing={isDragging}
           />
         );
       case "settings":
@@ -998,15 +946,21 @@ const MainMenu: React.FC = () => {
               setDuelPin(""); 
               setShowCancelDuel(false); 
               if (maximizedWindow === "battle") setMaximizedWindow(null);
-              const idx = openWindows.indexOf("battle");
-              if (idx !== -1) {
-                setOpenWindows(openWindows.filter(w => w !== "battle")); 
-                setWindowFlexes(prev => {
-                  const next = [...prev];
-                  next.splice(idx, 1);
-                  return next;
-                });
-              }
+              
+              setOpenWindows(prev => {
+                const idx = prev.indexOf("battle");
+                if (idx !== -1) {
+                  setWindowFlexes(flexes => {
+                    const next = [...flexes];
+                    next.splice(idx, 1);
+                    return next;
+                  });
+                  const nextWindows = prev.filter(w => w !== "battle");
+                  if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
+                  return nextWindows;
+                }
+                return prev;
+              });
             }}
           />
         );
@@ -1032,9 +986,6 @@ const MainMenu: React.FC = () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ duelId: activeDuel.id, surrender: true })
                   });
-                  // After surrendering, the status will become FINISHED.
-                  // We'll let the polling or the next fetch update the UI.
-                  // But for immediate feedback, we can just close the confirmation.
                   setShowQuitConfirmation(false);
                   return;
                 } catch (err) {
@@ -1049,15 +1000,21 @@ const MainMenu: React.FC = () => {
               setDuelPin("");
               setShowQuitConfirmation(false);
               if (maximizedWindow === "problem") setMaximizedWindow(null);
-              const idx = openWindows.indexOf("problem");
-              if (idx !== -1) {
-                setOpenWindows(openWindows.filter(w => w !== "problem"));
-                setWindowFlexes(prev => {
-                  const next = [...prev];
-                  next.splice(idx, 1);
-                  return next;
-                });
-              }
+
+              setOpenWindows(prev => {
+                const idx = prev.indexOf("problem");
+                if (idx !== -1) {
+                  setWindowFlexes(flexes => {
+                    const next = [...flexes];
+                    next.splice(idx, 1);
+                    return next;
+                  });
+                  const nextWindows = prev.filter(w => w !== "problem");
+                  if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
+                  return nextWindows;
+                }
+                return prev;
+              });
             }}
 
             runTests={runTests} isTesting={isTesting} setStdin={setStdin} setShowTerminal={setShowTerminal}
@@ -1069,8 +1026,13 @@ const MainMenu: React.FC = () => {
               setActiveDuel(null);
               setDuelPin("");
               if (maximizedWindow === "problem") setMaximizedWindow(null);
-              setOpenWindows(prev => prev.filter(w => w !== "problem").concat("battle"));
-              // windowFlexes stays the same length as we replaced one with another
+              setOpenWindows(prev => {
+                const next = prev.filter(w => w !== "problem");
+                if (!next.includes("battle")) next.push("battle");
+                if (!next.includes("editor")) next.unshift("editor");
+                // windowFlexes stays the same length as we replaced problem with battle
+                return next;
+              });
             }}
             runSingleTest={runSingleTest}
             t={t}
@@ -1084,17 +1046,26 @@ const MainMenu: React.FC = () => {
         );
       case "profile":
         return <ProfileWindow session={session} userStats={userStats} t={t} />;
-      case "contests":
-        return <ContestWindow questions={questions} t={t} isAdmin={!!session?.user?.isAdmin} />;
+      case "tournaments":
+        return <TournamentWindow questions={questions} t={t} isAdmin={!!session?.user?.isAdmin} />;
       case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>Global</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
-      case "discuss": return <div style={{ padding: '1.5rem' }}><h2>Discussion</h2><div style={{ marginTop: '1rem' }}>How to learn DP?</div></div>;
-      case "friends": return <div style={{ padding: '1.5rem' }}><h2>Friends</h2><p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>You have no friends yet.</p></div>;
+      case "friends": return <FriendsWindow t={t} />;
       default: return null;
     }
   };
 
+  const renderedWindows = openWindows
+    .filter(id => {
+      // Only allow certain windows if not logged in
+      if (!session) {
+        return ["editor", "settings", "battle", "problem"].includes(id);
+      }
+      return true;
+    })
+    .filter(id => (maximizedWindow && openWindows.includes(maximizedWindow)) ? id === maximizedWindow : true);
+
   return (
-    <div className="main-header" onMouseMove={(e) => handleMouseMove(e as any)} onMouseUp={() => stopResizing()}>
+    <div className="main-header">
       <AnimatePresence>
         {showCelebration && (
           <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999, overflow: 'hidden' }}>
@@ -1118,11 +1089,11 @@ const MainMenu: React.FC = () => {
       </div>
       <nav className="nav">
         <div className="nav-inner">
-          <Link href="/" className="brand" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Link href="/" className="brand" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
             <div 
               style={{ 
                 height: '40px', 
-                width: '60px',
+                width: '48px',
                 backgroundColor: 'var(--accent)',
                 WebkitMaskImage: 'url(/assets/logo_white.png)',
                 maskImage: 'url(/assets/logo_white.png)',
@@ -1135,7 +1106,7 @@ const MainMenu: React.FC = () => {
                 filter: 'drop-shadow(0 0 10px var(--accent))'
               }}
             />
-            <span style={{ fontWeight: 700, fontSize: '1.4rem', letterSpacing: '-0.02em' }}><span style={{ color: 'var(--accent)' }}>Code</span> Knights</span>
+            <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
           </Link>
           <ul className="nav-links">
             {navLinks.map(link => {
@@ -1227,10 +1198,8 @@ const MainMenu: React.FC = () => {
       </nav>
 
       <main className="twm-workspace" ref={workspaceRef}>
-        <AnimatePresence initial={true}>
-          {openWindows
-            .filter(id => (maximizedWindow && openWindows.includes(maximizedWindow)) ? id === maximizedWindow : true)
-            .map((id, idx) => {
+        <AnimatePresence>
+          {renderedWindows.map((id, idx) => {
             const navItem = navLinks.find(l => l.id === id);
             let icon = navItem?.icon;
             if (id === 'editor') icon = <Code size={16} />;
@@ -1241,6 +1210,7 @@ const MainMenu: React.FC = () => {
             if (id === 'admin') icon = <Database size={16} />;
             
             const isMax = id === maximizedWindow;
+            const originalIdx = openWindows.indexOf(id);
 
             return (
               <React.Fragment key={id}>
@@ -1265,7 +1235,7 @@ const MainMenu: React.FC = () => {
                     y: isReordering ? (
                       animationSpeed === "float" ? -20 : 
                       animationSpeed === "swapVertical" ? (id.length % 2 === 0 ? -150 : 150) : 0
-                    ) : 0,
+                    ) : (animationSpeed === "six seven" ? (idx % 2 === 0 ? [-10, 10, -10] : [10, -10, 10]) : 0),
                     zIndex: draggedWindow === id ? 50 : 1,
                     boxShadow: isReordering ? "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)" : "none"
                   }}
@@ -1277,12 +1247,13 @@ const MainMenu: React.FC = () => {
                     { opacity: 0, scale: 0.95 }
                   }
                   transition={{ 
-                    layout: getTransition(),
+                    layout: (isReordering && animationSpeed === "six seven") ? { type: "spring", stiffness: 500, damping: 40, mass: 1 } : getTransition(),
                     scale: { duration: animationSpeed === "none" ? 0 : 0.1 },
-                    opacity: { duration: animationSpeed === "none" ? 0 : 0.1 }
+                    opacity: { duration: animationSpeed === "none" ? 0 : 0.1 },
+                    y: (animationSpeed === "six seven" && !isReordering) ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : { duration: 0.1 }
                   }}
                   className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''}`}
-                  style={{ flex: isMax ? 1 : (windowFlexes[idx] || 1) }}
+                  style={{ flex: isMax ? 1 : (windowFlexes[originalIdx] || 1) }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDrop(id)}
                   onMouseEnter={() => {
@@ -1293,42 +1264,60 @@ const MainMenu: React.FC = () => {
                   }}
                 >
                   <div className="twm-window-header" draggable={!isMax} onDragStart={() => setDraggedWindow(id)} onDragEnd={() => setDraggedWindow(null)} style={{ cursor: isMax ? 'default' : 'grab' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <span className="twm-window-title" style={{ pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ color: 'var(--accent)' }}>{icon}</span> {id}
-                      </span>
-                      {id === 'editor' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>
-                          <button onClick={(e) => { e.stopPropagation(); runCode(); }} disabled={isRunning} style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: isRunning ? 'wait' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: isRunning ? 0.7 : 1, marginRight: '0.5rem' }}>
-                            <Play size={10} fill="currentColor" /> {isRunning ? "..." : "RUN"}
+                    <motion.div 
+                      layout={animationSpeed !== "none" && !isDragging}
+                      transition={getTransition()}
+                      style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span className="twm-window-title" style={{ pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ color: 'var(--accent)' }}>{icon}</span> {id}
+                        </span>
+                        {id === 'editor' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>
+                            <button onClick={(e) => { e.stopPropagation(); runCode(); }} disabled={isRunning} style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: isRunning ? 'wait' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: isRunning ? 0.7 : 1, marginRight: '0.5rem' }}>
+                              <Play size={10} fill="currentColor" /> {isRunning ? "..." : "RUN"}
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); handleRevert(); }} className="twm-btn" title="Revert to original code" style={{ padding: '0.1rem 0.3rem' }}><RotateCcw size={12} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleBeautify(); }} className="twm-btn" title="Beautify code (Format)" style={{ padding: '0.1rem 0.3rem' }}><Wand2 size={12} /></button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="twm-window-actions">
+                        {!(id === 'editor' && openWindows.length === 1) && (
+                          <button className="twm-btn" onClick={() => toggleMaximize(id)} title={isMax ? "Restore" : "Maximize"}>
+                            {isMax ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleRevert(); }} className="twm-btn" title="Revert to original code" style={{ padding: '0.1rem 0.3rem' }}><RotateCcw size={12} /></button>
-                          <button onClick={(e) => { e.stopPropagation(); handleBeautify(); }} className="twm-btn" title="Beautify code (Format)" style={{ padding: '0.1rem 0.3rem' }}><Wand2 size={12} /></button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="twm-window-actions">
-                      {!(id === 'editor' && openWindows.length === 1) && (
-                        <button className="twm-btn" onClick={() => toggleMaximize(id)} title={isMax ? "Restore" : "Maximize"}>
-                          {isMax ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                        </button>
-                      )}
-                      {!isMax && openWindows.length > 1 && (
-                        <>
-                          <button className="twm-btn" onClick={() => moveWindow(id, 'left')}><ArrowLeft size={14} /></button>
-                          <button className="twm-btn" onClick={() => moveWindow(id, 'right')}><ArrowRight size={14} /></button>
-                        </>
-                      )}
-                      {id !== 'editor' && <button className="twm-btn" onClick={() => toggleWindow(id)}><X size={14} /></button>}
-                    </div>
+                        )}
+                        {!isMax && renderedWindows.length > 1 && (
+                          <>
+                            <button className="twm-btn" onClick={() => moveWindow(id, 'left')}><ArrowLeft size={14} /></button>
+                            <button className="twm-btn" onClick={() => moveWindow(id, 'right')}><ArrowRight size={14} /></button>
+                          </>
+                        )}
+                        {id !== 'editor' && <button className="twm-btn" onClick={() => toggleWindow(id)}><X size={14} /></button>}
+                      </div>
+                    </motion.div>
                   </div>
                   <div className="twm-content" style={{ overflow: 'hidden' }}>
-                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <motion.div 
+                      layout={animationSpeed !== "none" && !isDragging}
+                      transition={getTransition()}
+                      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
+                    >
                       {renderWindowContent(id)}
-                    </div>
+                    </motion.div>
                   </div>
                 </motion.section>
-                {!maximizedWindow && idx < openWindows.length - 1 && <div className="twm-resizer" onMouseDown={(e) => startResizing(e, idx)} />}
+                {!maximizedWindow && idx < renderedWindows.length - 1 && (
+                  <motion.div 
+                    key={`resizer-${id}-${renderedWindows[idx+1]}`}
+                    layout={animationSpeed !== "none" && !isDragging}
+                    transition={getTransition()}
+                    className="twm-resizer" 
+                    onMouseDown={(e) => startResizing(e, idx)} 
+                  />
+                )}
               </React.Fragment>
             );
           })}

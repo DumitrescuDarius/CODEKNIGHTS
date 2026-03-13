@@ -70,7 +70,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
       <div className="settings-group">
         <span className="settings-label">{t("windowAnimations")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
-          {(['snappy', 'fast', 'smooth', 'none', 'bouncy', 'elastic', 'dramatic', 'jello', 'lazy', 'ghost', 'teleport', 'boing', 'float', 'erased', 'flip', 'glitch', 'swapVertical'] as const).map((speed) => {
+          {(['snappy', 'fast', 'smooth', 'none', 'bouncy', 'elastic', 'dramatic', 'jello', 'lazy', 'ghost', 'teleport', 'boing', 'float', 'erased', 'flip', 'glitch', 'swapVertical', 'six seven'] as const).map((speed) => {
             const labels = {
               snappy: t("animationSnappy"),
               fast: t("animationFast"),
@@ -88,7 +88,8 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
               erased: t("animationErased"),
               flip: t("animationFlip"),
               glitch: t("animationGlitch"),
-              swapVertical: t("animationSwapVertical")
+              swapVertical: t("animationSwapVertical"),
+              "six seven": t("animationSixSeven")
             };
             return (
               <button 

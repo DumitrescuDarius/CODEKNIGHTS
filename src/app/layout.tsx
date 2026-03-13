@@ -4,7 +4,7 @@ import { AuthProvider } from "../components/providers/AuthProvider";
 
 export const metadata = {
   title: "CodeKnights - Competitive Coding",
-  description: "Practice competitive programming, join contests, and climb the leaderboard.",
+  description: "Practice competitive programming, join tournaments, and climb the leaderboard.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
