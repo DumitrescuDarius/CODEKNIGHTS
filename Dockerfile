@@ -19,8 +19,9 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
-# Install Docker CLI so the app can talk to the Docker daemon
-RUN apk add --no-cache docker-cli
+# Install Docker CLI AND Local Compilers (as fallback)
+# build-base provides gcc/g++, python3 for python, openjdk17 for java
+RUN apk add --no-cache docker-cli build-base g++ python3 openjdk17-jre openjdk17
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -31,8 +32,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
 
-# Create temp directory for executions
-RUN mkdir -p /tmp/code_knights_exec && chown nextjs:nodejs /tmp/code_knights_exec
+# Create temp directory for executions and ensure permissions
+RUN mkdir -p /tmp/code_knights_exec && chown nextjs:nodejs /tmp/code_knights_exec && chmod 777 /tmp/code_knights_exec
 
 USER nextjs
 
