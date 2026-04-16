@@ -18,26 +18,15 @@ export async function POST(req: Request) {
     });
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const prompt = `
-      Analyze the following ${language} code for the problem: "${problemDescription}".
-      Provide a complexity analysis in JSON format. 
-      The JSON must contain:
-      - timeComplexity: string (e.g. "O(n log n)")
-      - spaceComplexity: string (e.g. "O(n)")
-      - scores: object with numbers 0-100 for:
-        - efficiency: number
-        - readability: number
-        - maintainability: number
-        - security: number
-      - feedback: string (brief advice)
+    const prompt = `Analyze this ${language} code and return ONLY this JSON structure, no markdown:
+{"timeComplexity":"O(n)","spaceComplexity":"O(n)","scores":{"efficiency":80,"readability":80,"maintainability":80,"security":80},"feedback":"Good implementation"}
 
-      Return ONLY the JSON. No markdown formatting or extra text.
-      
-      CODE:
-      ${code}
-    `;
+CODE:
+${code}
+
+Return only valid JSON, starting with {.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -79,6 +68,15 @@ export async function POST(req: Request) {
     }
   } catch (err: any) {
     console.error("Analyze API Error:", err);
+    
+    const errorMessage = err.message || "";
+    if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED") || errorMessage.includes("quota")) {
+      return NextResponse.json({ 
+        error: "API quota exceeded",
+        details: "Gemini API free tier limit reached. Please try again later or use a different API key with available quota."
+      }, { status: 429 });
+    }
+    
     return NextResponse.json({ 
       error: "Failed to analyze code", 
       details: err.message 

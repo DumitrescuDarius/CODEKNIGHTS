@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, MessageSquare, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Terminal, Database, Maximize2, Minimize2, LogIn } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,11 +23,40 @@ import { ProfileWindow } from "./windows/ProfileWindow";
 import { AdminWindow } from "./windows/AdminWindow";
 import { TournamentWindow } from "./windows/TournamentWindow";
 import { FriendsWindow } from "./windows/FriendsWindow";
+import { Transition } from "framer-motion";
 
 declare global {
   interface Window {
     ck_current_code: string;
   }
+}
+
+interface TestDetail {
+  input: string;
+  expected: string;
+  actual: string;
+  passed: boolean;
+}
+
+interface CompileError {
+  line: number;
+  column: number;
+  message: string;
+}
+
+interface CodeAnalysis {
+  complexity: string;
+  suggestions: string[];
+  bugs: string[];
+  score: number;
+}
+
+interface Duel {
+  id: string;
+  pin: string;
+  status: "WAITING" | "ACTIVE" | "FINISHED";
+  question: Question;
+  players: { id: string; name: string; image?: string }[];
 }
 
 const DEFAULT_QUESTION: Question = {
@@ -43,7 +73,7 @@ const DEFAULT_QUESTION: Question = {
 };
 
 const MainMenu: React.FC = () => {
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
   const [lang, setLang] = useState<Language>("cpp");
   const [code, setCode] = useState(LANG_CONFIG["cpp"].defaultCode);
   const [openWindows, setOpenWindows] = useState<WindowId[]>(["editor"]);
@@ -73,10 +103,9 @@ const MainMenu: React.FC = () => {
     testCases: [{ input: "", output: "" }], 
     hiddenTestCases: [] 
   });
-  const [isAdminView, setIsAdminView] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
-  const [testResults, setTestResults] = useState<{ passed: number, total: number, details: any[] } | null>(null);
+  const [testResults, setTestResults] = useState<{ passed: number, total: number, details: TestDetail[] } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [userStats, setUserStats] = useState<UserStats>({ battlesWon: 0, battlesTotal: 0 });
   const [showQuitConfirmation, setShowQuitConfirmation] = useState(false);
@@ -85,17 +114,18 @@ const MainMenu: React.FC = () => {
   const [solveTime, setSolveTime] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [hoveredWindow, setHoveredWindow] = useState<WindowId | null>(null);
+  const [activeWindow, setActiveWindow] = useState<WindowId>("editor");
   const [cursorPos, setCursorPos] = useState({ ln: 1, col: 1 });
-  const [compileErrors, setCompileErrors] = useState<any[]>([]);
+  const [compileErrors, setCompileErrors] = useState<CompileError[]>([]);
   const [maximizedWindow, setMaximizedWindow] = useState<WindowId | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(null);
   const [uiLang, setUiLang] = useState<SupportedLanguage>("en");
-  const [analysis, setAnalysis] = useState<any | null>(null);
+  const [analysis, setAnalysis] = useState<CodeAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeDuel, setActiveDuel] = useState<any | null>(null);
+  const [activeDuel, setActiveDuel] = useState<Duel | null>(null);
   const [duelPin, setDuelPin] = useState<string>("");
   const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("snappy");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -109,7 +139,7 @@ const MainMenu: React.FC = () => {
     localStorage.setItem('animationSpeed', animationSpeed);
   }, [animationSpeed]);
 
-  const getTransition = (): any => {
+  const getTransition = (): Transition => {
     if (animationSpeed === "none") return { type: "tween", duration: 0 };
     if (animationSpeed === "smooth") return { type: "spring", stiffness: 400, damping: 50, mass: 1 };
     if (animationSpeed === "bouncy") return { type: "spring", stiffness: 500, damping: 20, mass: 1 };
@@ -131,7 +161,7 @@ const MainMenu: React.FC = () => {
   };
 
   const t = useCallback((key: TranslationKey): string => {
-    return (TRANSLATIONS[uiLang] as any)[key] || (TRANSLATIONS["en"] as any)[key] || key;
+    return (TRANSLATIONS[uiLang] as Record<string, string>)[key] || (TRANSLATIONS["en"] as Record<string, string>)[key] || key;
   }, [uiLang]);
 
   const analyzeCode = useCallback(async (currentCode: string, currentLang: string, description: string) => {
@@ -161,7 +191,9 @@ const MainMenu: React.FC = () => {
   const workspaceRef = useRef<HTMLElement>(null);
   const resizingRef = useRef<number | null>(null);
   const terminalResizingRef = useRef<boolean>(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const vimModeRef = useRef<any>(null);
   const vimStatusBarRef = useRef<HTMLDivElement>(null);
   const ignoreHoverRef = useRef(false);
@@ -178,7 +210,7 @@ const MainMenu: React.FC = () => {
     }
     
     return links;
-  }, [t, session, isGuest]);
+  }, [t, session]);
 
   useEffect(() => {
     // Expose current code for the "Run Example" feature in ProblemWindow
@@ -302,24 +334,29 @@ const MainMenu: React.FC = () => {
     };
   }, [activeDuel, battleStartTime, solveTime]);
 
-  useEffect(() => {
-    if (activeDuel?.status === "ACTIVE" && !activeQuestion) {
-      startBattle(activeDuel.question);
-    }
-  }, [activeDuel, activeQuestion]);
+
+
 
   useEffect(() => {
     const savedLang = localStorage.getItem("ck-lang") as Language;
+    if (savedLang) setLang(savedLang);
     const savedCode = localStorage.getItem("ck-code");
+    if (savedCode) setCode(savedCode);
     const savedWindows = JSON.parse(localStorage.getItem("ck-windows") || '["editor"]');
     const savedTheme = localStorage.getItem("ck-theme-idx");
     const savedFlexes = JSON.parse(localStorage.getItem("ck-flexes") || '[]');
     const savedFontSize = localStorage.getItem("ck-font-size");
+    if (savedFontSize) setFontSize(parseInt(savedFontSize));
     const savedFontFamily = localStorage.getItem("ck-font-family");
+    if (savedFontFamily) setFontFamily(savedFontFamily);
     const savedTermFontSize = localStorage.getItem("ck-term-font-size");
+    if (savedTermFontSize) setTerminalFontSize(parseInt(savedTermFontSize));
     const savedVim = localStorage.getItem("ck-vim") === "true";
+    setVimMode(savedVim);
     const savedTermHeight = localStorage.getItem("ck-term-height");
+    if (savedTermHeight) setTerminalHeight(parseInt(savedTermHeight));
     const savedStdin = localStorage.getItem("ck-stdin");
+    if (savedStdin) setStdin(savedStdin);
 
     const tIdx = savedTheme !== null ? parseInt(savedTheme) : 0;
     setThemeIndex(tIdx);
@@ -388,6 +425,7 @@ const MainMenu: React.FC = () => {
 
     loader.init().then(monaco => {
       // Register C++ completion provider once
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (!(monaco.languages as any).cppRegistered) {
         monaco.languages.registerCompletionItemProvider('cpp', {
           provideCompletionItems: (model, position) => {
@@ -396,6 +434,7 @@ const MainMenu: React.FC = () => {
             return { suggestions: CPP_STL.map(item => ({ label: item, kind: monaco.languages.CompletionItemKind.Keyword, insertText: item, range })) };
           }
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (monaco.languages as any).cppRegistered = true;
       }
 
@@ -420,7 +459,7 @@ const MainMenu: React.FC = () => {
     if (isLoaded) {
       // Update dynamic favicon
       const theme = THEMES[themeIndex];
-      const img = new Image();
+      const img = new window.Image();
       img.src = '/assets/logo_white.png';
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -489,9 +528,9 @@ const MainMenu: React.FC = () => {
         const data = await res.json().catch(() => ({}));
         setTerminalOutput(data.error || `Server returned ${res.status}: ${res.statusText}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Fetch Error:", err);
-      setTerminalOutput(`Network Error: ${err.message || "Failed to connect to execution server."}`);
+      setTerminalOutput(`Network Error: ${err instanceof Error ? err.message : "Failed to connect to execution server."}`);
     } finally {
       setIsRunning(false);
     }
@@ -613,7 +652,7 @@ const MainMenu: React.FC = () => {
     if (maximizedWindow === "battle") setMaximizedWindow(null);
 
     setOpenWindows(prev => {
-      let next = prev.filter(w => w !== "battle");
+      const next = prev.filter(w => w !== "battle");
       if (!next.includes("problem")) next.push("problem");
       if (!next.includes("editor")) next.unshift("editor");
       
@@ -621,6 +660,12 @@ const MainMenu: React.FC = () => {
       return next;
     });
   }, [questions, maximizedWindow]);
+
+  useEffect(() => {
+    if (activeDuel?.status === "ACTIVE" && !activeQuestion) {
+      startBattle(activeDuel.question);
+    }
+  }, [activeDuel, activeQuestion, startBattle]);
 
   const runTests = useCallback(async () => {
     if (!activeQuestion) return;
@@ -688,8 +733,8 @@ const MainMenu: React.FC = () => {
           });
         }
       }
-    } catch (err: any) {
-      setTerminalOutput(`Network Error: ${err.message || "Failed to connect to execution server."}`);
+    } catch (err: unknown) {
+      setTerminalOutput(`Network Error: ${err instanceof Error ? err.message : "Failed to connect to execution server."}`);
       console.error(err);
     } finally {
       setIsTesting(false);
@@ -709,9 +754,9 @@ const MainMenu: React.FC = () => {
         const data = await res.json().catch(() => ({}));
         setTerminalOutput(data.error || `Server returned ${res.status}: ${res.statusText}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Fetch Error:", err);
-      setTerminalOutput(`Network Error: ${err.message || "Failed to connect to execution server."}`);
+      setTerminalOutput(`Network Error: ${err instanceof Error ? err.message : "Failed to connect to execution server."}`);
     } finally {
       setIsRunning(false);
     }
@@ -729,22 +774,27 @@ const MainMenu: React.FC = () => {
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (resizingRef.current !== null) {
+    if (resizingRef.current !== null && workspaceRef.current) {
       const index = resizingRef.current;
+      const workspaceWidth = workspaceRef.current.offsetWidth;
       const movementX = e.movementX;
       
-      setWindowFlexes(prev => {
-        const next = [...prev];
-        const totalFlex = next[index] + next[index + 1];
-        const factor = 0.002;
-        const change = movementX * factor;
-        
-        const newLeftFlex = Math.max(0.2, Math.min(totalFlex - 0.2, next[index] + change));
-        const newRightFlex = totalFlex - newLeftFlex;
-        
-        next[index] = newLeftFlex;
-        next[index + 1] = newRightFlex;
-        return next;
+      // Calculate change based on actual workspace width for perfect precision
+      const change = (movementX / workspaceWidth) * windowFlexes.reduce((a, b) => a + b, 0);
+
+      window.requestAnimationFrame(() => {
+        setWindowFlexes(prev => {
+          const next = [...prev];
+          if (index >= next.length - 1) return prev;
+          
+          const totalFlex = next[index] + next[index + 1];
+          const newLeftFlex = Math.max(0.1, Math.min(totalFlex - 0.1, next[index] + change));
+          const newRightFlex = totalFlex - newLeftFlex;
+          
+          next[index] = newLeftFlex;
+          next[index + 1] = newRightFlex;
+          return next;
+        });
       });
     }
 
@@ -752,10 +802,12 @@ const MainMenu: React.FC = () => {
       const movementY = e.movementY;
       window.requestAnimationFrame(() => {
         setTerminalHeight(prev => Math.max(40, Math.min(window.innerHeight * 0.8, prev - movementY)));
-        if (editorRef.current && openWindows.includes("editor")) editorRef.current.layout();
+        if (editorRef.current && openWindows.includes("editor")) {
+          editorRef.current.layout();
+        }
       });
     }
-  }, [openWindows]);
+  }, [openWindows, windowFlexes]);
 
   const handlePlayAsGuest = useCallback(() => {
     const randomId = Math.floor(1000 + Math.random() * 9000);
@@ -773,7 +825,7 @@ const MainMenu: React.FC = () => {
 
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mousemove', handleMouseMove, { passive: true });
       window.addEventListener('mouseup', stopResizing);
     } else {
       window.removeEventListener('mousemove', handleMouseMove);
@@ -829,6 +881,7 @@ const MainMenu: React.FC = () => {
           return next;
         });
         if (maximizedWindow === id) setMaximizedWindow(null);
+        if (activeWindow === id) setActiveWindow("editor");
         const nextWindows = prev.filter(w => w !== id);
         // Safety: always ensure editor is there
         if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
@@ -836,12 +889,13 @@ const MainMenu: React.FC = () => {
       } else {
         setWindowFlexes(flexes => [...flexes, 1]);
         if (maximizedWindow) setMaximizedWindow(null);
+        setActiveWindow(id);
         const nextWindows = [...prev, id];
         if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
         return nextWindows;
       }
     });
-  }, [activeQuestion, testResults, activeDuel, maximizedWindow]);
+  }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow]);
 
   const moveWindow = (id: WindowId, direction: 'left' | 'right') => {
     ignoreHoverRef.current = true;
@@ -852,8 +906,24 @@ const MainMenu: React.FC = () => {
       const next = [...prev];
       if (direction === 'left' && index > 0) {
         [next[index - 1], next[index]] = [next[index], next[index - 1]];
+        // Also swap flexes
+        setWindowFlexes(f => {
+          const nf = [...f];
+          if (nf.length > index) {
+            [nf[index-1], nf[index]] = [nf[index], nf[index-1]];
+          }
+          return nf;
+        });
       } else if (direction === 'right' && index < next.length - 1) {
         [next[index + 1], next[index]] = [next[index], next[index + 1]];
+        // Also swap flexes
+        setWindowFlexes(f => {
+          const nf = [...f];
+          if (nf.length > index + 1) {
+            [nf[index+1], nf[index]] = [nf[index], nf[index+1]];
+          }
+          return nf;
+        });
       }
       return next;
     });
@@ -864,12 +934,22 @@ const MainMenu: React.FC = () => {
     if (!draggedWindow || draggedWindow === targetId) return;
     ignoreHoverRef.current = true;
     setIsReordering(true);
+    setActiveWindow(draggedWindow);
     setOpenWindows(prev => {
       const oldIndex = prev.indexOf(draggedWindow);
       const newIndex = prev.indexOf(targetId);
       if (oldIndex === -1 || newIndex === -1) return prev;
       const next = [...prev];
       [next[oldIndex], next[newIndex]] = [next[newIndex], next[oldIndex]];
+      
+      setWindowFlexes(f => {
+        const nf = [...f];
+        if (nf.length > Math.max(oldIndex, newIndex)) {
+          [nf[oldIndex], nf[newIndex]] = [nf[newIndex], nf[oldIndex]];
+        }
+        return nf;
+      });
+      
       return next;
     });
     setDraggedWindow(null);
@@ -878,38 +958,100 @@ const MainMenu: React.FC = () => {
 
   const toggleMaximize = useCallback((id: WindowId) => {
     setMaximizedWindow(prev => prev === id ? null : id);
+    setActiveWindow(id);
   }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept Enter if focusing an input or textarea
-      if (e.key === "Enter" && !e.altKey && (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA")) {
+      // Don't intercept if focusing an input or textarea (unless Alt is pressed)
+      const isInput = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA";
+      if (isInput && !e.altKey && !e.ctrlKey && e.key !== "Escape") {
         return;
       }
 
       // Alt + ' to run code
-      if (e.altKey && e.key === "'") {
+      if (e.altKey && (e.key === "'" || e.key === "Enter")) {
         e.preventDefault();
         runCode();
+        return;
+      }
+
+      // Alt + Number to toggle windows
+      if (e.altKey && /^[1-9]$/.test(e.key)) {
+        e.preventDefault();
+        const num = parseInt(e.key);
+        const allIds: WindowId[] = ["editor", "battle", "tournaments", "friends", "problem", "profile", "settings", "admin"];
+        const id = allIds[num - 1];
+        if (id) {
+          toggleWindow(id);
+        }
+        return;
+      }
+
+      // Determine which window we are targeting: prioritize activeWindow, then hovered, then last opened
+      const targetWindow = (openWindows.includes(activeWindow) ? activeWindow : null) 
+                           || hoveredWindow 
+                           || (openWindows.length > 0 ? openWindows[openWindows.length - 1] : null);
+
+      // Alt + W to close current/last window
+      if (e.altKey && e.key.toLowerCase() === "w") {
+        e.preventDefault();
+        if (maximizedWindow) {
+          if (maximizedWindow !== "editor") toggleWindow(maximizedWindow);
+          else setMaximizedWindow(null);
+        } else if (targetWindow && targetWindow !== "editor") {
+          toggleWindow(targetWindow);
+        } else if (openWindows.length > 1) {
+          const last = openWindows[openWindows.length - 1];
+          if (last !== "editor") toggleWindow(last);
+          else toggleWindow(openWindows[openWindows.length - 2]);
+        }
+        return;
+      }
+
+      // Alt + M to toggle maximize
+      if (e.altKey && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        if (targetWindow) toggleMaximize(targetWindow);
+        return;
+      }
+
+      // Alt + S for settings
+      if (e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        toggleWindow("settings");
+        return;
+      }
+
+      // Alt + B for battle
+      if (e.altKey && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleWindow("battle");
+        return;
+      }
+
+      // Alt + Arrow keys to move windows
+      if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        if (targetWindow) {
+          e.preventDefault();
+          moveWindow(targetWindow, e.key === "ArrowLeft" ? "left" : "right");
+        }
+        return;
       }
       
       if (vimMode && e.key === "Escape") {
         const vimState = editorRef.current?.vimState;
         if (vimState) {
           if (vimState.mode === 'normal') {
-            // In normal mode, Esc kicks you out of the editor (blur)
-            editorRef.current?.focus(); // Just to be sure we have ref
-            document.activeElement instanceof HTMLElement && document.activeElement.blur();
-          } else {
-            // In insert/visual mode, Esc returns to normal mode (handled by monaco-vim)
-            // We do nothing and let it propagate to the editor
+            editorRef.current?.focus();
+            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
           }
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [vimMode, runCode]);
+  }, [vimMode, runCode, openWindows, maximizedWindow, hoveredWindow, activeWindow, toggleWindow, toggleMaximize]);
 
   const renderWindowContent = (id: WindowId) => {
     switch (id) {
@@ -1147,9 +1289,9 @@ const MainMenu: React.FC = () => {
                   style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.4rem', borderRadius: '0.3rem' }}
                   className="btn-ghost"
                 >
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{isGuest ? guestName : ((session?.user as any)?.username || session?.user?.name)}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{isGuest ? guestName : (session?.user?.username || session?.user?.name)}</span>
                   {session?.user?.image ? (
-                    <img src={session.user.image} alt="Profile" style={{ width: '24px', height: '24px', borderRadius: '50%', border: '1px solid var(--line)' }} />
+                    <Image src={session.user.image} alt="Profile" width={24} height={24} unoptimized style={{ borderRadius: '50%', border: '1px solid var(--line)' }} />
                   ) : (
                     <User size={20} />
                   )}
@@ -1161,7 +1303,7 @@ const MainMenu: React.FC = () => {
                       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 90 }} onClick={() => setIsProfileMenuOpen(false)} />
                       <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={{ duration: 0.15 }} style={{ position: 'absolute', top: 'calc(100% + 0.5rem)', right: 0, width: '240px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.6rem', zIndex: 100, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--line)', marginBottom: '0.25rem' }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{isGuest ? guestName : ((session?.user as any)?.username || session?.user?.name)}</div>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{isGuest ? guestName : (session?.user?.username || session?.user?.name)}</div>
                           {!isGuest && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.user?.email}</div>}
                         </div>
 
@@ -1172,7 +1314,7 @@ const MainMenu: React.FC = () => {
                               <ChevronRight size={12} />
                             </button>
 
-                            {(session?.user as any)?.isAdmin && (
+                            {session?.user?.isAdmin && (
                               <button onClick={() => { toggleWindow("admin"); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'var(--accent)', background: 'rgba(122, 162, 247, 0.05)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Database size={14} /><span style={{ fontSize: '0.85rem' }}>{t("admin")}</span></div>
                                 <ChevronRight size={12} />
@@ -1260,8 +1402,9 @@ const MainMenu: React.FC = () => {
                     opacity: { duration: animationSpeed === "none" ? 0 : 0.1 },
                     y: (animationSpeed === "six seven" && !isReordering) ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : { duration: 0.1 }
                   }}
-                  className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''}`}
+                  className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''} ${activeWindow === id ? 'twm-window--active' : ''}`}
                   style={{ flex: isMax ? 1 : (windowFlexes[originalIdx] || 1) }}
+                  onMouseDown={() => setActiveWindow(id)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDrop(id)}
                   onMouseEnter={() => {

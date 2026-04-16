@@ -143,8 +143,12 @@ body.resizing * {
   background: var(--accent);
 }
 
-.twm-window:hover {
+.twm-window:hover, .twm-window--active {
   border-color: var(--accent);
+}
+
+.twm-window--active {
+  box-shadow: 0 0 15px -5px var(--accent);
 }
 
 .twm-window-header {
