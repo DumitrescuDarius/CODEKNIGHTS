@@ -44,6 +44,11 @@ model User {
   isAdmin       Boolean   @default(false)
   battlesWon    Int       @default(0)
   battlesTotal  Int       @default(0)
+  rating        Int       @default(1000)
+  rank          String    @default("Novice")
+  dailyWins     Json      @default("{}") // Stores {"YYYY-MM-DD": count}
+  followedBy    User[]    @relation("UserFollows")
+  following     User[]    @relation("UserFollows")
   accounts      Account[]
   sessions      Session[]
   submissions   Submission[]
@@ -53,12 +58,13 @@ model User {
 
 model Question {
   id          String   @id @default(cuid())
-  title       String
+  title       String   @unique
   description String
   restrictions String? // New field for problem constraints
   difficulty  String
   testCases   String   // JSON string of visible input/output pairs
   hiddenTestCases String? // JSON string of hidden input/output pairs
+  idealComplexity String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   submissions Submission[]
@@ -77,8 +83,18 @@ model Duel {
   hostReady   Boolean  @default(false)
   guestReady  Boolean  @default(false)
   
+  hostFinalized Boolean @default(false)
+  guestFinalized Boolean @default(false)
+  
   hostSolveTime  Int?    // time in milliseconds
   guestSolveTime Int?    // time in milliseconds
+  hostComplexity Float?
+  guestComplexity Float?
+  hostPenalty    Float?
+  guestPenalty   Float?
+  
+  hostRatingChange Int?
+  guestRatingChange Int?
   
   createdAt   DateTime @default(now())
   expiresAt   DateTime

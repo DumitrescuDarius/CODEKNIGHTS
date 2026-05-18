@@ -25,7 +25,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t }) =>
   const [isLoading, setIsLoading] = useState(false);
   const [following, setFollowing] = useState<string[]>([]);
 
-  const searchUsers = async (query: string) => {
+  const searchUsers = async (query: string, signal: AbortSignal) => {
     if (query.length < 2) {
       setSearchResults([]);
       return;
@@ -33,26 +33,29 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t }) =>
 
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/user/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/user/search?q=${encodeURIComponent(query)}`, { signal });
       if (res.ok) {
         const data = await res.json();
         setSearchResults(data);
       }
-    } catch (error) {
-      console.error("Search error:", error);
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error("Search error:", error);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const debouncedSearch = useCallback(
-    debounce((query: string) => searchUsers(query), 300),
+    debounce((query: string, signal: AbortSignal) => searchUsers(query, signal), 300),
     []
   );
 
   useEffect(() => {
-    debouncedSearch(searchQuery);
-    return () => debouncedSearch.cancel();
+    const controller = new AbortController();
+    debouncedSearch(searchQuery, controller.signal);
+    return () => controller.abort();
   }, [searchQuery, debouncedSearch]);
 
   const toggleFollow = (userId: string) => {
@@ -65,7 +68,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t }) =>
 
   return (
     <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>{t("friends")}</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>{t("searchUsers")}</p>

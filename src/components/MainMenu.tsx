@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,12 +23,30 @@ import { ProfileWindow } from "./windows/ProfileWindow";
 import { AdminWindow } from "./windows/AdminWindow";
 import { TournamentWindow } from "./windows/TournamentWindow";
 import { FriendsWindow } from "./windows/FriendsWindow";
+import { AgentWindow } from "./windows/AgentWindow";
 import { Transition } from "framer-motion";
 
 declare global {
   interface Window {
     ck_current_code: string;
   }
+}
+
+type ResizeSession = {
+  leftFlexIdx: number;
+  rightFlexIdx: number;
+  startClientX: number;
+  startLeftWidth: number;
+  pairPixelWidth: number;
+  pairFlex: number;
+  minLeftPx: number;
+  minRightPx: number;
+};
+
+function readMinWidthPx(el: HTMLElement): number {
+  const raw = getComputedStyle(el).minWidth;
+  const px = parseFloat(raw);
+  return Number.isFinite(px) && px > 0 ? px : 352;
 }
 
 interface TestDetail {
@@ -44,11 +62,23 @@ interface CompileError {
   message: string;
 }
 
+interface CodeAnalysisScores {
+  efficiency: number;
+  readability: number;
+  maintainability: number;
+  security: number;
+}
+
 interface CodeAnalysis {
-  complexity: string;
-  suggestions: string[];
-  bugs: string[];
-  score: number;
+  timeComplexity?: string;
+  spaceComplexity?: string;
+  complexityExplanation?: string;
+  meetsComplexityRequirements?: boolean | null;
+  scores?: CodeAnalysisScores;
+  feedback?: string;
+  error?: string;
+  details?: string;
+  quotaExceeded?: boolean;
 }
 
 interface Duel {
@@ -106,13 +136,51 @@ const MainMenu: React.FC = () => {
   const [adminError, setAdminError] = useState<string | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [testResults, setTestResults] = useState<{ passed: number, total: number, details: TestDetail[] } | null>(null);
+  const [totalPenalty, setTotalPenalty] = useState<number | null>(null);
+  const [wrongAttemptCount, setWrongAttemptCount] = useState(0);
+
+  const complexityToScore = (complexity: string) => {
+    const c = complexity.toLowerCase().replace(/\s/g, '');
+    if (c === "o(1)") return 0;
+    if (c === "o(logn)") return 1;
+    if (c === "o(n)") return 2;
+    if (c === "o(nlogn)") return 3;
+    if (c === "o(n^2)") return 4;
+    if (c === "o(n^3)") return 5;
+    return 0; // Default
+  };
+
+  const calculatePenalty = useCallback((timeSeconds: number, wrongAttempts: number, compScores: CodeAnalysisScores | undefined, actualComplexity: string | undefined, idealComplexity: string | undefined) => {
+      const timePenalty = timeSeconds;
+      const waPenalty = wrongAttempts * 50;
+      const complexityPenalty = (compScores ? (compScores.efficiency + compScores.readability + compScores.maintainability + compScores.security) : 0) * 50;
+      
+      let complexityOverPenalty = 0;
+      if (actualComplexity && idealComplexity) {
+          const actualScore = complexityToScore(actualComplexity);
+          const idealScore = complexityToScore(idealComplexity);
+          if (actualScore > idealScore) {
+              complexityOverPenalty = (actualScore - idealScore) * 200;
+          }
+      }
+      
+      return timePenalty + waPenalty + complexityPenalty + complexityOverPenalty;
+  }, []);
+
+  const retryProblem = useCallback(() => {
+    setTestResults(null);
+    setWrongAttemptCount(0);
+    setTotalPenalty(null);
+    setSolveTime(null);
+    setBattleStartTime(Date.now());
+  }, []);
+  
   const [isTesting, setIsTesting] = useState(false);
   const [userStats, setUserStats] = useState<UserStats>({ battlesWon: 0, battlesTotal: 0 });
   const [showQuitConfirmation, setShowQuitConfirmation] = useState(false);
   const [showCancelDuel, setShowCancelDuel] = useState(false);
   const [battleStartTime, setBattleStartTime] = useState<number | null>(null);
   const [solveTime, setSolveTime] = useState<string | null>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
   const [hoveredWindow, setHoveredWindow] = useState<WindowId | null>(null);
   const [activeWindow, setActiveWindow] = useState<WindowId>("editor");
   const [cursorPos, setCursorPos] = useState({ ln: 1, col: 1 });
@@ -126,9 +194,53 @@ const MainMenu: React.FC = () => {
   const [analysis, setAnalysis] = useState<CodeAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeDuel, setActiveDuel] = useState<Duel | null>(null);
+  const activeDuelRef = useRef<Duel | null>(null);
+  
+  useEffect(() => {
+    activeDuelRef.current = activeDuel;
+  }, [activeDuel]);
+
   const [duelPin, setDuelPin] = useState<string>("");
   const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("snappy");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showLimitWarning, setShowLimitWarning] = useState(false);
+  const [showWrongAnswerPopup, setShowWrongAnswerPopup] = useState(false);
+  const [showRatingChangePopup, setShowRatingChangePopup] = useState<{ amount: number, isWin: boolean } | null>(null);
+  const lastFinishedDuelId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (showRatingChangePopup) {
+      const timer = setTimeout(() => setShowRatingChangePopup(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showRatingChangePopup]);
+
+  const [showWaitingPopup, setShowWaitingPopup] = useState(false);
+  const [showOpponentFoundPopup, setShowOpponentFoundPopup] = useState(false);
+
+  useEffect(() => {
+    if (showLimitWarning) {
+      const timer = setTimeout(() => setShowLimitWarning(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showLimitWarning]);
+
+  useEffect(() => {
+    if (showWrongAnswerPopup) {
+      const timer = setTimeout(() => setShowWrongAnswerPopup(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showWrongAnswerPopup]);
+
+  // showWaitingPopup does NOT auto-hide because we need the PIN to stay visible.
+  // It is manually cleared when an opponent is found or duel is cancelled.
+
+  useEffect(() => {
+    if (showOpponentFoundPopup) {
+      const timer = setTimeout(() => setShowOpponentFoundPopup(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showOpponentFoundPopup]);
 
   useEffect(() => {
     const saved = localStorage.getItem('animationSpeed') as AnimationSpeed;
@@ -164,32 +276,51 @@ const MainMenu: React.FC = () => {
     return (TRANSLATIONS[uiLang] as Record<string, string>)[key] || (TRANSLATIONS["en"] as Record<string, string>)[key] || key;
   }, [uiLang]);
 
-  const analyzeCode = useCallback(async (currentCode: string, currentLang: string, description: string) => {
+  const analyzeCode = useCallback(async (currentCode: string, currentLang: string, question: Question | null) => {
     setIsAnalyzing(true);
     setAnalysis(null);
-    console.log("Frontend: Starting AI Analysis...");
+    const isProblem = Boolean(question);
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: currentCode, language: currentLang, problemDescription: description })
+        body: JSON.stringify({
+          code: currentCode,
+          language: currentLang,
+          analyzeContext: isProblem ? "problem" : "general",
+          problemTitle: question?.title ?? "",
+          problemDescription: question?.description ?? "",
+          problemRestrictions: question?.restrictions ?? "",
+          problemDifficulty: question?.difficulty ?? "",
+        }),
       });
       const data = await res.json();
-      console.log("Frontend: AI Analysis Response received", data);
-      if (!data.error) {
-        setAnalysis(data);
+      if (res.ok && !data.error) {
+        setAnalysis(data as CodeAnalysis);
       } else {
-        console.error("Frontend: AI Analysis Error", data.error);
+        setAnalysis({
+          error: typeof data.error === "string" ? data.error : "Analysis failed",
+          details: typeof data.details === "string" ? data.details : undefined,
+          quotaExceeded: res.status === 429,
+        });
       }
     } catch (err) {
-      console.error("Frontend: Analysis failed:", err);
+      console.error("Analysis failed:", err);
+      setAnalysis({
+        error: err instanceof Error ? err.message : "Failed to connect to analysis service.",
+      });
     } finally {
       setIsAnalyzing(false);
     }
   }, []);
 
+  const analyzeProblemComplexity = useCallback(() => {
+    if (!activeQuestion) return;
+    analyzeCode(code, lang, activeQuestion);
+  }, [activeQuestion, code, lang, analyzeCode]);
+
   const workspaceRef = useRef<HTMLElement>(null);
-  const resizingRef = useRef<number | null>(null);
+  const resizeSessionRef = useRef<ResizeSession | null>(null);
   const terminalResizingRef = useRef<boolean>(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
@@ -201,7 +332,7 @@ const MainMenu: React.FC = () => {
   const navLinks = useMemo(() => {
     const links = [
       { label: t("battle"), id: "battle" as WindowId, icon: <Sword size={16} /> },
-      { label: t("tournaments"), id: "tournaments" as WindowId, icon: <Trophy size={16} /> },
+      { label: "Agent", id: "agent" as WindowId, icon: <Wand2 size={16} /> },
       { label: t("friends"), id: "friends" as WindowId, icon: <Users size={16} /> },
     ];
     
@@ -238,8 +369,15 @@ const MainMenu: React.FC = () => {
         if (data) {
           setUserStats({
             battlesWon: data.battlesWon || 0,
-            battlesTotal: data.battlesTotal || 0
+            battlesTotal: data.battlesTotal || 0,
+            rating: data.rating || 1000,
+            dailyWins: data.dailyWins || {}
           });
+          // Update session-like data for children that depend on it
+          if (session.user) {
+            (session.user as any).rating = data.rating;
+            (session.user as any).dailyWins = data.dailyWins;
+          }
         }
       }
     } catch (err) {
@@ -256,10 +394,10 @@ const MainMenu: React.FC = () => {
           setDuelPin(data.pin);
           setActiveDuel(data);
         } else {
-          alert(data.error || "Failed to create duel");
+          console.error(data.error || "Failed to create duel");
         }
       } else {
-        alert(data.error || "Failed to create duel");
+        console.error(data.error || "Failed to create duel");
       }
     } catch (err) {
       console.error(err);
@@ -276,8 +414,10 @@ const MainMenu: React.FC = () => {
       const data = await res.json();
       if (res.ok) {
         if (data.id) {
+          setShowOpponentFoundPopup(true);
           setActiveDuel(data);
         } else {
+
           alert(data.error || "Failed to join duel");
         }
       } else {
@@ -294,19 +434,39 @@ const MainMenu: React.FC = () => {
       const res = await fetch(`/api/duels?pin=${activeDuel.pin}`);
       if (res.ok) {
         const data = await res.json();
+        
+        // If the component state was cleared (surrender) while this fetch was in flight, 
+        // ignore the result to prevent re-opening the window.
+        if (activeDuelRef.current === null) return;
+
         if (data.id) {
+          if (data.status === "FINISHED" && lastFinishedDuelId.current !== data.id) {
+            lastFinishedDuelId.current = data.id;
+            const userId = session?.user ? (session.user as any).id : "guest";
+            const isHost = data.hostId === userId;
+            const change = isHost ? data.hostRatingChange : data.guestRatingChange;
+            if (change !== null && change !== undefined) {
+              setShowRatingChangePopup({ amount: change, isWin: change > 0 });
+              fetchUserStats();
+            }
+          }
+
+          if (activeDuel && activeDuel.status !== 'ACTIVE' && data.status === 'ACTIVE') {
+            setShowOpponentFoundPopup(true);
+            setShowWaitingPopup(false);
+          }
           setActiveDuel(data);
         }
       }
     } catch (err) {
       console.error(err);
     }
-  }, [activeDuel]);
+  }, [activeDuel, session, fetchUserStats]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
     if (activeDuel && activeDuel.status !== "FINISHED") {
-      interval = setInterval(pollDuel, 3000);
+      interval = setInterval(pollDuel, 500);
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -318,7 +478,7 @@ const MainMenu: React.FC = () => {
     if (activeDuel && activeDuel.status === "ACTIVE" && battleStartTime && !solveTime) {
       interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - battleStartTime) / 1000);
-        const remaining = 180 - elapsed; // 3 minutes
+        const remaining = 420 - elapsed; // 7 minutes
         if (remaining <= 0) {
           setTimeLeft(0);
           clearInterval(interval);
@@ -524,6 +684,14 @@ const MainMenu: React.FC = () => {
         const data = await res.json();
         if (data.compileErrors) setCompileErrors(data.compileErrors);
         setTerminalOutput(data.error ? `Error:\n${data.error}` : data.output || "Program finished with no output.");
+        // If run succeeded (no compile errors), trigger local Big-O analysis so terminal shows Time/Space
+        if (!data.compileErrors) {
+          try {
+            analyzeCode(code, lang, activeQuestion ?? null);
+          } catch (err) {
+            console.error('Failed to run analysis after execution', err);
+          }
+        }
       } else {
         const data = await res.json().catch(() => ({}));
         setTerminalOutput(data.error || `Server returned ${res.status}: ${res.statusText}`);
@@ -534,7 +702,7 @@ const MainMenu: React.FC = () => {
     } finally {
       setIsRunning(false);
     }
-  }, [code, lang, stdin]);
+  }, [code, lang, stdin, analyzeCode, activeQuestion]);
 
   const handleAddQuestion = async () => {
     setAdminError(null);
@@ -559,7 +727,6 @@ const MainMenu: React.FC = () => {
           hiddenTestCases: [] 
         });
         fetchQuestions();
-        setIsAdminView(false);
         alert("Question published successfully!");
       } else {
         const data = await res.json();
@@ -646,6 +813,7 @@ const MainMenu: React.FC = () => {
     
     setActiveQuestion(q);
     setTestResults(null);
+    setWrongAttemptCount(0); // Reset
     setBattleStartTime(Date.now());
     setSolveTime(null);
     
@@ -706,32 +874,53 @@ const MainMenu: React.FC = () => {
             setIsTesting(false);
             return;
           }
-          const isCorrect = data.output?.trim() === tc.output?.trim();
+          const isCorrect = data.output?.trimEnd() === tc.output?.trimEnd();
           if (isCorrect) passed++;
+
           details.push({ input: tc.input, expected: tc.output, actual: data.output, passed: isCorrect });
         }
       }
       
       setTestResults({ passed, total: allTests.length, details });
       if (passed === allTests.length) {
+        // Penalty calculation
         const time = Math.floor((Date.now() - (battleStartTime || Date.now())) / 1000);
+
+        const totalPenalty = calculatePenalty(
+            time, 
+            wrongAttemptCount, 
+            analysis?.scores, 
+            analysis?.timeComplexity, 
+            activeQuestion?.idealComplexity
+        );
+        setTotalPenalty(totalPenalty);
+
         const mins = Math.floor(time / 60);
         const secs = time % 60;
         const formatted = `${mins}:${secs.toString().padStart(2, '0')}`;
         setSolveTime(formatted);
-        setShowCelebration(true);
-        setTimeout(() => setShowCelebration(false), 5000);
 
-        analyzeCode(code, lang, activeQuestion.description);
+        analyzeCode(code, lang, activeQuestion);
         fetchUserStats();
 
         if (activeDuel && activeDuel.status === "ACTIVE") {
+          const totalComplexity = analysis?.scores ? 
+            (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) : 0;
+          
           await fetch("/api/duels/submit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ duelId: activeDuel.id, solveTime: time * 1000 })
+            body: JSON.stringify({ 
+                duelId: activeDuel.id, 
+                solveTime: time * 1000,
+                complexityScore: totalComplexity,
+                totalPenalty: totalPenalty
+            })
           });
         }
+      } else {
+        setWrongAttemptCount(prev => prev + 1); // Increment on fail
+        setShowWrongAnswerPopup(true);
       }
     } catch (err: unknown) {
       setTerminalOutput(`Network Error: ${err instanceof Error ? err.message : "Failed to connect to execution server."}`);
@@ -774,25 +963,33 @@ const MainMenu: React.FC = () => {
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (resizingRef.current !== null && workspaceRef.current) {
-      const index = resizingRef.current;
-      const workspaceWidth = workspaceRef.current.offsetWidth;
-      const movementX = e.movementX;
-      
-      // Calculate change based on actual workspace width for perfect precision
-      const change = (movementX / workspaceWidth) * windowFlexes.reduce((a, b) => a + b, 0);
+    const session = resizeSessionRef.current;
+    if (session) {
+      const deltaX = e.clientX - session.startClientX;
+      const targetLeftPx = session.startLeftWidth + deltaX;
+      const { pairPixelWidth, pairFlex, leftFlexIdx, rightFlexIdx, minLeftPx, minRightPx } = session;
+      let maxLeftPx = pairPixelWidth - minRightPx;
+      let minL = minLeftPx;
+      if (maxLeftPx < minL) {
+        maxLeftPx = minL;
+      }
+      const clampedLeftPx = Math.max(minL, Math.min(maxLeftPx, targetLeftPx));
+      const ratio = pairPixelWidth > 0 ? clampedLeftPx / pairPixelWidth : 0.5;
+      const newLeftFlex = ratio * pairFlex;
 
       window.requestAnimationFrame(() => {
         setWindowFlexes(prev => {
+          if (
+            leftFlexIdx < 0 ||
+            rightFlexIdx < 0 ||
+            leftFlexIdx >= prev.length ||
+            rightFlexIdx >= prev.length
+          ) {
+            return prev;
+          }
           const next = [...prev];
-          if (index >= next.length - 1) return prev;
-          
-          const totalFlex = next[index] + next[index + 1];
-          const newLeftFlex = Math.max(0.1, Math.min(totalFlex - 0.1, next[index] + change));
-          const newRightFlex = totalFlex - newLeftFlex;
-          
-          next[index] = newLeftFlex;
-          next[index + 1] = newRightFlex;
+          next[leftFlexIdx] = newLeftFlex;
+          next[rightFlexIdx] = pairFlex - newLeftFlex;
           return next;
         });
       });
@@ -807,7 +1004,7 @@ const MainMenu: React.FC = () => {
         }
       });
     }
-  }, [openWindows, windowFlexes]);
+  }, [openWindows]);
 
   const handlePlayAsGuest = useCallback(() => {
     const randomId = Math.floor(1000 + Math.random() * 9000);
@@ -817,7 +1014,7 @@ const MainMenu: React.FC = () => {
   }, []);
 
   const stopResizing = useCallback(() => {
-    resizingRef.current = null;
+    resizeSessionRef.current = null;
     terminalResizingRef.current = false;
     setIsDragging(false);
     document.body.style.cursor = '';
@@ -837,9 +1034,34 @@ const MainMenu: React.FC = () => {
     };
   }, [isDragging, handleMouseMove, stopResizing]);
 
-  const startResizing = (e: React.MouseEvent, index: number) => {
+  const startResizing = (e: React.MouseEvent, leftFlexIdx: number, rightFlexIdx: number) => {
     e.preventDefault();
-    resizingRef.current = index;
+    if (leftFlexIdx < 0 || rightFlexIdx < 0) return;
+    const target = e.currentTarget as HTMLElement;
+    const left = target.previousElementSibling as HTMLElement | null;
+    const right = target.nextElementSibling as HTMLElement | null;
+    if (!left || !right) return;
+
+    const lr = left.getBoundingClientRect();
+    const rr = right.getBoundingClientRect();
+    const startLeftWidth = lr.width;
+    const pairPixelWidth = lr.width + rr.width;
+    const pairFlex = windowFlexes[leftFlexIdx] + windowFlexes[rightFlexIdx];
+    if (pairFlex <= 0 || pairPixelWidth <= 0) return;
+
+    const minLeftPx = readMinWidthPx(left);
+    const minRightPx = readMinWidthPx(right);
+
+    resizeSessionRef.current = {
+      leftFlexIdx,
+      rightFlexIdx,
+      startClientX: e.clientX,
+      startLeftWidth,
+      pairPixelWidth,
+      pairFlex,
+      minLeftPx,
+      minRightPx,
+    };
     setIsDragging(true);
     document.body.style.cursor = 'col-resize';
   };
@@ -854,7 +1076,9 @@ const MainMenu: React.FC = () => {
   const toggleWindow = useCallback((id: WindowId) => {
     if (id === "problem" && activeQuestion) {
       const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
-      if (!allPassed) {
+      const isDuel = !!activeDuel;
+      
+      if (!allPassed || (isDuel && activeDuel.status === "ACTIVE")) {
         setShowQuitConfirmation(true);
         return;
       } else {
@@ -887,6 +1111,10 @@ const MainMenu: React.FC = () => {
         if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
         return nextWindows;
       } else {
+        if (prev.length >= 4) {
+          setShowLimitWarning(true);
+          return prev;
+        }
         setWindowFlexes(flexes => [...flexes, 1]);
         if (maximizedWindow) setMaximizedWindow(null);
         setActiveWindow(id);
@@ -1068,6 +1296,8 @@ const MainMenu: React.FC = () => {
             compileErrors={compileErrors}
             t={t}
             isResizing={isDragging}
+            analysis={analysis}
+            isAnalyzing={isAnalyzing}
           />
         );
       case "settings":
@@ -1091,28 +1321,32 @@ const MainMenu: React.FC = () => {
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
             setActiveDuel={setActiveDuel} setDuelPin={setDuelPin}
             showCancelDuel={showCancelDuel} setShowCancelDuel={setShowCancelDuel}
-            handleCancelDuel={() => { 
-              setActiveDuel(null); 
-              setDuelPin(""); 
-              setShowCancelDuel(false); 
-              if (maximizedWindow === "battle") setMaximizedWindow(null);
-              
-              setOpenWindows(prev => {
-                const idx = prev.indexOf("battle");
-                if (idx !== -1) {
-                  setWindowFlexes(flexes => {
-                    const next = [...flexes];
-                    next.splice(idx, 1);
-                    return next;
-                  });
-                  const nextWindows = prev.filter(w => w !== "battle");
-                  if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
-                  return nextWindows;
+            handleCancelDuel={async () => { 
+                const currentDuel = activeDuel;
+                setActiveDuel(null); 
+                setDuelPin(""); 
+                setShowCancelDuel(false); 
+                setShowWaitingPopup(false);
+                if (maximizedWindow === "battle") setMaximizedWindow(null);
+
+                if (currentDuel) {
+                    try {
+                      await fetch("/api/duels/submit", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ duelId: currentDuel.id, surrender: true })
+                      });
+                    } catch (err) {
+                        console.error("Failed to terminate duel:", err);
+                    }
                 }
-                return prev;
-              });
             }}
+            setShowWaitingPopup={setShowWaitingPopup}
           />
+        );
+      case "agent":
+        return (
+          <AgentWindow t={t} lang={lang} setLang={setLang} code={code} setCode={setCode} />
         );
       case "admin":
         return (
@@ -1124,25 +1358,25 @@ const MainMenu: React.FC = () => {
           />
         );
       case "problem":
+        const currentUserId = session?.user ? (session.user as any).id : "guest";
         return (
-          <ProblemWindow 
-            activeQuestion={activeQuestion} testResults={testResults} showQuitConfirmation={showQuitConfirmation}
-            setShowQuitConfirmation={setShowQuitConfirmation} 
+          <ProblemWindow
+            userId={currentUserId}
+            activeQuestion={activeQuestion}
+            testResults={testResults}
+            totalPenalty={totalPenalty}
+            wrongAttemptCount={wrongAttemptCount}
+            calculatePenalty={calculatePenalty}
+            analysis={analysis}
+            retryProblem={retryProblem}
+            showQuitConfirmation={showQuitConfirmation}
+            setShowQuitConfirmation={setShowQuitConfirmation}
             handleQuitBattle={async () => {
-              if (activeDuel && activeDuel.status === "ACTIVE") {
-                try {
-                  await fetch("/api/duels/submit", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ duelId: activeDuel.id, surrender: true })
-                  });
-                  setShowQuitConfirmation(false);
-                  return;
-                } catch (err) {
-                  console.error("Failed to surrender:", err);
-                }
-              }
+              const currentDuel = activeDuel;
+              const isDuelActive = activeDuel?.status === "ACTIVE";
 
+              // Optimistically clear all battle-related state IMMEDIATELY
+              // to prevent pollDuel or effects from re-opening the window.
               setActiveQuestion(null);
               setTestResults(null);
               setAnalysis(null);
@@ -1152,27 +1386,35 @@ const MainMenu: React.FC = () => {
               if (maximizedWindow === "problem") setMaximizedWindow(null);
 
               setOpenWindows(prev => {
-                const idx = prev.indexOf("problem");
-                if (idx !== -1) {
-                  setWindowFlexes(flexes => {
-                    const next = [...flexes];
-                    next.splice(idx, 1);
-                    return next;
-                  });
-                  const nextWindows = prev.filter(w => w !== "problem");
-                  if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
-                  return nextWindows;
-                }
-                return prev;
+                const next = prev.filter(w => w !== "problem");
+                if (!next.includes("editor")) next.unshift("editor");
+                return next;
               });
-            }}
 
-            runTests={runTests} isTesting={isTesting} setStdin={setStdin} setShowTerminal={setShowTerminal}
-            setTerminalOutput={setTerminalOutput} solveTime={solveTime} lang={lang}
-            startNewBattle={() => { 
-              setActiveQuestion(null); 
-              setTestResults(null); 
-              setAnalysis(null); 
+              // Then handle the network request in the background
+              if (currentDuel && isDuelActive) {
+                try {
+                  await fetch("/api/duels/submit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ duelId: currentDuel.id, surrender: true })
+                  });
+                } catch (err) {
+                  console.error("Failed to surrender:", err);
+                }
+              }
+            }}
+            runTests={runTests}
+            isTesting={isTesting}
+            setStdin={setStdin}
+            setShowTerminal={setShowTerminal}
+            setTerminalOutput={setTerminalOutput}
+            solveTime={solveTime}
+            lang={lang}
+            startNewBattle={() => {
+              setActiveQuestion(null);
+              setTestResults(null);
+              setAnalysis(null);
               setActiveDuel(null);
               setDuelPin("");
               if (maximizedWindow === "problem") setMaximizedWindow(null);
@@ -1180,7 +1422,6 @@ const MainMenu: React.FC = () => {
                 const next = prev.filter(w => w !== "problem");
                 if (!next.includes("battle")) next.push("battle");
                 if (!next.includes("editor")) next.unshift("editor");
-                // windowFlexes stays the same length as we replaced problem with battle
                 return next;
               });
             }}
@@ -1188,6 +1429,7 @@ const MainMenu: React.FC = () => {
             t={t}
             analysis={analysis}
             isAnalyzing={isAnalyzing}
+            onAnalyzeComplexity={analyzeProblemComplexity}
             activeDuel={activeDuel}
             timeLeft={timeLeft}
             setActiveDuel={setActiveDuel}
@@ -1196,14 +1438,11 @@ const MainMenu: React.FC = () => {
         );
       case "profile":
         return <ProfileWindow session={session} userStats={userStats} t={t} />;
-      case "tournaments":
-        return <TournamentWindow questions={questions} t={t} isAdmin={!!session?.user?.isAdmin} />;
       case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>Global</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
       case "friends": return <FriendsWindow t={t} />;
       default: return null;
-    }
-  };
-
+      }
+      };
   const renderedWindows = openWindows
     .filter(id => {
       // Only allow certain windows if not logged in
@@ -1214,22 +1453,79 @@ const MainMenu: React.FC = () => {
     })
     .filter(id => (maximizedWindow && openWindows.includes(maximizedWindow)) ? id === maximizedWindow : true);
 
+  // Keep per-window min-width adaptive so many windows won't tile off-screen.
+  useEffect(() => {
+    try {
+      const el = workspaceRef.current;
+      if (!el) return;
+      const count = Math.max(1, renderedWindows.length);
+      // Set CSS variable used by styles to compute minimum window width.
+      // This makes each window shrink proportionally so they stay within viewport.
+      el.style.setProperty('--twm-window-min-width', `min(22rem, calc(100% / ${count}))`);
+    } catch (err) {
+      // silent
+    }
+  }, [renderedWindows.length]);
+
   return (
     <div className="main-header">
       <AnimatePresence>
-        {showCelebration && (
-          <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999, overflow: 'hidden' }}>
-            {/* Theme Colored Sprinkles */}
-            {Array.from({ length: 100 }).map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ x: '50vw', y: '50vh', scale: 0, opacity: 1 }}
-                animate={{ x: `${Math.random() * 100}vw`, y: `${Math.random() * 100}vh`, scale: Math.random() * 1.5, opacity: 0, rotate: Math.random() * 720 }}
-                transition={{ duration: 2 + Math.random() * 3, ease: [0.23, 1, 0.32, 1], delay: Math.random() * 0.5 }}
-                style={{ position: 'absolute', width: Math.random() * 10 + 5 + 'px', height: Math.random() * 5 + 2 + 'px', background: 'var(--accent)', borderRadius: '2px', boxShadow: '0 0 10px var(--accent)' }}
-              />
-            ))}
-          </div>
+        {showRatingChangePopup && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            style={{
+              position: 'fixed',
+              top: '80px',
+              left: '50%',
+              zIndex: 1000,
+              background: showRatingChangePopup.isWin ? 'rgba(80, 250, 123, 0.1)' : 'rgba(255, 85, 85, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: `1px solid ${showRatingChangePopup.isWin ? '#50fa7b' : '#ff5555'}`,
+              padding: '1rem 2rem',
+              borderRadius: '0.5rem',
+              color: showRatingChangePopup.isWin ? '#50fa7b' : '#ff5555',
+              fontWeight: 900,
+              fontSize: '1.2rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              boxShadow: `0 0 30px ${showRatingChangePopup.isWin ? 'rgba(80, 250, 123, 0.2)' : 'rgba(255, 85, 85, 0.2)'}`,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em'
+            }}
+          >
+            {showRatingChangePopup.isWin ? <Trophy size={24} /> : <AlertCircle size={24} />}
+            <span>Rating {showRatingChangePopup.isWin ? 'Increased' : 'Decreased'} {showRatingChangePopup.amount > 0 ? '+' : ''}{showRatingChangePopup.amount}</span>
+          </motion.div>
+        )}
+
+        {(showLimitWarning || showWrongAnswerPopup || showWaitingPopup || showOpponentFoundPopup) && (
+          <motion.div
+            initial={{ opacity: 0, x: 20, y: -20 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: 20, y: -20 }}
+            style={{
+              position: 'fixed',
+              top: '1rem',
+              right: '1rem',
+              zIndex: 9999,
+              background: 'var(--bg)',
+              border: `1px solid ${showWrongAnswerPopup ? '#ff5555' : (showWaitingPopup ? 'var(--text-muted)' : (showOpponentFoundPopup ? '#50fa7b' : 'var(--accent)'))}`,
+              padding: '0.75rem 1rem',
+              borderRadius: '0.4rem',
+              color: showWrongAnswerPopup ? '#ff5555' : 'var(--text)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}
+          >
+            <AlertCircle size={18} color={showWrongAnswerPopup ? '#ff5555' : (showWaitingPopup ? 'var(--text-muted)' : (showOpponentFoundPopup ? '#50fa7b' : 'var(--accent)'))} />
+            {showWrongAnswerPopup ? "Wrong Answer! Check your logic." : (showWaitingPopup ? `Waiting for opponent... PIN: ${activeDuel?.pin || ''}` : (showOpponentFoundPopup ? "Opponent found!" : "Maximum of 4 windows allowed."))}
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -1256,7 +1552,7 @@ const MainMenu: React.FC = () => {
                 filter: 'drop-shadow(0 0 10px var(--accent))'
               }}
             />
-            <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
+            <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
           </Link>
           <ul className="nav-links">
             {navLinks.map(link => {
@@ -1361,6 +1657,10 @@ const MainMenu: React.FC = () => {
             
             const isMax = id === maximizedWindow;
             const originalIdx = openWindows.indexOf(id);
+            const rwIdx = renderedWindows.indexOf(id);
+            const canReorder = !isMax && renderedWindows.length > 1;
+            const canMoveLeft = canReorder && rwIdx > 0;
+            const canMoveRight = canReorder && rwIdx < renderedWindows.length - 1;
 
             return (
               <React.Fragment key={id}>
@@ -1433,24 +1733,52 @@ const MainMenu: React.FC = () => {
                             <button onClick={(e) => { e.stopPropagation(); handleBeautify(); }} className="twm-btn" title="Beautify code (Format)" style={{ padding: '0.1rem 0.3rem' }}><Wand2 size={12} /></button>
                           </div>
                         )}
+                        {id === 'problem' && activeQuestion && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); runTests(); }} 
+                              disabled={isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)} 
+                              style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)) ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)) ? 0.7 : 1 }}>
+                              {isTesting ? "..." : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? "SUBMITTED" : "SUBMIT")}
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="twm-window-actions">
-                        {!(id === 'editor' && openWindows.length === 1) && (
-                          <button className="twm-btn" onClick={() => toggleMaximize(id)} title={isMax ? "Restore" : "Maximize"}>
-                            {isMax ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                          </button>
-                        )}
-                        {!isMax && renderedWindows.length > 1 && (
-                          <>
-                            <button className="twm-btn" onClick={() => moveWindow(id, 'left')}><ArrowLeft size={14} /></button>
-                            <button className="twm-btn" onClick={() => moveWindow(id, 'right')}><ArrowRight size={14} /></button>
-                          </>
-                        )}
-                        {id !== 'editor' && <button className="twm-btn" onClick={() => toggleWindow(id)}><X size={14} /></button>}
+                        <button type="button" className="twm-btn" onClick={() => toggleMaximize(id)} title={isMax ? "Restore" : "Maximize"}>
+                          {isMax ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="twm-btn"
+                          disabled={!canMoveLeft}
+                          onClick={() => moveWindow(id, "left")}
+                          title="Move left"
+                        >
+                          <ArrowLeft size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="twm-btn"
+                          disabled={!canMoveRight}
+                          onClick={() => moveWindow(id, "right")}
+                          title="Move right"
+                        >
+                          <ArrowRight size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="twm-btn"
+                          disabled={id === "editor"}
+                          onClick={() => toggleWindow(id)}
+                          title={id === "editor" ? "Editor cannot be closed" : "Close"}
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
                     </motion.div>
                   </div>
-                  <div className="twm-content" style={{ overflow: 'hidden' }}>
+                  <div className="twm-content" style={{ overflow: 'hidden', pointerEvents: (isDragging || isReordering) ? 'none' : 'auto' }}>
                     <motion.div 
                       layout={animationSpeed !== "none" && !isDragging}
                       transition={getTransition()}
@@ -1466,7 +1794,11 @@ const MainMenu: React.FC = () => {
                     layout={animationSpeed !== "none" && !isDragging}
                     transition={getTransition()}
                     className="twm-resizer" 
-                    onMouseDown={(e) => startResizing(e, idx)} 
+                    onMouseDown={(e) => {
+                      const rightId = renderedWindows[idx + 1];
+                      if (rightId === undefined) return;
+                      startResizing(e, openWindows.indexOf(id), openWindows.indexOf(rightId));
+                    }}
                   />
                 )}
               </React.Fragment>

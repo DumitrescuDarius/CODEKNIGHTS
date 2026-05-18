@@ -34,6 +34,12 @@ interface EditorWindowProps {
   compileErrors: any[];
   t: (key: TranslationKey) => string;
   isResizing: boolean;
+  analysis?: {
+    timeComplexity?: string;
+    spaceComplexity?: string;
+    complexityExplanation?: string;
+  } | null;
+  isAnalyzing?: boolean;
 }
 
 export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
@@ -41,7 +47,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
   showTerminal, setShowTerminal, terminalHeight, startTerminalResizing,
   stdin, setStdin, terminalOutput, terminalFontSize, vimMode,
   vimStatusBarRef, editorRef, langSelectorOpen, setLangSelectorOpen,
-  cursorPos, setCursorPos, compileErrors, t, isResizing
+  cursorPos, setCursorPos, compileErrors, t, isResizing, analysis, isAnalyzing
 }) => {
   const monaco = useMonaco();
 
@@ -164,7 +170,16 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
             </div>
             <div className="terminal-section">
               <div className="terminal-label">Stdout</div>
-              <div className="terminal-output" style={{ fontSize: `${terminalFontSize}px`, fontFamily: fontFamily }}>{terminalOutput}</div>
+              <div className="terminal-output" style={{ fontSize: `${terminalFontSize}px`, fontFamily: fontFamily, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ flex: 1, overflowY: 'auto' }}>{terminalOutput}</div>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: 'auto' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time:</div>
+                  <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{isAnalyzing ? '...' : (analysis?.timeComplexity || 'N/A')}</div>
+                  <div style={{ width: '1rem' }} />
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Space:</div>
+                  <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{isAnalyzing ? '...' : (analysis?.spaceComplexity || 'N/A')}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

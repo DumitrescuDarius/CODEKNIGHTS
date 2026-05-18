@@ -7,6 +7,8 @@
   --gap: 0.75rem;
   --window-bg: #000000;
   --header-bg: rgba(255, 255, 255, 0.03);
+  /* Fits title + editor tools + window controls without squashing */
+  --twm-window-min-width: min(100%, 22rem);
 }
 
 @keyframes windowOpen {
@@ -27,7 +29,7 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: "JetBrainsMono NF", "JetBrainsMono Nerd Font", "FiraCode NF", "FiraCode Nerd Font", monospace;
+  font-family: "IBM Plex Mono", monospace;
   transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -92,12 +94,14 @@ body.resizing * {
 .twm-workspace {
   flex: 1;
   min-height: 0; /* Critical for flex child to not overflow parent */
+  min-width: 0;
   display: flex;
   gap: 0; 
   width: 100%;
+  overflow-x: auto;
 }
 .twm-window {
-  min-width: 50px;
+  min-width: var(--twm-window-min-width);
   display: flex;
   flex-direction: column;
   background: var(--window-bg);
@@ -158,10 +162,24 @@ body.resizing * {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   background: var(--header-bg);
   box-sizing: border-box;
   flex-shrink: 0;
+  min-width: 0;
   transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.twm-window-header > *:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Title / tools column: may shrink; actions stay full width */
+.twm-window-header > *:first-child > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .twm-window-title {
@@ -173,11 +191,14 @@ body.resizing * {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .twm-window-actions {
   display: flex;
   gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .twm-btn {
@@ -195,6 +216,16 @@ body.resizing * {
   color: var(--text);
 }
 
+.twm-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.twm-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-muted);
+}
+
 .twm-content {
   flex: 1;
   min-height: 0; /* Critical for flex child */
@@ -202,6 +233,9 @@ body.resizing * {
   position: relative;
   display: flex;
   flex-direction: column;
+  border-bottom-left-radius: 0.4rem;
+  border-bottom-right-radius: 0.4rem;
+  overflow: hidden;
 }
 
 .terminal-panel {
@@ -243,6 +277,7 @@ body.resizing * {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .terminal-section:first-child {
@@ -262,7 +297,7 @@ body.resizing * {
 .terminal-input, .terminal-output {
   flex: 1;
   padding: 0.75rem;
-  font-family: "JetBrainsMono NF", monospace;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 0.9rem;
   color: var(--text);
   background: transparent;

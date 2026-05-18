@@ -13,13 +13,20 @@ export async function POST(req: NextRequest) {
   const userName = session?.user ? ((session.user as any).username || session.user.name) : "Guest Knight";
 
   try {
-    // Get all questions to pick one randomly
-    const questions = await prisma.question.findMany();
-    if (questions.length === 0) {
+    // Optimized random question selection
+    const questionCount = await prisma.question.count();
+    if (questionCount === 0) {
       return NextResponse.json({ error: "No questions available in the arena" }, { status: 400 });
     }
 
-    const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+    const randomIndex = Math.floor(Math.random() * questionCount);
+    const randomQuestion = await prisma.question.findFirst({
+      skip: randomIndex,
+    });
+    
+    if (!randomQuestion) {
+      return NextResponse.json({ error: "Failed to select a random question" }, { status: 500 });
+    }
     
     // Generate a unique 6-digit PIN
     let pin = "";

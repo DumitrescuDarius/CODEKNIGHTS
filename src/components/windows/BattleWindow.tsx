@@ -23,15 +23,19 @@ interface BattleWindowProps {
   showCancelDuel: boolean;
   setShowCancelDuel: (val: boolean) => void;
   handleCancelDuel: () => void;
+  setShowWaitingPopup: (val: boolean) => void;
 }
 
 export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
-  startBattle, questions, session, isGuest, handlePlayAsGuest, t, onDeleteQuestion, onEditQuestion,
+  startBattle, setShowWaitingPopup, questions, session, isGuest, handlePlayAsGuest, t, onDeleteQuestion, onEditQuestion,
   createDuel, joinDuel, activeDuel, setActiveDuel, setDuelPin, showCancelDuel, setShowCancelDuel, handleCancelDuel
 }) => {
+  console.log("BattleWindow activeDuel:", activeDuel);
   const [joinPin, setJoinPin] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   const isAdmin = !!session?.user?.isAdmin;
 
@@ -109,48 +113,126 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
     );
   }
 
-  if (activeDuel && activeDuel.status === "WAITING") {
+  if (activeDuel && activeDuel.status === "FINISHED") {
+    const hostWin = (activeDuel.hostPenalty || 0) < (activeDuel.guestPenalty || 0);
+    const guestWin = !hostWin;
+    
     return (
       <div style={{ padding: '2rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-        <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1.5rem', borderRadius: '50%', marginBottom: '2rem', animation: 'pulse 2s infinite' }}>
-          <Users size={64} />
-        </div>
-        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>WAITING FOR OPPONENT</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '3rem' }}>UPLINK ESTABLISHED. BROADCASTING PIN.</p>
-        
-        <div style={{ position: 'relative', marginBottom: '3rem' }}>
-          <div style={{ fontSize: '4rem', fontWeight: 900, letterSpacing: '0.3em', color: 'var(--accent)', padding: '1.5rem 3rem', background: 'rgba(122, 162, 247, 0.03)', border: '2px dashed var(--accent)', borderRadius: '0.5rem', boxShadow: '0 0 40px rgba(122, 162, 247, 0.1)' }}>
-            {activeDuel.pin}
-          </div>
-          <button 
-            onClick={() => navigator.clipboard.writeText(activeDuel.pin)}
-            style={{ position: 'absolute', top: '-15px', right: '-15px', background: 'var(--accent)', color: '#000', border: 'none', padding: '0.6rem', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
-            title="Copy PIN"
-          >
-            <Copy size={18} />
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.8rem', width: '100%', maxWidth: '350px' }}>
-          {activeDuel.host.image ? (
-            <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid var(--accent)' }} />
-          ) : (
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <User size={24} />
+        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '2rem' }}>BATTLE FINISHED</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '3rem' }}>
+          <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem' }}>
+            <div style={{ fontWeight: 800, marginBottom: '0.5rem' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
+            <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
+              Rating: {activeDuel.host?.rating ?? 1000}
+              {activeDuel.hostRatingChange !== null && activeDuel.hostRatingChange !== undefined && (
+                <span style={{ marginLeft: '0.4rem', color: activeDuel.hostRatingChange >= 0 ? '#50fa7b' : '#ff5555' }}>
+                  ({activeDuel.hostRatingChange >= 0 ? '+' : ''}{activeDuel.hostRatingChange})
+                </span>
+              )}
             </div>
-          )}
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: '1rem', fontWeight: 800 }}>{activeDuel.host.username || activeDuel.host.name}</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 900, letterSpacing: '0.1em' }}>UPLINK_HOST</div>
+            <div style={{ fontSize: '1.5rem', color: hostWin ? '#50fa7b' : 'var(--text)' }}>Penalty: {activeDuel.hostPenalty || 0}</div>
           </div>
-          <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 900 }}>ONLINE</div>
+          <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem' }}>
+            <div style={{ fontWeight: 800, marginBottom: '0.5rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
+            <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
+              Rating: {activeDuel.guest?.rating ?? 1000}
+              {activeDuel.guestRatingChange !== null && activeDuel.guestRatingChange !== undefined && (
+                <span style={{ marginLeft: '0.4rem', color: activeDuel.guestRatingChange >= 0 ? '#50fa7b' : '#ff5555' }}>
+                  ({activeDuel.guestRatingChange >= 0 ? '+' : ''}{activeDuel.guestRatingChange})
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '1.5rem', color: guestWin ? '#50fa7b' : 'var(--text)' }}>Penalty: {activeDuel.guestPenalty || 0}</div>
+          </div>
         </div>
+        <button onClick={() => { setActiveDuel(null); setDuelPin(""); }} style={{ background: 'var(--line)', border: 'none', padding: '1rem 2rem', borderRadius: '0.4rem', color: 'var(--text)', cursor: 'pointer' }}>BACK TO ARENA</button>
       </div>
     );
   }
 
+  if (activeDuel && activeDuel.status === "WAITING") {
+    return (
+      <div style={{ padding: '2rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+        <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1.5rem', borderRadius: '50%', marginBottom: '2rem' }}>
+          <Users size={64} />
+        </div>
+        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '0.05em' }}>WAITING FOR OPPONENT</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '450px', marginBottom: '3rem', lineHeight: 1.6 }}>
+          Your duel uplink is established. Share the PIN below with your opponent to initiate combat.
+        </p>
+        
+        <div 
+          onClick={() => {
+            if (activeDuel?.pin) {
+              navigator.clipboard.writeText(activeDuel.pin);
+            }
+          }}
+          title="Click to copy PIN"
+          style={{ 
+            background: 'rgba(255,255,255,0.03)', 
+            border: '1px solid var(--line)', 
+            padding: '2rem 4rem', 
+            borderRadius: '1rem', 
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--accent)';
+            e.currentTarget.style.background = 'rgba(122, 162, 247, 0.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--line)';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+          }}
+        >
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.2em' }}>DUEL PIN</div>
+          <div style={{ fontSize: '4rem', fontWeight: 950, color: 'var(--accent)', letterSpacing: '0.3em', fontFamily: 'monospace' }}>
+            {activeDuel.pin}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 700 }}>
+            <Copy size={14} /> CLICK TO COPY
+          </div>
+        </div>
+
+        <button 
+          onClick={() => setShowCancelDuel(true)}
+          style={{ 
+            marginTop: '4rem', 
+            background: 'transparent', 
+            border: 'none', 
+            color: 'rgba(255, 85, 85, 0.6)', 
+            fontWeight: 700, 
+            cursor: 'pointer', 
+            fontSize: '0.9rem',
+            letterSpacing: '0.1em',
+            textDecoration: 'underline'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = '#ff5555'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 85, 85, 0.6)'}
+        >
+          ABORT UPLINK
+        </button>
+      </div>
+    );
+  }
+
+
   return (
-    <div style={{ padding: '2.5rem 1.5rem', height: '100%', overflow: 'auto' }}>
+    <div style={{ padding: '2.5rem 1.5rem', height: '100%', overflow: 'auto', position: 'relative' }}>
+      {(isCreating || isJoining) && (
+        <div style={{ position: 'absolute', inset: 0, background: 'var(--bg)', zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+          <div className="loading-spinner" style={{ width: '40px', height: '40px' }} />
+          <div style={{ color: 'var(--accent)', fontWeight: 800, letterSpacing: '0.1em' }}>
+            {isCreating ? "GENERATING UPLINK..." : "INITIATING HANDSHAKE..."}
+          </div>
+        </div>
+      )}
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '3.5rem', textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
@@ -162,7 +244,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             Engage in high-frequency algorithmic combat.
           </p>
         </div>
-
+        
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
           {/* Quick Battle */}
           <section>
@@ -204,7 +286,13 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1.25rem' }}>
                 <button 
-                  onClick={createDuel}
+                  onClick={async () => { 
+                    setIsCreating(true);
+                    await createDuel(); 
+                    setShowWaitingPopup(true);
+                    setIsCreating(false);
+                  }}
+                  disabled={isCreating}
                   style={{ 
                     height: '56px', 
                     borderRadius: '0.4rem',
@@ -217,14 +305,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '0.75rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    cursor: isCreating ? 'wait' : 'pointer',
+                    opacity: isCreating ? 0.7 : 1
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--line)'}
                 >
-                  <Plus size={18} /> GENERATE UPLINK
+                  {isCreating ? "GENERATING..." : "CREATE UPLINK"}
                 </button>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                   <div style={{ position: 'relative', flex: 1 }}>
@@ -255,7 +340,13 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     />
                   </div>
                   <button 
-                    onClick={() => joinDuel(joinPin)}
+                    onClick={async () => {
+                      if (!joinPin) return;
+                      setIsJoining(true);
+                      await joinDuel(joinPin);
+                      setIsJoining(false);
+                    }}
+                    disabled={isJoining || isCreating}
                     style={{ 
                       height: '56px', 
                       background: 'var(--text)', 
@@ -264,137 +355,16 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                       fontWeight: 900, 
                       padding: '0 2rem',
                       borderRadius: '0.4rem',
-                      cursor: 'pointer',
+                      cursor: (isJoining || isCreating) ? 'wait' : 'pointer',
                       fontSize: '0.9rem',
-                      letterSpacing: '0.1em'
+                      letterSpacing: '0.1em',
+                      opacity: (isJoining || isCreating) ? 0.7 : 1
                     }}
                   >
-                    JOIN
+                    {isJoining ? "JOINING..." : "JOIN"}
                   </button>
                 </div>
               </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, fontWeight: 500 }}>Establish a secure encrypted room for direct peer-to-peer algorithmic testing.</p>
-            </div>
-          </section>
-          
-          <section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-                <Target size={16} /> Tactical Scenarios
-              </span>
-              <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input 
-                  type="text" 
-                  placeholder="FILTER_GRID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ 
-                    background: 'rgba(0,0,0,0.2)', 
-                    border: '1px solid var(--line)', 
-                    padding: '0.5rem 0.8rem 0.5rem 2.25rem', 
-                    borderRadius: '0.4rem', 
-                    color: 'inherit', 
-                    outline: 'none',
-                    fontSize: '0.75rem',
-                    width: '200px',
-                    fontWeight: 600,
-                    letterSpacing: '0.05em'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--line)'}
-                />
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {filteredQuestions.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--line)', borderRadius: '0.4rem' }}>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>NO DATA MATCHES SEARCH PARAMETERS.</p>
-                </div>
-              ) : (
-                filteredQuestions.map((q) => {
-                  const diffLabel = q.difficulty === 'Easy' ? 'LOW_THREAT' : q.difficulty === 'Medium' ? 'MODERATE_THREAT' : 'HIGH_THREAT';
-                  const diffColor = q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555';
-                  const isHovered = hoveredCard === q.id;
-                  
-                  return (
-                    <div 
-                      key={q.id} 
-                      onMouseEnter={() => setHoveredCard(q.id)}
-                      onMouseLeave={() => setHoveredCard(null)}
-                      style={{ 
-                        padding: '1.25rem 1.5rem', 
-                        border: '1px solid',
-                        borderColor: isHovered ? 'var(--accent)' : 'var(--line)', 
-                        borderRadius: '0.4rem', 
-                        background: isHovered ? 'rgba(122, 162, 247, 0.03)' : 'rgba(255,255,255,0.01)', 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        transform: isHovered ? 'scale(1.01)' : 'scale(1)',
-                        boxShadow: isHovered ? '0 10px 30px rgba(0,0,0,0.3)' : 'none'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                        <div style={{ height: '40px', width: '2px', background: isHovered ? 'var(--accent)' : diffColor, transition: 'all 0.2s ease' }} />
-                        <div>
-                          <div style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '0.02em', color: isHovered ? 'var(--accent)' : 'var(--text)' }}>{q.title.toUpperCase()}</div>
-                          <div style={{ fontSize: '0.65rem', color: diffColor, marginTop: '0.4rem', fontWeight: 900, letterSpacing: '0.1em' }}>{diffLabel}</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        {isAdmin && (
-                          <>
-                            {onEditQuestion && (
-                              <button 
-                                onClick={() => onEditQuestion(q)}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.5rem', borderRadius: '0.3rem', transition: 'all 0.2s ease' }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                                title="Edit Scenario"
-                              >
-                                <Edit2 size={18} />
-                              </button>
-                            )}
-                            {onDeleteQuestion && (
-                              <button 
-                                onClick={() => onDeleteQuestion(q.id)}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.5rem', borderRadius: '0.3rem', transition: 'all 0.2s ease' }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#ff5555'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                                title="Delete Scenario"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            )}
-                          </>
-                        )}
-                        <button 
-                          onClick={() => startBattle(q)} 
-                          style={{ 
-                            fontSize: '0.75rem', 
-                            height: '36px',
-                            padding: '0 1.25rem',
-                            background: isHovered ? 'var(--accent)' : 'transparent',
-                            border: '1px solid',
-                            borderColor: isHovered ? 'var(--accent)' : 'var(--line)',
-                            color: isHovered ? '#000' : 'var(--accent)',
-                            fontWeight: 900,
-                            cursor: 'pointer',
-                            borderRadius: '0.2rem',
-                            letterSpacing: '0.15em',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          INITIALIZE
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
             </div>
           </section>
         </div>

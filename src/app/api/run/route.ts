@@ -1,9 +1,39 @@
 import { NextResponse } from "next/server";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import os from "os";
+
+/** Avoid spawning `docker version` on every run (was a large fixed cost per request). */
+let dockerAvailableCache: boolean | undefined;
+
+function shouldUseDocker(): boolean {
+  const mode = process.env.CODEKNIGHTS_EXECUTOR?.toLowerCase();
+  if (mode === "local") return false;
+  if (mode === "docker") {
+    if (dockerAvailableCache === undefined) {
+      try {
+        execSync("docker version", { stdio: "ignore", timeout: 4000 });
+        dockerAvailableCache = true;
+      } catch {
+        dockerAvailableCache = false;
+      }
+    }
+    return dockerAvailableCache;
+  }
+  // auto (default): Docker unless explicitly told to prefer host toolchain (faster on dev machines).
+  if (process.env.CODEKNIGHTS_PREFER_LOCAL === "1") return false;
+  if (dockerAvailableCache === undefined) {
+    try {
+      execSync("docker version", { stdio: "ignore", timeout: 4000 });
+      dockerAvailableCache = true;
+    } catch {
+      dockerAvailableCache = false;
+    }
+  }
+  return dockerAvailableCache;
+}
 
 function parseCompileError(stderr: string, fileName: string) {
   const errors: { line: number; column: number; message: string }[] = [];
@@ -36,7 +66,9 @@ export async function POST(req: Request) {
     const { code, stdin } = body;
     language = body.language;
 
-    console.log(`[API/RUN] Received request for ${language}`);
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[API/RUN] Received request for ${language}`);
+    }
 
     if (!code) {
       return NextResponse.json({ error: "No code provided" }, { status: 400 });
@@ -56,10 +88,7 @@ export async function POST(req: Request) {
     jobDir = path.join(fs.existsSync(tempRoot) ? tempRoot : os.tmpdir(), `job_${jobId}`);
     fs.mkdirSync(jobDir, { recursive: true, mode: 0o777 });
 
-    // Check if Docker is available
-    const hasDocker = await new Promise((resolve) => {
-      exec("docker --version", (error) => resolve(!error));
-    });
+    const hasDocker = shouldUseDocker();
 
     let fileName = "";
     let runCmd = "";
@@ -70,70 +99,60 @@ export async function POST(req: Request) {
     switch (language) {
       case "c":
         fileName = "solution.c";
+        // -pipe: less temp I/O; -O0: fast compile for short programs
+        compileCmd = `gcc -pipe -O0 "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, "solution")}"`;
+        runCmd = `"${path.join(jobDir, "solution")}"`;
         if (hasDocker) {
           dockerImage = "gcc:latest";
-          containerCmd = `sh -c "gcc solution.c -o solution && ./solution"`;
-        } else {
-          compileCmd = `gcc "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, "solution")}"`;
-          runCmd = `"${path.join(jobDir, "solution")}"`;
+          containerCmd = `sh -c "gcc -pipe -O0 solution.c -o solution && ./solution"`;
         }
         break;
       case "cpp":
         fileName = "solution.cpp";
+        compileCmd = `g++ -pipe -O0 "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, "solution")}"`;
+        runCmd = `"${path.join(jobDir, "solution")}"`;
         if (hasDocker) {
           dockerImage = "gcc:latest";
-          containerCmd = `sh -c "g++ solution.cpp -o solution && ./solution"`;
-        } else {
-          compileCmd = `g++ "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, "solution")}"`;
-          runCmd = `"${path.join(jobDir, "solution")}"`;
+          containerCmd = `sh -c "g++ -pipe -O0 solution.cpp -o solution && ./solution"`;
         }
         break;
       case "python":
         fileName = "solution.py";
+        // For python there's no compile step; run locally with python3
+        runCmd = `python3 "${path.join(jobDir, fileName)}"`;
         if (hasDocker) {
           dockerImage = "python:3.11-slim";
           containerCmd = `python3 solution.py`;
-        } else {
-          runCmd = `python3 "${path.join(jobDir, fileName)}"`;
         }
         break;
       case "java":
         const classMatch = code.match(/public\s+class\s+([a-zA-Z0-9_$]+)/) || code.match(/class\s+([a-zA-Z0-9_$]+)/);
         const className = classMatch ? classMatch[1] : "Solution";
         fileName = `${className}.java`;
+        // Use standard javac locally; avoid unsupported --release flags
+        compileCmd = `javac "${path.join(jobDir, fileName)}"`;
+        runCmd = `java -XX:TieredStopAtLevel=1 -cp "${jobDir}" ${className}`;
         if (hasDocker) {
           dockerImage = "openjdk:17-slim";
-          containerCmd = `sh -c "javac ${fileName} && java ${className}"`;
-        } else {
-          compileCmd = `javac --release 25 "${path.join(jobDir, fileName)}"`;
-          runCmd = `java -cp "${jobDir}" ${className}`;
+          containerCmd = `sh -c "javac ${fileName} && java -XX:TieredStopAtLevel=1 ${className}"`;
         }
         break;
       default:
         return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
     }
 
-    console.log(`[API/RUN] Mode: ${hasDocker ? "Docker" : "Local Fallback"}`);
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[API/RUN] Mode: ${hasDocker ? "Docker" : "Local"}`);
+    }
     fs.writeFileSync(path.join(jobDir, fileName), code);
     fs.chmodSync(path.join(jobDir, fileName), 0o666);
 
     const execute = async () => {
-      if (hasDocker) {
-        const dockerArgs = `--rm --network none --memory 128m --cpus 0.5 -v "${jobDir}:/app" -w /app`;
-        const fullRunCmd = `docker run ${dockerArgs} ${dockerImage} ${containerCmd}`;
-        console.log(`[API/RUN] Executing Docker: ${fullRunCmd}`);
-        
-        return new Promise((resolve, reject) => {
-          const child = exec(fullRunCmd, { timeout: 10000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
-            if (error && (error as any).killed) reject({ stderr: "Execution timed out (10s)" });
-            else resolve(stdout + (stderr ? "\n" + stderr : ""));
-          });
-          if (stdin && child.stdin) { child.stdin.write(stdin); child.stdin.end(); }
-        });
-      } else {
-        // Fallback to local execution
+      const runLocal = async () => {
         if (compileCmd) {
-          console.log(`[API/RUN] Local Compile: ${compileCmd}`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(`[API/RUN] Local Compile: ${compileCmd}`);
+          }
           await new Promise((resolve, reject) => {
             exec(compileCmd, { timeout: 10000 }, (error, stdout, stderr) => {
               if (error) reject({ stderr: stderr || error.message });
@@ -144,20 +163,49 @@ export async function POST(req: Request) {
             try { fs.chmodSync(path.join(jobDir, "solution"), 0o755); } catch(e) {}
           }
         }
-        
-        console.log(`[API/RUN] Local Run: ${runCmd}`);
+
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[API/RUN] Local Run: ${runCmd}`);
+        }
         return new Promise((resolve, reject) => {
           const child = exec(runCmd, { timeout: 5000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
             if (error && (error as any).killed) reject({ stderr: "Execution timed out (5s)" });
+            else if (error) reject({ stderr: stderr || error.message });
             else resolve(stdout + (stderr ? "\n" + stderr : ""));
           });
           if (stdin && child.stdin) { child.stdin.write(stdin); child.stdin.end(); }
         });
+      };
+
+      if (hasDocker) {
+        // --pull=never: skip registry round-trip; host already has the image from a prior run
+        const dockerArgs = `--rm --pull=never --network none --memory 128m --cpus 0.5 -v "${jobDir}:/app" -w /app`;
+        const fullRunCmd = `docker run ${dockerArgs} ${dockerImage} ${containerCmd}`;
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[API/RUN] Executing Docker: ${fullRunCmd}`);
+        }
+        try {
+          return await new Promise((resolve, reject) => {
+            const child = exec(fullRunCmd, { timeout: 10000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+              if (error && (error as any).killed) reject({ stderr: "Execution timed out (10s)" });
+              else if (error) reject({ stderr: stderr || error.message });
+              else resolve(stdout + (stderr ? "\n" + stderr : ""));
+            });
+            if (stdin && child.stdin) { child.stdin.write(stdin); child.stdin.end(); }
+          });
+        } catch (dockerErr) {
+          console.error("[API/RUN] Docker execution failed, falling back to local execution:", dockerErr);
+          return await runLocal();
+        }
+      } else {
+        return await runLocal();
       }
     };
 
     const output = await execute();
-    console.log("[API/RUN] Execution successful");
+    if (process.env.NODE_ENV === "development") {
+      console.log("[API/RUN] Execution successful");
+    }
     return NextResponse.json({ output });
 
   } catch (error: any) {

@@ -12,14 +12,22 @@ interface ProfileWindowProps {
 }
 
 export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session, userStats, t }) => {
-  const winRate = userStats.battlesTotal > 0 ? ((userStats.battlesWon / userStats.battlesTotal) * 100).toFixed(1) : "0.0";
   const isAdmin = !!session?.user?.isAdmin;
-  
-  const getRankLabel = (wins: number) => {
-    if (wins > 50) return t("grandmaster");
-    if (wins > 20) return t("knight");
-    if (wins > 5) return t("squire");
-    return t("peasant");
+  const rank = (session?.user as any)?.rank || "Novice";
+  const rating = (session?.user as any)?.rating ?? 1000;
+  const dailyWins = (session?.user as any)?.dailyWins ? (typeof (session.user as any).dailyWins === 'string' ? JSON.parse((session.user as any).dailyWins) : (session.user as any).dailyWins) : {};
+
+  const getTodayWins = () => {
+    const today = new Date().toLocaleDateString('en-CA');
+    return dailyWins[today] || 0;
+  };
+
+  const getSquareColor = (wins: number) => {
+    if (wins === 0) return 'rgba(255,255,255,0.05)';
+    if (wins < 2) return '#0e4429'; // L1
+    if (wins < 5) return '#006d32'; // L2
+    if (wins < 10) return '#26a641'; // L3
+    return '#39d353'; // L4
   };
 
   return (
@@ -40,66 +48,55 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            <span>{t("rank")}: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{getRankLabel(userStats.battlesWon)}</span></span>
-            <span>{t("battle")}: <span style={{ color: 'var(--text)', fontWeight: 600 }}>{userStats.battlesTotal}</span></span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <span>{t("rank")}: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{rank}</span></span>
+            <span>Rating: <span style={{ color: '#f1fa8c', fontWeight: 600 }}>{rating}</span></span>
             <span>{t("battlesWon")}: <span style={{ color: '#50fa7b', fontWeight: 600 }}>{userStats.battlesWon}</span></span>
+            <span>Wins Today: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{getTodayWins()}</span></span>
           </div>
         </div>
       </div>
 
       <div className="settings-group">
-        <span className="settings-label">Activity Heatmap</span>
-        <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--line)', borderRadius: '0.5rem', padding: '1.5rem', overflowX: 'auto' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', gap: '3px' }}>
-              {Array.from({ length: 52 }).map((_, weekIdx) => (
-                <div key={weekIdx} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  {Array.from({ length: 7 }).map((_, dayIdx) => {
-                    const level = Math.floor(Math.random() * 5); // Mock activity levels
-                    const colors = ['rgba(255,255,255,0.05)', '#0e4429', '#006d32', '#26a641', '#39d353'];
-                    return (
-                      <div 
-                        key={dayIdx} 
-                        style={{ 
-                          width: '10px', 
-                          height: '10px', 
-                          background: colors[level], 
-                          borderRadius: '2px',
-                          transition: 'all 0.2s ease'
-                        }} 
-                        title={`Activity level: ${level}`}
-                      />
-                    );
-                  })}
-                </div>
+        <span className="settings-label">Win Activity</span>
+        <div style={{ 
+          background: 'rgba(255,255,255,0.01)', 
+          border: '1px solid var(--line)', 
+          borderRadius: '0.5rem', 
+          padding: '1.25rem',
+          marginTop: '0.5rem'
+        }}>
+          <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
+            {Array.from({ length: 56 }).map((_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() - (55 - i));
+                const dateStr = date.toLocaleDateString('en-CA');
+                const wins = dailyWins[dateStr] || 0;
+                return (
+                    <div 
+                      key={i} 
+                      title={`${dateStr}: ${wins} wins`}
+                      style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        background: getSquareColor(wins),
+                        borderRadius: '2px',
+                        border: '1px solid rgba(0,0,0,0.1)'
+                      }} 
+                    />
+                )
+            })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+            <span>Last 8 weeks</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span>Less</span>
+              {[0, 1, 4, 9, 15].map(w => (
+                <div key={w} style={{ width: '10px', height: '10px', background: getSquareColor(w), borderRadius: '1px' }} />
               ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Less</span>
-              <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-                {['rgba(255,255,255,0.05)', '#0e4429', '#006d32', '#26a641', '#39d353'].map(c => (
-                  <div key={c} style={{ width: '10px', height: '10px', background: c, borderRadius: '2px' }} />
-                ))}
-              </div>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>More</span>
+              <span>More</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("battlesFought")}</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>{userStats.battlesTotal}</div>
-        </div>
-        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("winRate")}</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>{winRate}%</div>
-        </div>
-        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("battlesWon")}</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>{userStats.battlesWon}</div>
         </div>
       </div>
     </div>

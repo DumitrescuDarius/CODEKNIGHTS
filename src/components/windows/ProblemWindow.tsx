@@ -1,13 +1,98 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote } from "lucide-react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+
+type CodeAnalysis = {
+  timeComplexity?: string;
+  spaceComplexity?: string;
+  complexityExplanation?: string;
+  meetsComplexityRequirements?: boolean | null;
+  scores?: { efficiency: number; readability: number; maintainability: number; security: number };
+  feedback?: string;
+  error?: string;
+  details?: string;
+  quotaExceeded?: boolean;
+};
+
+function isQuotaOrRateLimitError(a: CodeAnalysis | null | undefined): boolean {
+  if (!a?.error) return false;
+  if (a.quotaExceeded) return true;
+  const blob = `${a.error} ${a.details || ""}`.toLowerCase();
+  return (
+    blob.includes("quota") ||
+    blob.includes("429") ||
+    blob.includes("resource_exhausted") ||
+    blob.includes("rate limit")
+  );
+}
+
+function ComplexityAnalysisError({
+  analysis,
+  layout = "inline",
+}: {
+  analysis: CodeAnalysis;
+  layout?: "inline" | "centered";
+}) {
+  if (isQuotaOrRateLimitError(analysis)) {
+    const boxStyle: React.CSSProperties =
+      layout === "centered"
+        ? {
+            margin: "0 auto 1rem",
+            textAlign: "left",
+            maxWidth: "32rem",
+            padding: "1rem 1.15rem",
+            borderRadius: "0.5rem",
+            background: "rgba(241, 250, 140, 0.06)",
+            border: "1px solid rgba(241, 250, 140, 0.35)",
+            color: "var(--text)",
+          }
+        : {
+            marginTop: "0.65rem",
+            padding: "1rem 1.1rem",
+            borderRadius: "0.5rem",
+            background: "rgba(241, 250, 140, 0.06)",
+            border: "1px solid rgba(241, 250, 140, 0.35)",
+            color: "var(--text)",
+          };
+    return (
+      <div style={boxStyle}>
+        <div style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: "0.5rem", color: "#f1fa8c" }}>
+          Complexity analysis unavailable
+        </div>
+        <p style={{ fontSize: "0.82rem", lineHeight: 1.55, margin: "0 0 0.75rem", color: "var(--text-muted)" }}>
+          The automatic complexity analysis is temporarily unavailable. You can retry or use the built-in Big-O heuristic.
+        </p>
+        <ol style={{ fontSize: "0.8rem", lineHeight: 1.6, margin: "0 0 0.85rem", paddingLeft: "1.25rem", color: "var(--text)" }}>
+          <li style={{ marginBottom: "0.35rem" }}>
+            Try <strong>Analyze complexity</strong> again in a moment.
+          </li>
+          <li style={{ marginBottom: "0.35rem" }}>
+            Ensure your code runs successfully and that tests completed without runtime errors.
+          </li>
+          <li style={{ marginBottom: "0.35rem" }}>If the issue persists, review the complexity manually using standard Big-O reasoning.</li>
+        </ol>
+      </div>
+    );
+  }
+  const pStyle: React.CSSProperties =
+    layout === "centered"
+      ? { color: "#ff5555", fontSize: "0.9rem", marginBottom: "1rem", marginTop: 0 }
+      : { color: "#ff5555", fontSize: "0.85rem", marginTop: "0.65rem", marginBottom: 0 };
+  return (
+    <p style={pStyle}>
+      {analysis.error}
+      {analysis.details ? ` — ${analysis.details}` : ""}
+    </p>
+  );
+}
 
 interface ProblemWindowProps {
+  userId: string;
   activeQuestion: Question | null;
   testResults: { passed: number; total: number; details: any[] } | null;
   showQuitConfirmation: boolean;
@@ -23,23 +108,81 @@ interface ProblemWindowProps {
   startNewBattle: () => void;
   runSingleTest: (input: string, index: number) => void;
   t: (key: TranslationKey) => string;
-  analysis: any | null;
+  analysis: CodeAnalysis | null;
+  isTesting: boolean;
   isAnalyzing: boolean;
+  onAnalyzeComplexity: () => void;
   activeDuel?: any;
   timeLeft?: number | null;
+  totalPenalty: number | null;
+  wrongAttemptCount: number;
+  calculatePenalty: (time: number, wa: number, scores: any, actualComp: string | undefined, idealComp: string | undefined) => number;
+  retryProblem: () => void;
   setActiveDuel?: (val: any) => void;
   setDuelPin?: (val: string) => void;
 }
 
 export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
-  activeQuestion, testResults, showQuitConfirmation, setShowQuitConfirmation,
+  userId, activeQuestion, testResults, totalPenalty, wrongAttemptCount, calculatePenalty, retryProblem, showQuitConfirmation, setShowQuitConfirmation,
   handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
-  analysis, isAnalyzing, activeDuel, timeLeft, setActiveDuel, setDuelPin
+  analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin
 }) => {
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
   const isDuelFinished = activeDuel?.status === "FINISHED";
+  const isHost = activeDuel?.hostId === userId;
+  const isGuest = activeDuel?.guestId === userId;
+  const userFinalized = isHost ? activeDuel?.hostFinalized : (isGuest ? activeDuel?.guestFinalized : false);
+  const otherFinalized = isHost ? activeDuel?.guestFinalized : (isGuest ? activeDuel?.hostFinalized : false);
+
   const SURRENDER_TIME = 999999999;
+
+  const [liveTime, setLiveTime] = useState(0);
+  const [isPenaltyOpen, setIsPenaltyOpen] = useState(false);
+
+  useEffect(() => {
+    let interval = setInterval(() => setLiveTime(prev => prev + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const getComplexityPenalty = () => {
+    if (!analysis?.timeComplexity || !activeQuestion?.idealComplexity) return 0;
+    
+    const complexityToScore = (complexity: string) => {
+        const c = complexity.toLowerCase().replace(/\s/g, '');
+        if (c === "o(1)") return 0;
+        if (c === "o(logn)") return 1;
+        if (c === "o(n)") return 2;
+        if (c === "o(nlogn)") return 3;
+        if (c === "o(n^2)") return 4;
+        if (c === "o(n^3)") return 5;
+        return 0;
+    };
+    
+    const actualScore = complexityToScore(analysis.timeComplexity);
+    const idealScore = complexityToScore(activeQuestion.idealComplexity);
+    
+    return actualScore > idealScore ? (actualScore - idealScore) * 200 : 0;
+  };
+  
+  const penaltyBreakdown = {
+      time: solveTime ? solveTime.split(':').reduce((acc, time) => (60 * acc) + +time, 0) : 0,
+      wa: wrongAttemptCount * 50,
+      complexityPenalty: getComplexityPenalty()
+  };
+
+  const livePenalty = penaltyBreakdown.time + penaltyBreakdown.wa + penaltyBreakdown.complexityPenalty;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === "Enter") {
+        e.preventDefault();
+        runTests();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [runTests]);
 
   const formatTime = (seconds: number) => {
     if (seconds * 1000 === SURRENDER_TIME) return "SURRENDERED";
@@ -65,13 +208,39 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     });
   };
 
+  const handleFinalSubmit = async () => {
+    if (!activeDuel) return;
+    try {
+      const timeSeconds = solveTime ? solveTime.split(':').reduce((acc, time) => (60 * acc) + +time, 0) : 0;
+      const complexityTotal = analysis?.scores ? 
+        (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) : 0;
+
+      await fetch("/api/duels/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            duelId: activeDuel.id, 
+            finalize: true,
+            solveTime: timeSeconds * 1000,
+            complexityScore: complexityTotal,
+            totalPenalty: totalPenalty
+        })
+      });
+    } catch (err) {
+      console.error("Final submit failed:", err);
+    }
+  };
+
   if (isDuelFinished) {
     const hostSurrendered = activeDuel.hostSolveTime === SURRENDER_TIME;
     const guestSurrendered = activeDuel.guestSolveTime === SURRENDER_TIME;
 
-    const hostWin = !hostSurrendered && (guestSurrendered || (activeDuel.hostSolveTime !== null && (activeDuel.guestSolveTime === null || activeDuel.hostSolveTime < activeDuel.guestSolveTime)));
-    const guestWin = !guestSurrendered && (hostSurrendered || (activeDuel.guestSolveTime !== null && (activeDuel.hostSolveTime === null || activeDuel.guestSolveTime < activeDuel.hostSolveTime)));
-    const draw = !hostWin && !guestWin && activeDuel.hostSolveTime !== null && activeDuel.guestSolveTime !== null && activeDuel.hostSolveTime === activeDuel.guestSolveTime;
+    const hostPenalty = activeDuel.hostPenalty ?? 999999999;
+    const guestPenalty = activeDuel.guestPenalty ?? 999999999;
+
+    const hostWin = !hostSurrendered && (guestSurrendered || (activeDuel.hostSolveTime !== null && (activeDuel.guestSolveTime === null || hostPenalty < guestPenalty || (hostPenalty === guestPenalty && activeDuel.hostSolveTime < activeDuel.guestSolveTime))));
+    const guestWin = !guestSurrendered && (hostSurrendered || (activeDuel.guestSolveTime !== null && (activeDuel.hostSolveTime === null || guestPenalty < hostPenalty || (hostPenalty === guestPenalty && activeDuel.guestSolveTime < activeDuel.hostSolveTime))));
+    const draw = !hostWin && !guestWin && activeDuel.hostSolveTime !== null && activeDuel.guestSolveTime !== null && hostPenalty === guestPenalty && activeDuel.hostSolveTime === activeDuel.guestSolveTime;
 
     return (
       <div style={{ padding: '2rem', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -84,14 +253,30 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', width: '100%', maxWidth: '500px', marginBottom: '3rem' }}>
           <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
-            <div style={{ marginBottom: '1rem' }}>{activeDuel.host.image ? <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <Zap size={32} style={{ opacity: 0.5 }} />}</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.host.username || activeDuel.host.name}</div>
+            <div style={{ marginBottom: '1rem' }}>{activeDuel.host?.image ? <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <Zap size={32} style={{ opacity: 0.5 }} />}</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
+            <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
+              Rating: {activeDuel.host?.rating ?? 1000}
+              {activeDuel.hostRatingChange !== null && activeDuel.hostRatingChange !== undefined && (
+                <span style={{ marginLeft: '0.5rem', color: activeDuel.hostRatingChange >= 0 ? '#50fa7b' : '#ff5555' }}>
+                  ({activeDuel.hostRatingChange >= 0 ? '+' : ''}{activeDuel.hostRatingChange})
+                </span>
+              )}
+            </div>
             <div style={{ fontSize: hostSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : 'inherit') }}>{activeDuel.hostSolveTime ? formatTime(Math.floor(activeDuel.hostSolveTime/1000)) : "--:--"}</div>
           </div>
           <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
             <div style={{ marginBottom: '1rem' }}>{activeDuel.guest?.image ? <img src={activeDuel.guest.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <Zap size={32} style={{ opacity: 0.5 }} />}</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest Knight"}</div>
+            <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
+              Rating: {activeDuel.guest?.rating ?? 1000}
+              {activeDuel.guestRatingChange !== null && activeDuel.guestRatingChange !== undefined && (
+                <span style={{ marginLeft: '0.5rem', color: activeDuel.guestRatingChange >= 0 ? '#50fa7b' : '#ff5555' }}>
+                  ({activeDuel.guestRatingChange >= 0 ? '+' : ''}{activeDuel.guestRatingChange})
+                </span>
+              )}
+            </div>
             <div style={{ fontSize: guestSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : 'inherit') }}>{activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime/1000)) : "--:--"}</div>
           </div>
         </div>
@@ -101,9 +286,73 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     );
   }
 
+  if (userFinalized && !isDuelFinished) {
+    return (
+      <div style={{ padding: '2rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+        <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1.5rem', borderRadius: '50%', marginBottom: '2rem' }}>
+          <Activity size={64} />
+        </div>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '1rem' }}>WAITING FOR OPPONENT</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '400px', marginBottom: '2rem' }}>
+          You have finalized your solution. Waiting for your opponent to click "Final Submit" or for the timer to run out.
+        </p>
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', padding: '1rem 2rem', borderRadius: '0.5rem', fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)' }}>
+           {timeLeft !== null && timeLeft !== undefined ? formatTime(timeLeft) : "--:--"}
+        </div>
+      </div>
+    );
+  }
+
   if (allPassed) {
     return (
       <div style={{ padding: '2rem', height: '100%', overflow: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{activeQuestion?.title}</h2>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {activeDuel?.status === "ACTIVE" ? (
+                <button 
+                  onClick={handleFinalSubmit}
+                  style={{ 
+                    background: '#50fa7b', 
+                    color: '#000', 
+                    border: 'none', 
+                    padding: '0.5rem 1.5rem', 
+                    borderRadius: '0.4rem', 
+                    fontWeight: 800, 
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 0 15px rgba(80, 250, 123, 0.3)'
+                  }}
+                >
+                  FINAL SUBMIT
+                </button>
+              ) : (
+                <button 
+                  disabled={true}
+                  style={{ 
+                    background: 'var(--accent)', 
+                    color: '#000', 
+                    border: 'none', 
+                    padding: '0.5rem 1rem', 
+                    borderRadius: '0.4rem', 
+                    fontWeight: 700, 
+                    cursor: 'default',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    opacity: 0.7
+                  }}
+                >
+                  Submitted
+                </button>
+              )}
+          </div>
+        </div>
+        
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '2.5rem' }}>
           <div style={{ background: 'var(--accent)', color: '#000', padding: '1rem', borderRadius: '50%', marginBottom: '1.5rem', boxShadow: '0 0 30px var(--accent)' }}>
             <Trophy size={48} />
@@ -112,96 +361,57 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <p style={{ color: 'var(--text-muted)' }}>{t("battleVictorious") === "LUPTĂ CÂȘTIGATĂ" ? "Ai rezolvat cu succes această provocare." : "You have successfully solved the challenge."}</p>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
-          <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("timeTaken")}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{solveTime || "--:--"}</div>
-          </div>
-          <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("langUsed")}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{(LANG_CONFIG as any)[lang]?.label || lang}</div>
-          </div>
-          <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Time Complexity</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent)' }}>{isAnalyzing ? "..." : (analysis?.timeComplexity || "N/A")}</div>
-          </div>
-          <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Space Complexity</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent)' }}>{isAnalyzing ? "..." : (analysis?.spaceComplexity || "N/A")}</div>
-          </div>
-        </div>
-
-        {/* AI Analysis Graph Section */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            <Zap size={18} color="var(--accent)" />
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Complexity & Quality Analysis</span>
-          </div>
-
-          {isAnalyzing ? (
-            <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-              <div className="loading-spinner" style={{ margin: '0 auto 1rem' }} />
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Gemini is analyzing your source code...</p>
-            </div>
-          ) : (analysis && !analysis.error) ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-              {/* Bars Graph */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {[
-                  { label: "Efficiency", value: analysis.scores?.efficiency, icon: <Cpu size={14} /> },
-                  { label: "Readability", value: analysis.scores?.readability, icon: <MessageSquareQuote size={14} /> },
-                  { label: "Maintainability", value: analysis.scores?.maintainability, icon: <Activity size={14} /> },
-                  { label: "Security", value: analysis.scores?.security, icon: <ShieldCheck size={14} /> },
-                ].map((stat) => (
-                  <div key={stat.label}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {stat.icon}
-                        <span style={{ color: 'var(--text-muted)' }}>{stat.label}</span>
-                      </div>
-                      <span style={{ fontWeight: 700 }}>{stat.value}/100</span>
-                    </div>
-                    <div style={{ height: '6px', background: 'var(--line)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${stat.value}%` }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                        style={{ height: '100%', background: 'var(--accent)', borderRadius: '3px' }}
-                      />
-                    </div>
-                  </div>
-                ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
+            <div style={{ position: 'relative', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer' }}>
+              <div onClick={() => setIsPenaltyOpen(!isPenaltyOpen)} style={{ padding: '1.25rem' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Penalty Score ℹ️</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{totalPenalty !== null ? totalPenalty : "--"}</div>
               </div>
-
-              {/* Feedback */}
-              <div style={{ padding: '1.5rem', background: 'rgba(122, 162, 247, 0.05)', border: '1px solid var(--accent)', borderRadius: '0.5rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <MessageSquareQuote size={16} /> Knight's Feedback
+              
+              <AnimatePresence>
+                {isPenaltyOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      zIndex: 100,
+                      background: 'var(--bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '0.5rem',
+                      marginTop: '0.5rem',
+                      padding: '1.25rem',
+                      fontSize: '0.85rem',
+                      color: 'var(--text-muted)',
+                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time Penalty:</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.time}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Wrong Answers ({wrongAttemptCount} × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.wa}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Complexity Penalty (Excess × 200):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.complexityPenalty}</span></div>
+                    </motion.div>                )}
+                </AnimatePresence>
                 </div>
-                <p style={{ fontSize: '0.9rem', lineHeight: 1.6, fontStyle: 'italic' }}>
-                  "{analysis.feedback}"
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding: '1.5rem', background: 'rgba(255, 85, 85, 0.05)', border: '1px solid #ff555544', borderRadius: '0.5rem', textAlign: 'center' }}>
-              <p style={{ color: '#ff5555', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                {analysis?.error || "AI Analysis data unavailable."}
-              </p>
-              <button 
-                onClick={runTests}
-                className="btn"
-                style={{ fontSize: '0.75rem', borderColor: '#ff555544', color: '#ff5555' }}
-              >
-                RETRY ANALYSIS
-              </button>
-            </div>
-          )}
-        </div>
+
+                <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("langUsed")}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{(LANG_CONFIG as any)[lang]?.label || lang}</div>
+                </div>
+                </div>
 
         <button 
+          onClick={retryProblem}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.5rem', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginBottom: '1rem' }}
+        >
+          {t("retry")}
+        </button>
+        <button 
           onClick={startNewBattle}
-          style={{ width: '100%', background: 'var(--accent)', color: '#000', border: 'none', padding: '1.25rem', borderRadius: '0.5rem', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', marginBottom: '2rem' }}
+          style={{ width: '100%', background: 'var(--accent)', color: '#000', border: 'none', padding: '1rem', borderRadius: '0.5rem', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', marginBottom: '2rem' }}
         >
           {t("startNewBattle")}
         </button>
@@ -213,9 +423,9 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
         <X size={48} color="#ff5555" style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{t("quitBattle")}</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>
-          {t("quitWarning")}
+        <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>SURRENDER?</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem', maxWidth: '400px', lineHeight: 1.5 }}>
+          Surrender? Keep in mind that your lack of ambition will cause your oponent to win!
         </p>
         <div style={{ display: 'flex', gap: '1rem', width: '100%', maxWidth: '300px' }}>
           <button 
@@ -248,16 +458,6 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{activeQuestion.title}</h2>
-            </div>
-            {timeLeft !== null && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: timeLeft < 30 ? '#ff5555' : 'var(--accent)', fontWeight: 800, fontSize: '1.2rem', fontFamily: 'monospace' }}>
-                <Zap size={18} fill="currentColor" /> {formatTime(timeLeft)}
-              </div>
-            )}
-          </div>
           <div style={{ lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
             {renderFormattedText(activeQuestion.description)}
           </div>
@@ -313,35 +513,6 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           </div>
 
           <div style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
-            <button 
-              onClick={runTests}
-              disabled={isTesting}
-              style={{ 
-                width: '100%', 
-                background: 'var(--accent)', 
-                color: '#000', 
-                border: 'none', 
-                padding: '1rem', 
-                borderRadius: '0.5rem', 
-                fontWeight: 700, 
-                cursor: isTesting ? 'wait' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                opacity: isTesting ? 0.7 : 1
-              }}
-            >
-              {isTesting ? <><div className="loading-spinner" style={{ width: '16px', height: '16px', borderTopColor: '#000' }} /> {t("testing")}</> : <><Play size={18} fill="currentColor" /> {t("runAllTests")}</>}
-            </button>
-            
-            {testResults && (
-              <div style={{ marginTop: '1rem', textAlign: 'center', padding: '0.75rem', borderRadius: '0.4rem', background: testResults.passed === testResults.total ? 'rgba(80, 250, 123, 0.1)' : 'rgba(255, 85, 85, 0.1)', color: testResults.passed === testResults.total ? '#50fa7b' : '#ff5555', fontSize: '0.9rem', fontWeight: 600 }}>
-                {testResults.passed === testResults.total 
-                  ? (t("battleVictorious") === "LUPTĂ CÂȘTIGATĂ" ? "Toate testele au trecut! Ești un adevărat Cavaler! ⚔️" : "All tests passed! You are a true Knight! ⚔️") 
-                  : (t("battleVictorious") === "LUPTĂ CÂȘTIGATĂ" ? `${testResults.passed}/${testResults.total} teste trecute. Continuă să lupți!` : `${testResults.passed}/${testResults.total} tests passed. Keep fighting!`)}
-              </div>
-            )}
           </div>
         </div>
       )}

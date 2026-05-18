@@ -1,6 +1,6 @@
 export type Language = "c" | "cpp" | "python" | "java";
 export type SupportedLanguage = "en" | "ro" | "fr" | "de" | "hi" | "ru" | "hu" | "es" | "it" | "zh" | "ja" | "pt";
-export type WindowId = "editor" | "practice" | "tournaments" | "leaderboard" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin";
+export type WindowId = "editor" | "practice" | "tournaments" | "leaderboard" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin" | "agent";
 export type AnimationSpeed = "none" | "smooth" | "bouncy" | "elastic" | "dramatic" | "snappy" | "jello" | "lazy" | "ghost" | "teleport" | "boing" | "float" | "erased" | "flip" | "glitch" | "swapVertical" | "six seven" | "fast";
 
 export interface Theme {
@@ -25,11 +25,16 @@ export interface Question {
   difficulty: string;
   testCases: string | any[];
   hiddenTestCases?: string | any[];
+  idealComplexity?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface UserStats {
   battlesWon: number;
   battlesTotal: number;
+  rating?: number;
+  dailyWins?: any;
 }
 
 export interface Match {
@@ -56,4 +61,6 @@ export interface User {
   image?: string | null;
   battlesWon: number;
   battlesTotal: number;
+  rating?: number;
+  dailyWins?: any;
 }
