@@ -117,7 +117,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
               </span>
               {newQuestion.id && (
                 <button onClick={cancelEditing} className="twm-btn" style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(255,255,255,0.05)' }}>
-                  <X size={12} /> CANCEL EDIT
+                  <X size={12} /> {t("cancelEdit")}
                 </button>
               )}
             </div>
@@ -143,12 +143,12 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                   placeholder="Describe the challenge rules and constraints..."
                 />
                 <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                  Use <b>**bold**</b> for bold and <b>==highlight==</b> for highlights.
+                  <span dangerouslySetInnerHTML={{ __html: t("boldHighlightInstruction") }} />
                 </p>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Restrictions</label>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("restrictions")}</label>
                 <textarea 
                   value={newQuestion.restrictions} 
                   onChange={(e) => { setError(null); setNewQuestion((prev: any) => ({ ...prev, restrictions: e.target.value })); }}

@@ -168,7 +168,7 @@ export async function POST(req: Request) {
           console.log(`[API/RUN] Local Run: ${runCmd}`);
         }
         return new Promise((resolve, reject) => {
-          const child = exec(runCmd, { timeout: 5000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+          const child = exec(runCmd, { timeout: 5000, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error && (error as any).killed) reject({ stderr: "Execution timed out (5s)" });
             else if (error) reject({ stderr: stderr || error.message });
             else resolve(stdout + (stderr ? "\n" + stderr : ""));
@@ -186,7 +186,7 @@ export async function POST(req: Request) {
         }
         try {
           return await new Promise((resolve, reject) => {
-            const child = exec(fullRunCmd, { timeout: 10000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+            const child = exec(fullRunCmd, { timeout: 10000, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
               if (error && (error as any).killed) reject({ stderr: "Execution timed out (10s)" });
               else if (error) reject({ stderr: stderr || error.message });
               else resolve(stdout + (stderr ? "\n" + stderr : ""));

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, UserPlus, UserCheck, Loader2, Users, Trophy } from "lucide-react";
+import { Search, UserPlus, UserCheck, Loader2, Users, Trophy, UserX, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { User } from "../../types";
 import { TranslationKey } from "../../constants/translations";
 
@@ -17,13 +18,37 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
 
 interface FriendsWindowProps {
   t: (key: TranslationKey) => string;
+  openProfile: (userId: string) => void;
 }
 
-export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t }) => {
+export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, openProfile }) => {
+  const [activeTab, setActiveTab] = useState<"friends" | "find" | "requests">("friends");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [friends, setFriends] = useState<User[]>([]);
+  const [requests, setRequests] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [following, setFollowing] = useState<string[]>([]);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [friendsRes, requestsRes] = await Promise.all([
+        fetch("/api/user/friends"),
+        fetch("/api/user/requests")
+      ]);
+      if (friendsRes.ok) setFriends(await friendsRes.json());
+      if (requestsRes.ok) setRequests(await requestsRes.json());
+    } catch (err) {
+      console.error("Fetch data error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const searchUsers = async (query: string, signal: AbortSignal) => {
     if (query.length < 2) {
@@ -39,137 +64,96 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t }) =>
         setSearchResults(data);
       }
     } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.error("Search error:", error);
-      }
+      if (error.name !== 'AbortError') console.error("Search error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const debouncedSearch = useCallback(
-    debounce((query: string, signal: AbortSignal) => searchUsers(query, signal), 300),
-    []
-  );
+  const debouncedSearch = useCallback(debounce((query: string, signal: AbortSignal) => searchUsers(query, signal), 300), []);
 
   useEffect(() => {
     const controller = new AbortController();
-    debouncedSearch(searchQuery, controller.signal);
-    return () => controller.abort();
-  }, [searchQuery, debouncedSearch]);
-
-  const toggleFollow = (userId: string) => {
-    if (following.includes(userId)) {
-      setFollowing(following.filter(id => id !== userId));
+    if (activeTab === 'find') {
+      debouncedSearch(searchQuery, controller.signal);
     } else {
-      setFollowing([...following, userId]);
+      debouncedSearch.cancel();
+      setSearchResults([]);
+    }
+    return () => controller.abort();
+  }, [searchQuery, debouncedSearch, activeTab]);
+
+  const handleFollowAction = async (userId: string, action: 'follow' | 'unfollow') => {
+    try {
+      const res = await fetch('/api/user/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId: userId, action })
+      });
+      if (res.ok) {
+        fetchData(); // Refresh lists
+      }
+    } catch (err) {
+      console.error("Error toggling follow:", err);
     }
   };
 
   return (
-    <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto' }}>
-      <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>{t("friends")}</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>{t("searchUsers")}</p>
+    <div className="friends-window">
+      <div className="friends-tabs">
+        <div className={`friends-tab ${activeTab === 'friends' ? 'friends-tab--active' : ''}`} onClick={() => setActiveTab('friends')}>
+          {t("friends")}
         </div>
+        <div className={`friends-tab ${activeTab === 'requests' ? 'friends-tab--active' : ''}`} onClick={() => setActiveTab('requests')}>
+          Requests ({requests.length})
+        </div>
+        <div className={`friends-tab ${activeTab === 'find' ? 'friends-tab--active' : ''}`} onClick={() => setActiveTab('find')}>
+          {t("searchUsers")}
+        </div>
+      </div>
 
-        <div style={{ position: 'relative', marginBottom: '2.5rem' }}>
-          <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
-            {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Search size={20} />}
+      <div className="friends-content">
+        {activeTab === 'find' && (
+          <div className="friends-search-bar">
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("searchPlaceholder")} className="friends-search-input" />
           </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            style={{
-              width: '100%',
-              background: 'rgba(0,0,0,0.2)',
-              border: '1px solid var(--line)',
-              padding: '1rem 1rem 1rem 3.5rem',
-              borderRadius: '0.8rem',
-              color: 'inherit',
-              outline: 'none',
-              fontSize: '1rem',
-              transition: 'border-color 0.2s ease',
-            }}
-            onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-            onBlur={(e) => e.target.style.borderColor = 'var(--line)'}
-          />
-        </div>
+        )}
 
-        <div className="settings-group">
-          <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Users size={16} /> {searchQuery.length >= 2 ? t("searchUsers") : t("friendsList")}
-          </span>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
-            {searchQuery.length < 2 ? (
-              <div style={{ padding: '3rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--line)', borderRadius: '0.8rem' }}>
-                <Users size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.2 }} />
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Type at least 2 characters to search for knights.</p>
-              </div>
-            ) : searchResults.length === 0 && !isLoading ? (
-              <div style={{ padding: '3rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--line)', borderRadius: '0.8rem' }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t("noUsersFound")}</p>
-              </div>
-            ) : (
-              searchResults.map((user) => (
-                <div key={user.id} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
-                  padding: '1.25rem 1.5rem', 
-                  background: 'rgba(255,255,255,0.02)', 
-                  border: '1px solid var(--line)', 
-                  borderRadius: '0.8rem',
-                  transition: 'transform 0.2s ease, background 0.2s ease',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                    {user.image ? (
-                      <img src={user.image} alt={user.username || user.name || ""} style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid var(--line)' }} />
-                    ) : (
-                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Users size={24} />
-                      </div>
-                    )}
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{user.username || user.name || "Unknown Knight"}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Trophy size={12} /> {user.battlesWon} wins • {user.battlesTotal} fought
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => toggleFollow(user.id)}
-                    className="btn"
-                    style={{ 
-                      padding: '0.5rem 1.25rem', 
-                      fontSize: '0.8rem', 
-                      fontWeight: 700, 
-                      borderRadius: '0.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      background: following.includes(user.id) ? 'rgba(255,255,255,0.1)' : 'var(--accent)',
-                      color: following.includes(user.id) ? 'var(--text)' : '#000',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {following.includes(user.id) ? (
-                      <><UserCheck size={16} /> {t("following")}</>
-                    ) : (
-                      <><UserPlus size={16} /> {t("follow")}</>
-                    )}
-                  </button>
+        <motion.div className="friends-list" layout>
+          <AnimatePresence>
+            {activeTab === 'friends' && friends.map(user => (
+              <motion.div key={user.id} className="friend-item" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <div style={{ fontWeight: 600 }}>{user.username}</div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn" onClick={() => openProfile(user.id)}>View</button>
+                    <button className="btn" onClick={() => handleFollowAction(user.id, 'unfollow')}><UserX size={14} /></button>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
+              </motion.div>
+            ))}
+
+            {activeTab === 'requests' && requests.map(user => (
+              <motion.div key={user.id} className="friend-item" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <div style={{ fontWeight: 600 }}>{user.username}</div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn" onClick={() => openProfile(user.id)}>View</button>
+                    <button className="btn" onClick={() => handleFollowAction(user.id, 'follow')} style={{ color: 'var(--accent)', borderColor: 'var(--accent)'}}><Check size={14}/></button>
+                </div>
+              </motion.div>
+            ))}
+
+            {activeTab === 'find' && searchQuery.length >= 2 && searchResults.map((user) => (
+              <motion.div key={user.id} className="friend-item" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <div style={{ fontWeight: 600 }}>{user.username || user.name || "Unknown"}</div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn" onClick={() => openProfile(user.id)}>View</button>
+                    <button onClick={() => handleFollowAction(user.id, following.includes(user.id) ? 'unfollow' : 'follow')} className="btn">
+                        {following.includes(user.id) ? t("following") : t("follow")}
+                    </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       </div>
     </div>
   );

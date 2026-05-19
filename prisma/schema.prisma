@@ -100,8 +100,8 @@ model Duel {
   expiresAt   DateTime
 
   question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  host        User     @relation("HostDuels", fields: [hostId], references: [id])
-  guest       User?    @relation("GuestDuels", fields: [guestId], references: [id])
+  host        User     @relation("HostDuels", fields: [hostId], references: [id], onDelete: SetNull)
+  guest       User?    @relation("GuestDuels", fields: [guestId], references: [id], onDelete: SetNull)
 }
 
 model Submission {

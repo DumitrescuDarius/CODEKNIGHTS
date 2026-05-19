@@ -137,8 +137,31 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
   const SURRENDER_TIME = 999999999;
 
+  const renderTimer = () => {
+    console.log("[ProblemWindow] renderTimer - timeLeft:", timeLeft, "activeQuestion:", activeQuestion);
+    if (timeLeft === null || timeLeft === undefined || activeQuestion === null) return null;
+    return (
+      <div style={{
+        background: 'var(--bg)',
+        border: '1px solid var(--line)',
+        padding: '0.25rem 0.75rem',
+        borderRadius: '0.4rem',
+        fontSize: '1rem',
+        fontWeight: 800,
+        color: timeLeft < 60 ? '#ff5555' : 'var(--accent)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem'
+      }}>
+        <Zap size={14} /> {formatTime(timeLeft)}
+      </div>
+    );
+  };
+
   const [liveTime, setLiveTime] = useState(0);
   const [isPenaltyOpen, setIsPenaltyOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     let interval = setInterval(() => setLiveTime(prev => prev + 1), 1000);
@@ -146,23 +169,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   }, []);
   
   const getComplexityPenalty = () => {
-    if (!analysis?.timeComplexity || !activeQuestion?.idealComplexity) return 0;
-    
-    const complexityToScore = (complexity: string) => {
-        const c = complexity.toLowerCase().replace(/\s/g, '');
-        if (c === "o(1)") return 0;
-        if (c === "o(logn)") return 1;
-        if (c === "o(n)") return 2;
-        if (c === "o(nlogn)") return 3;
-        if (c === "o(n^2)") return 4;
-        if (c === "o(n^3)") return 5;
-        return 0;
-    };
-    
-    const actualScore = complexityToScore(analysis.timeComplexity);
-    const idealScore = complexityToScore(activeQuestion.idealComplexity);
-    
-    return actualScore > idealScore ? (actualScore - idealScore) * 200 : 0;
+    if (!analysis?.scores) return 0;
+    return (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) * 50;
   };
   
   const penaltyBreakdown = {
@@ -209,11 +217,12 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   };
 
   const handleFinalSubmit = async () => {
-    if (!activeDuel) return;
+    if (!activeDuel || isSubmitting || submitted) return;
+    setIsSubmitting(true);
     try {
       const timeSeconds = solveTime ? solveTime.split(':').reduce((acc, time) => (60 * acc) + +time, 0) : 0;
       const complexityTotal = analysis?.scores ? 
-        (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) : 0;
+        (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) * 50 : 0;
 
       await fetch("/api/duels/submit", {
         method: "POST",
@@ -226,8 +235,11 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             totalPenalty: totalPenalty
         })
       });
+      setSubmitted(true);
     } catch (err) {
       console.error("Final submit failed:", err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -314,21 +326,22 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               {activeDuel?.status === "ACTIVE" ? (
                 <button 
                   onClick={handleFinalSubmit}
+                  disabled={isSubmitting || submitted}
                   style={{ 
-                    background: '#50fa7b', 
-                    color: '#000', 
+                    background: submitted ? 'var(--line)' : '#50fa7b', 
+                    color: submitted ? 'var(--text)' : '#000', 
                     border: 'none', 
                     padding: '0.5rem 1.5rem', 
                     borderRadius: '0.4rem', 
                     fontWeight: 800, 
-                    cursor: 'pointer',
+                    cursor: (isSubmitting || submitted) ? 'default' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    boxShadow: '0 0 15px rgba(80, 250, 123, 0.3)'
+                    boxShadow: submitted ? 'none' : '0 0 15px rgba(80, 250, 123, 0.3)'
                   }}
                 >
-                  FINAL SUBMIT
+                  {isSubmitting ? "SUBMITTING..." : (submitted ? "SUBMITTED" : "FINAL SUBMIT")}
                 </button>
               ) : (
                 <button 
@@ -392,7 +405,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time Penalty:</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.time}</span></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Wrong Answers ({wrongAttemptCount} × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.wa}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Complexity Penalty (Excess × 200):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.complexityPenalty}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Complexity Penalty (Metrics × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.complexityPenalty}</span></div>
                     </motion.div>                )}
                 </AnimatePresence>
                 </div>
@@ -450,7 +463,12 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   const currentTestCases = activeQuestion ? (typeof activeQuestion.testCases === 'string' ? JSON.parse(activeQuestion.testCases) : activeQuestion.testCases) : [];
 
   return (
-    <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto' }}>
+    <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto', position: 'relative' }}>
+      {timeLeft !== null && timeLeft !== undefined && activeDuel && (
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+              {renderTimer()}
+          </div>
+      )}
       {!activeQuestion ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
           <Sword size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
@@ -458,6 +476,9 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{activeQuestion.title}</h2>
+          </div>
           <div style={{ lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
             {renderFormattedText(activeQuestion.description)}
           </div>

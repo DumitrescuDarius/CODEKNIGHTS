@@ -147,7 +147,7 @@ export default function SignIn() {
                     style={{ 
                       height: '48px', 
                       background: 'var(--text)', 
-                      color: theme.light ? '#fff' : '#000', 
+                      color: 'var(--bg)', 
                       border: 'none', 
                       fontWeight: 700, 
                       display: 'flex', 

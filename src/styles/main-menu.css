@@ -98,7 +98,7 @@ body.resizing * {
   display: flex;
   gap: 0; 
   width: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 .twm-window {
   min-width: var(--twm-window-min-width);
@@ -434,3 +434,78 @@ body.resizing * {
   background: transparent;
   color: var(--text);
 }
+
+/* Friends Window */
+.friends-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.friends-tabs {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.friends-tab {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.friends-tab--active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.friends-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.friends-search-bar {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.friends-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  padding: 0.8rem 1rem 0.8rem 2.5rem;
+  border-radius: 0.5rem;
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+}
+
+.friends-search-input:focus {
+  border-color: var(--accent);
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.friend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+

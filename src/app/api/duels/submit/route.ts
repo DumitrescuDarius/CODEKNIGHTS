@@ -12,12 +12,23 @@ export async function POST(req: NextRequest) {
     const TIME_LIMIT = 420 * 1000; // 7 minutes
 
     const duel = await prisma.duel.findUnique({
-      where: { id: duelId }
+      where: { id: duelId },
+      include: { host: true, guest: true, question: true }
     });
 
     if (!duel) {
       return NextResponse.json({ error: "Duel not found" }, { status: 404 });
     }
+
+    // Dynamic Time Limit
+    const difficultyTimeLimits: Record<string, number> = {
+        "Easy": 8 * 60 * 1000,
+        "Medium": 12 * 60 * 1000,
+        "Hard": 18 * 60 * 1000
+    };
+    const limit = difficultyTimeLimits[duel.question?.difficulty] || 8 * 60 * 1000;
+    const elapsed = Date.now() - new Date(duel.createdAt).getTime();
+    const isTimedOut = elapsed > limit;
 
     const isHost = duel.hostId === userId;
     const isGuest = duel.guestId === userId;
@@ -26,142 +37,139 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not a participant in this duel" }, { status: 403 });
     }
 
+    const INFINITE_PENALTY = 999999999;
     const updateData: any = {};
-    if (surrender) {
-      const LOST_TIME = 999999999;
+
+    if (surrender || isTimedOut) {
       if (isHost) { 
-        updateData.hostSolveTime = LOST_TIME; 
-        updateData.hostComplexity = 0; 
-        updateData.hostPenalty = 999999; 
+        updateData.hostPenalty = INFINITE_PENALTY; 
       }
       if (isGuest) { 
-        updateData.guestSolveTime = LOST_TIME; 
-        updateData.guestComplexity = 0; 
-        updateData.guestPenalty = 999999; 
+        updateData.guestPenalty = INFINITE_PENALTY; 
       }
-      // Force both to finalized and finish the duel
-      updateData.hostFinalized = true;
-      updateData.guestFinalized = true;
-      updateData.status = "FINISHED";
+      if (surrender) {
+          updateData.hostFinalized = true;
+          updateData.guestFinalized = true;
+          updateData.status = "FINISHED";
+      }
     } else if (finalize) {
       if (isHost) updateData.hostFinalized = true;
       if (isGuest) updateData.guestFinalized = true;
-      
-      const hostFinalized = isHost ? true : (duel as any).hostFinalized;
-      const guestFinalized = isGuest ? true : (duel as any).guestFinalized;
-      
-      if (hostFinalized && guestFinalized) {
-        updateData.status = "FINISHED";
-      }
     } else {
       if (isHost) {
-        const currentPenalty = duel.hostPenalty || 999999999;
+        const currentPenalty = duel.hostPenalty || INFINITE_PENALTY;
         if (totalPenalty < currentPenalty) {
-          updateData.hostSolveTime = solveTime;
-          updateData.hostComplexity = complexityScore;
           updateData.hostPenalty = totalPenalty;
         }
       }
       if (isGuest) {
-        const currentPenalty = duel.guestPenalty || 999999999;
+        const currentPenalty = duel.guestPenalty || INFINITE_PENALTY;
         if (totalPenalty < currentPenalty) {
-          updateData.guestSolveTime = solveTime;
-          updateData.guestComplexity = complexityScore;
           updateData.guestPenalty = totalPenalty;
         }
       }
     }
-
-    // Logic: If Sudden Death or time exceeded
-    const elapsed = Date.now() - new Date(duel.createdAt).getTime();
-    if (!surrender && elapsed > TIME_LIMIT) {
+    
+    // Check if both finalized or timed out
+    const hostFinalized = (isHost && finalize) || duel.hostFinalized || (isHost && (surrender || isTimedOut));
+    const guestFinalized = (isGuest && finalize) || duel.guestFinalized || (isGuest && (surrender || isTimedOut));
+    
+    if ((hostFinalized && guestFinalized) || isTimedOut) {
         updateData.status = "FINISHED";
+    }
+
+    // Final calculations if finished
+    if (updateData.status === "FINISHED") {
+      const hostPenalty = (isHost ? (updateData.hostPenalty ?? duel.hostPenalty) : duel.hostPenalty) ?? INFINITE_PENALTY;
+      const guestPenalty = (isGuest ? (updateData.guestPenalty ?? duel.guestPenalty) : duel.guestPenalty) ?? INFINITE_PENALTY;
+
+      const hostSurrendered = hostPenalty === INFINITE_PENALTY;
+      const guestSurrendered = guestPenalty === INFINITE_PENALTY;
+
+      let hostWon = false;
+      let isDraw = false;
+
+      // Prioritize explicit surrender status
+      if (hostSurrendered && guestSurrendered) {
+          isDraw = true;
+      } else if (hostSurrendered) {
+          hostWon = false;
+      } else if (guestSurrendered) {
+          hostWon = true;
+      } else {
+          // If neither surrendered, compare penalties
+          hostWon = hostPenalty < guestPenalty;
+          isDraw = hostPenalty === guestPenalty;
+      }
+
+      if (isDraw) {
+          updateData.hostRatingChange = 0;
+          updateData.guestRatingChange = 0;
+      } else {
+          const eloChange = 100;
+          updateData.hostRatingChange = hostWon ? eloChange : -eloChange;
+          updateData.guestRatingChange = hostWon ? -eloChange : eloChange;
+      }
     }
 
     const updatedDuel = await prisma.duel.update({
       where: { id: duelId },
       data: updateData,
-      include: { host: true, guest: true }
+      include: { host: true, guest: true, question: true }
     });
-
-    // Winner detection and stats update
+    
+    // Rating update logic
     if (updatedDuel.status === "FINISHED") {
-      const finalDuel = updatedDuel;
-      const hostPenalty = finalDuel.hostPenalty || 999999999;
-      const guestPenalty = finalDuel.guestPenalty || 999999999;
-        
-      // Lower penalty wins. If penalties equal, lower time wins.
-      const hostWon = hostPenalty < guestPenalty || (hostPenalty === guestPenalty && (finalDuel.hostSolveTime || 999999999) < (finalDuel.guestSolveTime || 999999999));
+      const isDraw = (updatedDuel.hostRatingChange || 0) === 0 && (updatedDuel.guestRatingChange || 0) === 0;
       
-      const winnerId = hostWon ? finalDuel.hostId : finalDuel.guestId;
-      const loserId = hostWon ? finalDuel.guestId : finalDuel.hostId;
-
-      // ELO change: 90 - 120
-      const eloChange = Math.floor(Math.random() * 31) + 90;
+      // Check if either participant is a guest
+      const host = await prisma.user.findUnique({ where: { id: updatedDuel.hostId } });
+      const guest = updatedDuel.guestId ? await prisma.user.findUnique({ where: { id: updatedDuel.guestId } }) : null;
       
-      const hostRatingChange = hostWon ? eloChange : -eloChange;
-      const guestRatingChange = hostWon ? -eloChange : eloChange;
+      const isHostGuest = host?.username?.startsWith("Guest Knight");
+      const isGuestGuest = guest?.username?.startsWith("Guest Knight");
+      
+      if (!isDraw && !isHostGuest && !isGuestGuest) {
+          const winnerId = (updatedDuel.hostRatingChange || 0) > 0 ? updatedDuel.hostId : updatedDuel.guestId;
+          const loserId = (updatedDuel.hostRatingChange || 0) > 0 ? updatedDuel.guestId : updatedDuel.hostId;
+          const eloChange = Math.abs(updatedDuel.hostRatingChange || 0);
 
-      // Update the duel record with the rating changes first
-      await prisma.duel.update({
-          where: { id: duelId },
-          data: {
-              hostRatingChange,
-              guestRatingChange
-          }
-      });
+          const getRank = (rating: number) => {
+            if (rating >= 2500) return "Grandmaster";
+            if (rating >= 2000) return "Master";
+            if (rating >= 1600) return "Diamond";
+            if (rating >= 1300) return "Gold";
+            if (rating >= 1100) return "Silver";
+            return "Bronze";
+          };
 
-      const getRank = (rating: number) => {
-        if (rating >= 2500) return "Grandmaster";
-        if (rating >= 2000) return "Master";
-        if (rating >= 1600) return "Diamond";
-        if (rating >= 1300) return "Gold";
-        if (rating >= 1100) return "Silver";
-        return "Bronze";
-      };
-
-      if (winnerId && winnerId !== "guest") {
-          const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
-          const user = await prisma.user.findUnique({ where: { id: winnerId } });
-          
-          // Handle dailyWins safely
-          let dailyWins: Record<string, number> = {};
-          try {
-            dailyWins = user?.dailyWins ? (typeof user.dailyWins === 'string' ? JSON.parse(user.dailyWins) : (user.dailyWins as any)) : {};
-          } catch (e) {
-            dailyWins = {};
-          }
-          dailyWins[today] = (dailyWins[today] || 0) + 1;
-
-          const newRating = (user?.rating || 1000) + eloChange;
-
-          await prisma.user.update({
-              where: { id: winnerId },
-              data: {
-                  battlesWon: { increment: 1 },
-                  battlesTotal: { increment: 1 },
-                  rating: newRating,
-                  rank: getRank(newRating),
-                  dailyWins: dailyWins
+          if (winnerId) {
+              const user = await prisma.user.findUnique({ where: { id: winnerId } });
+              if (user) {
+                  let dailyWins: Record<string, number> = {};
+                  try { dailyWins = user?.dailyWins ? (typeof user.dailyWins === 'string' ? JSON.parse(user.dailyWins) : (user.dailyWins as any)) : {}; } catch (e) { dailyWins = {}; }
+                  dailyWins[new Date().toLocaleDateString('en-CA')] = (dailyWins[new Date().toLocaleDateString('en-CA')] || 0) + 1;
+                  const newRating = (user?.rating || 1000) + eloChange;
+                  await prisma.user.update({
+                      where: { id: winnerId },
+                      data: { battlesWon: { increment: 1 }, battlesTotal: { increment: 1 }, rating: newRating, rank: getRank(newRating), dailyWins: dailyWins }
+                  });
               }
-          });
-      }
-      if (loserId && loserId !== "guest") {
-          const user = await prisma.user.findUnique({ where: { id: loserId } });
-          const newRating = Math.max(0, (user?.rating || 1000) - eloChange);
-          
-          await prisma.user.update({
-              where: { id: loserId },
-              data: { 
-                battlesTotal: { increment: 1 },
-                rating: newRating,
-                rank: getRank(newRating)
+          }
+          if (loserId) {
+              const user = await prisma.user.findUnique({ where: { id: loserId } });
+              if (user) {
+                  const newRating = Math.max(0, (user?.rating || 1000) - eloChange);
+                  await prisma.user.update({
+                      where: { id: loserId },
+                      data: { battlesTotal: { increment: 1 }, rating: newRating, rank: getRank(newRating) }
+                  });
               }
-          });
+          }
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json(updatedDuel);
   } catch (err) {
     console.error("Duel submit error:", err);
     return NextResponse.json({ error: "Failed to submit duel result" }, { status: 500 });

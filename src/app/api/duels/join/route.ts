@@ -5,13 +5,19 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = session?.user ? (session.user as any).id : "guest";
+  const { pin, guestName } = await req.json();
+
+  let userId = session?.user ? (session.user as any).id : null;
+  let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
 
   try {
-    const { pin } = await req.json();
-
     if (!pin) {
       return NextResponse.json({ error: "PIN is required" }, { status: 400 });
+    }
+
+    if (!userId) {
+      const newUser = await prisma.user.create({ data: { username: userName, rating: 1000 } });
+      userId = newUser.id;
     }
 
     const duel = await prisma.duel.findUnique({
@@ -27,8 +33,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Duel is already active or finished" }, { status: 400 });
     }
 
-    // Only registered hosts can be protected against self-joining easily
-    if (userId !== "guest" && session?.user && duel.hostId === (session.user as any).id) {
+    if (duel.hostId === userId) {
       return NextResponse.json({ error: "You cannot join your own duel" }, { status: 400 });
     }
 
@@ -37,6 +42,7 @@ export async function POST(req: NextRequest) {
       data: {
         guestId: userId,
         status: "ACTIVE",
+        createdAt: new Date(),
       },
       include: {
         question: true,
@@ -44,11 +50,6 @@ export async function POST(req: NextRequest) {
         guest: true
       }
     });
-
-    // Add temporary field for guest info if guest joined
-    if (userId === "guest" && !updatedDuel.guest) {
-      (updatedDuel as any).guest = { username: "Guest Knight", image: null };
-    }
 
     return NextResponse.json(updatedDuel);
   } catch (err) {
