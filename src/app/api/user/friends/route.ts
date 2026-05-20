@@ -12,16 +12,18 @@ export async function GET(req: NextRequest) {
   const userId = (session.user as any).id;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { following: true, followedBy: true }
+    const requests = await prisma.friendRequest.findMany({
+      where: {
+        status: "ACCEPTED",
+        OR: [{ senderId: userId }, { receiverId: userId }]
+      },
+      include: {
+        sender: true,
+        receiver: true
+      }
     });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const friends = user.following.filter(f => user.followedBy.some(fb => fb.id === f.id));
+    const friends = requests.map(r => r.senderId === userId ? r.receiver : r.sender);
 
     return NextResponse.json(friends);
   } catch (err) {

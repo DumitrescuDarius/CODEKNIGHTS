@@ -1,4 +1,6 @@
-[
+import json
+
+problems = [
   {
     "title": "The Royal Armory",
     "difficulty": "Easy",
@@ -278,5 +280,7 @@ Next E lines: two space-separated integers U and W representing a bidirectional 
 1 3", "output": "2" }
     ]
   }
-]", file_path: "/home/darius/Programming/Projects/old/CompetitiveCoding/problems.json"
-}
+]
+
+with open('problems.json', 'w') as f:
+    json.dump(problems, f, indent=2)

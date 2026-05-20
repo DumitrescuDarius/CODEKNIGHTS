@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote } from "lucide-react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
@@ -170,7 +172,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   
   const getComplexityPenalty = () => {
     if (!analysis?.scores) return 0;
-    return (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) * 50;
+    return (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) * 1;
   };
   
   const penaltyBreakdown = {
@@ -201,19 +203,34 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
   const renderFormattedText = (text: string) => {
     if (!text) return null;
-    
-    // Split by both **bold** and ==highlight==
-    const parts = text.split(/(\*\*.*?\*\*|==.*?==)/g);
-    
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i}>{part.slice(2, -2)}</strong>;
-      }
-      if (part.startsWith('==') && part.endsWith('==')) {
-        return <mark key={i} style={{ background: 'var(--accent)', color: '#000', padding: '0 0.2rem', borderRadius: '0.1rem' }}>{part.slice(2, -2)}</mark>;
-      }
-      return <span key={i}>{part}</span>;
-    });
+    return (
+      <ReactMarkdown 
+        remarkPlugins={[remarkGfm]}
+        components={{
+          code({node, inline, className, children, ...props}: any) {
+            return (
+              <code className={className} style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '0.2rem', fontFamily: 'monospace' }} {...props}>
+                {children}
+              </code>
+            );
+          },
+          pre({children, ...props}: any) {
+            return <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '0.4rem', overflow: 'auto' }} {...props}>{children}</pre>;
+          },
+          p({children, ...props}: any) {
+            return <p style={{ margin: '0.2rem 0' }} {...props}>{children}</p>;
+          },
+          ul({children, ...props}: any) {
+            return <ul style={{ paddingLeft: '1.2rem', margin: '0.2rem 0' }} {...props}>{children}</ul>;
+          },
+          li({children, ...props}: any) {
+            return <li style={{ marginBottom: '0.1rem' }} {...props}>{children}</li>;
+          }
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    );
   };
 
   const handleFinalSubmit = async () => {
@@ -280,7 +297,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
             <div style={{ marginBottom: '1rem' }}>{activeDuel.guest?.image ? <img src={activeDuel.guest.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <Zap size={32} style={{ opacity: 0.5 }} />}</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest Knight"}</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
             <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
               Rating: {activeDuel.guest?.rating ?? 1000}
               {activeDuel.guestRatingChange !== null && activeDuel.guestRatingChange !== undefined && (
@@ -378,7 +395,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             <div style={{ position: 'relative', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer' }}>
               <div onClick={() => setIsPenaltyOpen(!isPenaltyOpen)} style={{ padding: '1.25rem' }}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Penalty Score ℹ️</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{totalPenalty !== null ? totalPenalty : "--"}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{penaltyBreakdown.time + penaltyBreakdown.wa + penaltyBreakdown.complexityPenalty}</div>
               </div>
               
               <AnimatePresence>
@@ -403,9 +420,12 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                       boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
                     }}
                   >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time:</span><span style={{color: 'var(--text)'}}>{solveTime || "--:--"}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Battle Bad Submissions:</span><span style={{color: 'var(--text)'}}>{wrongAttemptCount}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Lifetime Bad Submissions:</span><span style={{color: 'var(--text)'}}>{analysis?.failedSubmissionsCount || 0}</span></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time Penalty:</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.time}</span></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Wrong Answers ({wrongAttemptCount} × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.wa}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Complexity Penalty (Metrics × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.complexityPenalty}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Complexity Penalty (Metrics × 1):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.complexityPenalty}</span></div>
                     </motion.div>                )}
                 </AnimatePresence>
                 </div>
@@ -421,12 +441,6 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.5rem', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginBottom: '1rem' }}
         >
           {t("retry")}
-        </button>
-        <button 
-          onClick={startNewBattle}
-          style={{ width: '100%', background: 'var(--accent)', color: '#000', border: 'none', padding: '1rem', borderRadius: '0.5rem', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', marginBottom: '2rem' }}
-        >
-          {t("startNewBattle")}
         </button>
       </div>
     );

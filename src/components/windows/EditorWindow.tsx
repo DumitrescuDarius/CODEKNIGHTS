@@ -175,9 +175,6 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: 'auto' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time:</div>
                   <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{isAnalyzing ? '...' : (analysis?.timeComplexity || 'N/A')}</div>
-                  <div style={{ width: '1rem' }} />
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Space:</div>
-                  <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{isAnalyzing ? '...' : (analysis?.spaceComplexity || 'N/A')}</div>
                 </div>
               </div>
             </div>

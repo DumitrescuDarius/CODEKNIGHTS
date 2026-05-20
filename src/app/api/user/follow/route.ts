@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { targetUserId, action } = await req.json();
+  const userId = (session.user as any).id;
   console.log(`[api/user/follow] User ${userId} performing ${action} on ${targetUserId}`);
   
   if (!targetUserId) {

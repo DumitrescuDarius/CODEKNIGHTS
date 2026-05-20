@@ -47,13 +47,29 @@ model User {
   rating        Int       @default(1000)
   rank          String    @default("Novice")
   dailyWins     Json      @default("{}") // Stores {"YYYY-MM-DD": count}
-  followedBy    User[]    @relation("UserFollows")
-  following     User[]    @relation("UserFollows")
+  
+  // Friend Request relations
+  sentRequests     FriendRequest[] @relation("SentRequests")
+  receivedRequests FriendRequest[] @relation("ReceivedRequests")
+  
   accounts      Account[]
   sessions      Session[]
   submissions   Submission[]
   hostDuels     Duel[]    @relation("HostDuels")
   guestDuels    Duel[]    @relation("GuestDuels")
+}
+
+model FriendRequest {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   // "PENDING", "ACCEPTED", "REJECTED"
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentRequests", fields: [senderId], references: [id])
+  receiver User @relation("ReceivedRequests", fields: [receiverId], references: [id])
+
+  @@unique([senderId, receiverId])
 }
 
 model Question {

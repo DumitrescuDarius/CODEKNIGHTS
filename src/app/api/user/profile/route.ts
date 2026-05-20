@@ -10,11 +10,14 @@ export async function GET(req: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get("userId") || (session.user as any).id;
+
   try {
     const user = await prisma.user.findUnique({
-      where: { id: (session.user as any).id },
+      where: { id: userId },
       include: {
-          followedBy: true
+        submissions: true
       }
     });
 
@@ -22,7 +25,9 @@ export async function GET(req: Request) {
         return new NextResponse("User not found", { status: 404 });
     }
 
-    return NextResponse.json(user);
+    const failedSubmissionsCount = user.submissions.filter(s => s.status === "FAILED").length;
+    
+    return NextResponse.json({ ...user, failedSubmissionsCount });
   } catch (error) {
     console.error("Profile fetch error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

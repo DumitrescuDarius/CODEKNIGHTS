@@ -153,7 +153,7 @@ const MainMenu: React.FC = () => {
   const calculatePenalty = useCallback((timeSeconds: number, wrongAttempts: number, compScores: CodeAnalysisScores | undefined) => {
       const timePenalty = timeSeconds;
       const waPenalty = wrongAttempts * 50;
-      const complexityPenalty = (compScores ? (compScores.efficiency + compScores.readability + compScores.maintainability + compScores.security) : 0) * 50;
+      const complexityPenalty = (compScores ? (compScores.efficiency + compScores.readability + compScores.maintainability + compScores.security) : 0) * 1;
 
       return timePenalty + waPenalty + complexityPenalty;
   }, []);

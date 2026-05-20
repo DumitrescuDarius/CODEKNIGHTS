@@ -449,6 +449,14 @@ body.resizing * {
   border-bottom: 1px solid var(--line);
 }
 
+@media (max-width: 600px) {
+  .friends-tabs {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
 .friends-tab {
   font-size: 0.85rem;
   font-weight: 700;
@@ -470,6 +478,12 @@ body.resizing * {
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .friends-content {
+    padding: 1rem;
+  }
 }
 
 .friends-search-bar {
@@ -507,5 +521,8 @@ body.resizing * {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--line);
   border-radius: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  position: static;
 }
 
