@@ -1,64 +1,35 @@
-# CodeKnights: Competitive Programming Arena
+# CodeKnights: Arena de Programare Competitivă
 
-CodeKnights is a high-octane, web-based platform designed for competitive programmers to test their skills in real-time coding duels. Featuring an integrated Monaco-based code editor, real-time synchronization, and AI-powered assistance, it provides a complete environment for honing algorithmic skills.
+CodeKnights este o platformă web modernă dedicată programatorilor competitivi care vor să își testeze abilitățile în dueluri de codare în timp real. Cu un editor integrat bazat pe Monaco, sincronizare live și asistență AI, platforma oferă un mediu complet pentru perfecționarea algoritmilor și a rezolvării de probleme.
 
-## Features
+## Funcționalități
 
-- **Coding Duels:** Engage in 1v1 battles with real-time feedback.
-- **Dynamic Arena:** Real-time problem solving with automatic test case validation.
-- **AI Assistant:** Integrated AI coding help to explain complexities and optimize solutions (with battle-mode safety disabling).
-- **Interactive UI:** Window-based management system for a fluid coding experience.
-- **Internationalized:** Full support for multiple languages including English, Romanian, French, German, Hindi, Russian, Hungarian, Spanish, Italian, Chinese, Japanese, and Portuguese.
-- **Progression System:** Track your rating, rank, and battle history.
+- **Dueluri de codare:** Participă la lupte 1v1 cu feedback în timp real.
+- **Arenă dinamică:** Rezolvare de probleme live cu validare automată a testelor.
+- **Asistent AI:** Ajutor AI integrat pentru explicarea complexităților și optimizarea soluțiilor (dezactivat automat în modul battle pentru fair-play).
+- **Interfață interactivă:** Sistem de gestionare bazat pe ferestre pentru o experiență fluidă.
+- **Internaționalizare:** Suport complet pentru mai multe limbi, inclusiv engleză, română, franceză, germană, hindi, rusă, maghiară, spaniolă, italiană, chineză, japoneză și portugheză.
+- **Sistem de progres:** Urmărește ratingul, rangul și istoricul duelurilor.
 
-## Technology Stack
+## Stack Tehnologic
 
-- **Framework:** [Next.js](https://nextjs.org/) (App Router)
-- **Language:** [TypeScript](https://www.typescriptlang.org/)
-- **Database/ORM:** PostgreSQL with [Prisma](https://www.prisma.io/)
-- **Authentication:** [NextAuth.js](https://next-auth.js.org/)
-- **Editor:** [Monaco Editor](https://microsoft.github.io/monaco-editor/) (with Vim keybindings)
+- **Framework:** Next.js (App Router)
+- **Limbaj:** TypeScript
+- **Bază de date / ORM:** PostgreSQL cu Prisma
+- **Autentificare:** NextAuth.js
+- **Editor:** Monaco Editor (cu suport Vim keybindings)
 - **UI:** React, Framer Motion, Lucide React
 
-## Getting Started
+## Pornire Rapidă
 
-### Prerequisites
+### Cerințe
 
 - Node.js (v18+)
-- PostgreSQL database
+- PostgreSQL
 
-### Installation
+### Instalare
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd codeknights
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Configure environment variables:
-   Create a `.env` file based on `.env.example` and set your `DATABASE_URL`, `NEXTAUTH_SECRET`, and API keys (OpenAI/Google Gemini).
-
-4. Run database migrations:
-   ```bash
-   npx prisma migrate dev
-   ```
-
-5. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-## Development
-
-- **Architecture:** The UI utilizes a window management system located in `src/components/windows/`.
-- **API:** Backend logic resides in `src/app/api/`.
-- **Translations:** All UI strings are localized via `src/constants/translations.ts`.
-
-## Contributing
-
-Contributions are welcome! Please open an issue to discuss proposed changes or improvements.
+```bash
+git clone <repository-url>
+cd codeknights
+npm install

@@ -470,7 +470,7 @@ const MainMenu: React.FC = () => {
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
     if (activeDuel && activeDuel.status !== "FINISHED") {
-      interval = setInterval(pollDuel, 500);
+      interval = setInterval(pollDuel, 200);
     }
     return () => {
       if (interval) clearInterval(interval);

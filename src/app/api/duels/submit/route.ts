@@ -98,8 +98,9 @@ export async function POST(req: NextRequest) {
           hostWon = true;
       } else {
           // If neither surrendered, compare penalties
-          hostWon = hostPenalty < guestPenalty;
-          isDraw = hostPenalty === guestPenalty;
+          const isClose = Math.abs(hostPenalty - guestPenalty) < 0.0001;
+          isDraw = isClose;
+          hostWon = !isClose && hostPenalty < guestPenalty;
       }
 
       if (isDraw) {
