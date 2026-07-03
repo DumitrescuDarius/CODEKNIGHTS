@@ -19,17 +19,26 @@ export async function POST(req: NextRequest) {
 
   try {
     if (action === 'follow') {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          following: { connect: { id: targetUserId } }
+      await prisma.friendRequest.upsert({
+        where: {
+          senderId_receiverId: { senderId: userId, receiverId: targetUserId }
+        },
+        create: {
+          senderId: userId,
+          receiverId: targetUserId,
+          status: "ACCEPTED"
+        },
+        update: {
+          status: "ACCEPTED"
         }
       });
     } else if (action === 'unfollow') {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          following: { disconnect: { id: targetUserId } }
+      await prisma.friendRequest.deleteMany({
+        where: {
+          OR: [
+            { senderId: userId, receiverId: targetUserId },
+            { senderId: targetUserId, receiverId: userId }
+          ]
         }
       });
     } else {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Search, UserPlus, UserCheck, Loader2, Users, Trophy, UserX, Check } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+// framer-motion removed: use plain elements instead
 import { User } from "../../types";
 import { TranslationKey } from "../../constants/translations";
 
@@ -91,6 +91,8 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
       });
       if (res.ok) {
         fetchData(); // Refresh lists
+        // Update local search results state if any match requestId
+        setSearchResults(prev => prev.map(u => (u as any).requestId === requestId ? { ...u, status: action === 'ACCEPT' ? 'FRIENDS' : 'NONE', requestId: undefined } as any : u));
       }
     } catch (err) {
       console.error("Error processing request:", err);
@@ -106,6 +108,8 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
       });
       if (res.ok) {
         fetchData(); // Refresh lists
+        // Update local search results state
+        setSearchResults(prev => prev.map(u => u.id === targetUserId ? { ...u, status: "SENT" } as any : u));
       }
     } catch (err) {
       console.error("Error sending request:", err);
@@ -128,72 +132,90 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
 
       <div className="friends-content">
         {activeTab === 'find' && (
-          <div className="friends-search-bar">
+          <div className="friends-search-bar" style={{ position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("searchPlaceholder")} className="friends-search-input" />
+            {isLoading && (
+              <div style={{ position: 'absolute', right: '1rem', top: '50%', marginTop: '-8px', height: '16px', width: '16px' }}>
+                <Loader2 size={16} style={{ color: 'var(--accent)' }} />
+              </div>
+            )}
           </div>
         )}
-
-        <motion.div className="friends-list" layout>
-          <AnimatePresence mode="wait">
+        <div className="friends-list">
             {activeTab === 'friends' && friends.length === 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                 <Users size={32} style={{ marginBottom: '1rem', opacity: 0.5 }} />
                 <p>No friends added yet.</p>
-              </motion.div>
+              </div>
             )}
             {activeTab === 'friends' && friends.map(user => (
-              <motion.div key={user.id} className="friend-item" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>
+              <div key={user.id} className="friend-item">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   {user.image && <img src={user.image} alt={user.username || "User"} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />}
                   <div style={{ fontWeight: 600 }}>{user.username || user.name || "Unknown"}</div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn" onClick={() => openProfile(user.id)}>View</motion.button>
+                    <button className="btn" onClick={() => openProfile(user.id)}>View</button>
                 </div>
-              </motion.div>
+              </div>
             ))}
 
             {activeTab === 'requests' && requests.length === 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                 <UserCheck size={32} style={{ marginBottom: '1rem', opacity: 0.5 }} />
                 <p>No pending friend requests.</p>
-              </motion.div>
+              </div>
             )}
             {activeTab === 'requests' && requests.map((user: any) => (
-              <motion.div key={user.id} className="friend-item" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>
+              <div key={user.id} className="friend-item">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   {user.image && <img src={user.image} alt={user.username || "User"} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />}
                   <div style={{ fontWeight: 600 }}>{user.username || user.name || "Unknown"}</div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')} style={{ color: 'var(--accent)', borderColor: 'var(--accent)'}}><Check size={14}/></motion.button>
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn" onClick={() => handleRequestAction(user.requestId, 'REJECT')} style={{ color: '#ff5555', borderColor: '#ff5555'}}><UserX size={14}/></motion.button>
+                    <button className="btn" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')} style={{ color: 'var(--accent)', borderColor: 'var(--accent)'}}><Check size={14}/></button>
+                    <button className="btn" onClick={() => handleRequestAction(user.requestId, 'REJECT')} style={{ color: '#ff5555', borderColor: '#ff5555'}}><UserX size={14}/></button>
                 </div>
-              </motion.div>
+              </div>
             ))}
 
             {activeTab === 'find' && searchQuery.length >= 2 && searchResults.length === 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                 <Search size={32} style={{ marginBottom: '1rem', opacity: 0.5 }} />
                 <p>No users found matching your search.</p>
-              </motion.div>
+              </div>
             )}
-            {activeTab === 'find' && searchQuery.length >= 2 && searchResults.map((user) => (
-              <motion.div key={user.id} className="friend-item" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>
+            {activeTab === 'find' && searchQuery.length >= 2 && searchResults.map((user: any) => (
+              <div key={user.id} className="friend-item">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   {user.image && <img src={user.image} alt={user.username || "User"} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />}
                   <div style={{ fontWeight: 600 }}>{user.username || user.name || "Unknown"}</div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn" onClick={() => openProfile(user.id)}>View</motion.button>
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleSendRequest(user.id)} className="btn">
-                        {t("follow")}
-                    </motion.button>
+                    <button className="btn" onClick={() => openProfile(user.id)}>View</button>
+                    {user.status === "FRIENDS" ? (
+                      <button disabled className="btn" style={{ opacity: 0.5, cursor: 'not-allowed', color: 'var(--accent)', borderColor: 'var(--accent)' }}>
+                        {t("friends")}
+                      </button>
+                    ) : user.status === "SENT" ? (
+                      <button disabled className="btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                        Pending
+                      </button>
+                    ) : user.status === "RECEIVED" ? (
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <button className="btn" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')} style={{ color: 'var(--accent)', borderColor: 'var(--accent)'}}><Check size={14}/></button>
+                        <button className="btn" onClick={() => handleRequestAction(user.requestId, 'REJECT')} style={{ color: '#ff5555', borderColor: '#ff5555'}}><UserX size={14}/></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => handleSendRequest(user.id)} className="btn">
+                          {t("follow")}
+                      </button>
+                    )}
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </AnimatePresence>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

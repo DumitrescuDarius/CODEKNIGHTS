@@ -36,7 +36,47 @@ export async function GET(req: NextRequest) {
       take: 10,
     });
 
-    return NextResponse.json(users);
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
+      return NextResponse.json(users.map(u => ({ ...u, status: "NONE" })));
+    }
+
+    const userIds = users.map(u => u.id);
+    const requests = await prisma.friendRequest.findMany({
+      where: {
+        OR: [
+          { senderId: userId, receiverId: { in: userIds } },
+          { senderId: { in: userIds }, receiverId: userId }
+        ]
+      }
+    });
+
+    const results = users.map(user => {
+      const rel = requests.find(r => r.senderId === user.id || r.receiverId === user.id);
+      let status = "NONE";
+      let requestId: string | undefined;
+
+      if (rel) {
+        if (rel.status === "ACCEPTED") {
+          status = "FRIENDS";
+        } else if (rel.status === "PENDING") {
+          if (rel.senderId === userId) {
+            status = "SENT";
+          } else {
+            status = "RECEIVED";
+            requestId = rel.id;
+          }
+        }
+      }
+
+      return {
+        ...user,
+        status,
+        requestId
+      };
+    });
+
+    return NextResponse.json(results);
   } catch (error) {
     console.error("User search error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

@@ -8,7 +8,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "WAITING FOR OPPONENT", duelUplinkMessage: "Your duel uplink is established. Share the PIN below with your opponent to initiate combat.", duelPin: "DUEL PIN",
     cancelEdit: "CANCEL EDIT", boldHighlightInstruction: "Use <b>**bold**</b> for bold and <b>==highlight==</b> for highlights.", manageArenaChallenges: "MANAGE ARENA CHALLENGES",
     cancelDuel: "CANCEL DUEL?", cancelDuelWarning: "Closing this window will terminate your pending invitation and broadcast. Continue?", createDuel: "Create Duel", joinDuel: "Join Duel", enterPin: "Enter PIN", battleFinished: "BATTLE FINISHED", backToArena: "BACK TO ARENA",
-    terminate: "TERMINATE", maintain: "MAINTAIN", createUplink: "CREATE UPLINK", winsToday: "Wins Today", duelActivity: "Duel Activity",
+    terminate: "TERMINATE", maintain: "MAINTAIN", createUplink: "CREATE UPLINK", winsToday: "Wins Today", duelActivity: "Duel Activity", retry: "Retry",
   },
   ro: {
     battle: "Luptă", tournaments: "Turnee",
@@ -19,7 +19,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "AȘTEPTARE ADVERSAR", duelUplinkMessage: "Legătura pentru duel este stabilită. Distribuie PIN-ul de mai jos adversarului tău pentru a începe lupta.", duelPin: "PIN DUEL",
     cancelEdit: "ANULEAZĂ EDITAREA", boldHighlightInstruction: "Folosește <b>**bold**</b> pentru bold și <b>==highlight==</b> pentru evidențiere.", manageArenaChallenges: "GESTIONEAZĂ PROVOCĂRILE ARENEI",
     cancelDuel: "ANULEZI DUELUL?", cancelDuelWarning: "Închiderea ferestrei va termina invitația și broadcast-ul tău. Continuă?", createDuel: "Creează Duel", joinDuel: "Alătură-te Duelului", enterPin: "Introdu PIN-ul", battleFinished: "LUPTĂ FINALIZATĂ", backToArena: "ÎNAPOI ÎN ARENĂ",
-    terminate: "TERMINĂ", maintain: "MENȚINE", createUplink: "CREEAZĂ UPLINK", winsToday: "Victorii Astăzi", duelActivity: "Activitate Duel",
+    terminate: "TERMINĂ", maintain: "MENȚINE", createUplink: "CREEAZĂ UPLINK", winsToday: "Victorii Astăzi", duelActivity: "Activitate Duel", retry: "Reîncearcă",
   },
   fr: {
     battle: "Bataille", tournaments: "Tournois",
@@ -30,7 +30,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "EN ATTENTE D'ADVERSAIRE", duelUplinkMessage: "La liaison pour le duel est établie. Partagez le code PIN ci-dessous avec votre adversaire pour lancer le combat.", duelPin: "CODE PIN DU DUEL",
     cancelEdit: "ANNULER LA MODIFICATION", boldHighlightInstruction: "Utilisez <b>**gras**</b> pour le gras et <b>==surlignage==</b> pour les surlignages.", manageArenaChallenges: "GÉRER LES DÉFIS DE L'ARÈNE",
     cancelDuel: "ANNULER LE DUEL ?", cancelDuelWarning: "Fermer cette fenêtre mettra fin à votre invitation et à votre diffusion. Continuer ?", createDuel: "Créer un Duel", joinDuel: "Rejoindre le Duel", enterPin: "Entrez le PIN", battleFinished: "BATAILLE TERMINÉE", backToArena: "RETOUR À L'ARÈNE",
-    terminate: "TERMINER", maintain: "MAINTENIR", createUplink: "CRÉER UPLINK", winsToday: "Victoires aujourd'hui", duelActivity: "Activité de duel",
+    terminate: "TERMINER", maintain: "MAINTENIR", createUplink: "CRÉER UPLINK", winsToday: "Victoires aujourd'hui", duelActivity: "Activité de duel", retry: "Réessayer",
   },
   de: {
     battle: "Kampf", tournaments: "Turniere",
@@ -41,7 +41,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "AUF GEGNER WARTEN", duelUplinkMessage: "Die Verbindung für das Duell ist hergestellt. Teile den PIN unten mit deinem Gegner, um den Kampf zu starten.", duelPin: "DUELL-PIN",
     cancelEdit: "BEARBEITUNG ABBRECHEN", boldHighlightInstruction: "Verwenden Sie <b>**fett**</b> für fett und <b>==hervorheben==</b> für Hervorhebungen.", manageArenaChallenges: "ARENA-HERAUSFORDERUNGEN VERWALTEN",
     cancelDuel: "DUELL ABBRECHEN?", cancelDuelWarning: "Das Schließen dieses Fensters beendet deine Einladung und Übertragung. Fortfahren?", createDuel: "Duell erstellen", joinDuel: "Duell beitreten", enterPin: "PIN eingeben", battleFinished: "KAMPF BEENDET", backToArena: "ZURÜCK ZUR ARENA",
-    terminate: "BEENDEN", maintain: "BEIBEHALTEN", createUplink: "UPLINK ERSTELLEN", winsToday: "Siege heute", duelActivity: "Duell-Aktivität",
+    terminate: "BEENDEN", maintain: "BEIBEHALTEN", createUplink: "UPLINK ERSTELLEN", winsToday: "Siege heute", duelActivity: "Duell-Aktivität", retry: "Wiederholen",
   },
   hi: {
     battle: "युद्ध", tournaments: "टूर्नामेंट",
@@ -52,7 +52,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "प्रतिद्वंद्वी की प्रतीक्षा है", duelUplinkMessage: "द्वंद्व लिंक स्थापित हो गया है। लड़ाई शुरू करने के लिए अपने प्रतिद्वंद्वी के साथ नीचे दिया गया पिन साझा करें।", duelPin: "द्वंद्व पिन",
     cancelEdit: "संपादन रद्द करें", boldHighlightInstruction: "बोल्ड के लिए <b>**बोल्ड**</b> और हाइलाइट के लिए <b>==हाइलाइट==</b> का उपयोग करें।", manageArenaChallenges: "अखाड़ा चुनौतियों का प्रबंधन करें",
     cancelDuel: "द्वंद्व रद्द करें?", cancelDuelWarning: "इस विंडो को बंद करने से आपका लंबित आमंत्रण समाप्त हो जाएगा। जारी रखें?", createDuel: "द्वंद्व बनाएँ", joinDuel: "द्वंद्व में शामिल हों", enterPin: "पिन दर्ज करें", battleFinished: "युद्ध समाप्त", backToArena: "अखाड़े में वापस जाएँ",
-    terminate: "समाप्त", maintain: "बनाए रखें", createUplink: "अपलिंक बनाएँ", winsToday: "आज की जीत", duelActivity: "द्वंद्व गतिविधि",
+    terminate: "समाप्त", maintain: "बनाए रखें", createUplink: "अपलिंक बनाएँ", winsToday: "आज की जीत", duelActivity: "द्वंद्व गतिविधि", retry: "पुनः प्रयास करें",
   },
   ru: {
     battle: "Битва", tournaments: "Турниры",
@@ -63,7 +63,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "ОЖИДАНИЕ СОПЕРНИКА", duelUplinkMessage: "Связь для дуэли установлена. Поделитесь PIN-кодом ниже с вашим соперником, чтобы начать бой.", duelPin: "PIN-КОД ДУЭЛИ",
     cancelEdit: "ОТМЕНИТЬ РЕДАКТИРОВАНИЕ", boldHighlightInstruction: "Используйте <b>**жирный**</b> для жирного и <b>==выделение==</b> для подсветки.", manageArenaChallenges: "УПРАВЛЕНИЕ АРЕНАМИ",
     cancelDuel: "ОТМЕНИТЬ ДУЭЛЬ?", cancelDuelWarning: "Закрытие этого окна прервет ваше приглашение. Продолжить?", createDuel: "Создать дуэль", joinDuel: "Присоединиться к дуэли", enterPin: "Введите PIN", battleFinished: "ДУЭЛЬ ЗАВЕРШЕНА", backToArena: "НАЗАД НА АРЕНУ",
-    terminate: "ПРЕРВАТЬ", maintain: "СОХРАНИТЬ", createUplink: "СОЗДАТЬ UPLINK", winsToday: "Побед сегодня", duelActivity: "Активность дуэлей",
+    terminate: "ПРЕРВАТЬ", maintain: "СОХРАНИТЬ", createUplink: "СОЗДАТЬ UPLINK", winsToday: "Побед сегодня", duelActivity: "Активность дуэлей", retry: "Повторить",
   },
   hu: {
     battle: "Csata", tournaments: "Tornák",
@@ -74,7 +74,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "VÁRAKOZÁS AZ ELLFÉLRE", duelUplinkMessage: "A párbaj kapcsolat létrejött. Oszd meg az alábbi PIN-t az ellenfeleddel a harc megkezdéséhez.", duelPin: "PÁRBAJ PIN",
     cancelEdit: "SZERKESZTÉS MEGSZAKÍTÁSA", boldHighlightInstruction: "Használd a <b>**félkövér**</b>-t félkövérhez és <b>==kiemelés==</b>-t kiemeléshez.", manageArenaChallenges: "ARÉNA KIHÍVÁSOK KEZELÉSE",
     cancelDuel: "PÁRBAJ MEGSZAKÍTÁSA?", cancelDuelWarning: "Az ablak bezárása megszakítja a függőben lévő meghívást és a közvetítést. Folytatod?", createDuel: "Párbaj létrehozása", joinDuel: "Csatlakozás a párbajhoz", enterPin: "PIN megadása", battleFinished: "PÁRBAJ VÉGET ÉRT", backToArena: "VISSZA AZ ARÉNÁBA",
-    terminate: "MEGSZAKÍTÁS", maintain: "MEGTARTÁS", createUplink: "UPLINK LÉTREHOZÁSA", winsToday: "Győzelmek ma", duelActivity: "Párbaj tevékenység",
+    terminate: "MEGSZAKÍTÁS", maintain: "MEGTARTÁS", createUplink: "UPLINK LÉTREHOZÁSA", winsToday: "Győzelmek ma", duelActivity: "Párbaj tevékenység", retry: "Újra",
   },
   es: {
     battle: "Batalla", tournaments: "Torneos",
@@ -85,7 +85,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "ESPERANDO AL OPONENTE", duelUplinkMessage: "El enlace para el duelo está establecido. Comparte el PIN a continuación con tu oponente para iniciar el combate.", duelPin: "PIN DEL DUELO",
     cancelEdit: "CANCELAR EDICIÓN", boldHighlightInstruction: "Usa <b>**negrito**</b> para negrito y <b>==resaltado==</b> para resaltados.", manageArenaChallenges: "GESTIONAR DESAFÍOS DE ARENA",
     cancelDuel: "¿CANCELAR DUELO?", cancelDuelWarning: "Cerrar esta ventana terminará tu invitación y emisión pendientes. ¿Continuar?", createDuel: "Crear Duelo", joinDuel: "Unirse al Duelo", enterPin: "Ingresar PIN", battleFinished: "DUELO TERMINADO", backToArena: "VOLVER A LA ARENA",
-    terminate: "TERMINAR", maintain: "MANTENER", createUplink: "CREAR UPLINK", winsToday: "Victorias hoy", duelActivity: "Actividad de duelo",
+    terminate: "TERMINAR", maintain: "MANTENER", createUplink: "CREAR UPLINK", winsToday: "Victorias hoy", duelActivity: "Actividad de duelo", retry: "Reintentar",
   },
   it: {
     battle: "Battaglia", tournaments: "Tornei",
@@ -96,7 +96,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "IN ATTESA DELL'AVVERSARIO", duelUplinkMessage: "Il collegamento per il duello è stabilito. Condividi il PIN qui sotto con il tuo avversario per iniziare il combattimento.", duelPin: "PIN DUELLO",
     cancelEdit: "ANNULLA MODIFICA", boldHighlightInstruction: "Usa <b>**grassetto**</b> per il grassetto e <b>==evidenziazione==</b> per le evidenziazioni.", manageArenaChallenges: "GESTISCI LE SFIDE DELL'ARENA",
     cancelDuel: "ANNULLARE IL DUELLO?", cancelDuelWarning: "La chiusura di questa finestra terminerà l'invito e la trasmissione in sospeso. Continuare?", createDuel: "Crea Duello", joinDuel: "Partecipa al Duello", enterPin: "Inserisci PIN", battleFinished: "DUELLO TERMINATO", backToArena: "TORNA ALL'ARENA",
-    terminate: "TERMINA", maintain: "MANTENERE", createUplink: "CREA UPLINK", winsToday: "Vittorie oggi", duelActivity: "Attività duello",
+    terminate: "TERMINA", maintain: "MANTENERE", createUplink: "CREA UPLINK", winsToday: "Vittorie oggi", duelActivity: "Attività duello", retry: "Riprova",
   },
   zh: {
     battle: "战斗", tournaments: "锦标赛",
@@ -107,7 +107,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "等待对手", duelUplinkMessage: "对决连接已建立。与您的对手分享下方的 PIN 码以发起对决。", duelPin: "对决 PIN 码",
     cancelEdit: "取消编辑", boldHighlightInstruction: "使用 <b>**粗体**</b> 表示粗体，使用 <b>==高亮==</b> 表示高亮。", manageArenaChallenges: "管理竞技场挑战",
     cancelDuel: "取消对决？", cancelDuelWarning: "关闭此窗口将终止您的待处理邀请和广播。继续吗？", createDuel: "创建对决", joinDuel: "加入对决", enterPin: "输入 PIN 码", battleFinished: "对决结束", backToArena: "返回竞技场",
-    terminate: "终止", maintain: "保持", createUplink: "创建上行链路", winsToday: "今日胜场", duelActivity: "对决活动",
+    terminate: "终止", maintain: "保持", createUplink: "创建上行链路", winsToday: "今日胜场", duelActivity: "对决活动", retry: "重试",
   },
   ja: {
     battle: "バトル", tournaments: "トーナメント",
@@ -118,7 +118,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "対戦相手を待機中", duelUplinkMessage: "デュエルへの接続が確立されました。戦闘を開始するには、以下のPINを対戦相手と共有してください。", duelPin: "デュエルPIN",
     cancelEdit: "編集をキャンセル", boldHighlightInstruction: "<b>**太字**</b> で太字を、<b>==ハイライト==</b> でハイライトを作成します。", manageArenaChallenges: "アリーナチャレンジを管理",
     cancelDuel: "デュエルをキャンセルしますか？", cancelDuelWarning: "このウィンドウを閉じると、保留中の招待とブロードキャストが終了します。続行しますか？", createDuel: "デュエルを作成", joinDuel: "デュエルに参加", enterPin: "PINを入力", battleFinished: "デュエル終了", backToArena: "アリーナに戻る",
-    terminate: "中止", maintain: "維持", createUplink: "UPLINKを作成", winsToday: "今日の勝利", duelActivity: "デュエル活動",
+    terminate: "中止", maintain: "維持", createUplink: "UPLINKを作成", winsToday: "今日の勝利", duelActivity: "デュエル活動", retry: "もう一度試す",
   },
   pt: {
     battle: "Batalha", tournaments: "Torneios", friends: "Amigos",
@@ -129,7 +129,7 @@ export const TRANSLATIONS = {
     waitingForOpponent: "AGUARDANDO OPONENTE", duelUplinkMessage: "A conexão do duelo foi estabelecida. Compartilhe o PIN abaixo com seu oponente para iniciar o combate.", duelPin: "PIN DO DUELO",
     cancelEdit: "CANCELAR EDIÇÃO", boldHighlightInstruction: "Use <b>**negrito**</b> para negrito e <b>==destaque==</b> para destaques.", manageArenaChallenges: "GERENCIAR DESAFIOS DA ARENA",
     cancelDuel: "CANCELAR DUELO?", cancelDuelWarning: "Fechar esta janela encerrará seu convite e transmissão pendentes. Continuar?", createDuel: "Criar Duelo", joinDuel: "Entrar no Duelo", enterPin: "Inserir PIN", battleFinished: "DUELO TERMINADO", backToArena: "VOLTAR À ARENA",
-    terminate: "ENCERRAR", maintain: "MANTER", createUplink: "CRIAR UPLINK", winsToday: "Vitórias hoje", duelActivity: "Atividade de duelo",
+    terminate: "ENCERRAR", maintain: "MANTER", createUplink: "CRIAR UPLINK", winsToday: "Vitórias hoje", duelActivity: "Atividade de duelo", retry: "Repetir",
   }
 };
 

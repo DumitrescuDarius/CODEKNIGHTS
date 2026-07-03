@@ -192,7 +192,7 @@ const MainMenu: React.FC = () => {
   }, [activeDuel]);
 
   const [duelPin, setDuelPin] = useState<string>("");
-  const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("snappy");
+  const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("none");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
   const [showWrongAnswerPopup, setShowWrongAnswerPopup] = useState(false);
@@ -424,6 +424,34 @@ const MainMenu: React.FC = () => {
     }
   }, [isGuest, guestName]);
 
+  const startQuickMatch = useCallback(async () => {
+    try {
+      const res = await fetch('/api/duels/quick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestName: isGuest ? guestName : undefined })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data) {
+          // If returned duel is waiting, show waiting UI; if active, start immediately
+          setActiveDuel(data);
+          if (data.status === 'WAITING') {
+            setShowWaitingPopup(true);
+          } else if (data.status === 'ACTIVE') {
+            setShowWaitingPopup(false);
+            setShowOpponentFoundPopup(true);
+          }
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error('Quick match failed:', data.error || res.statusText);
+      }
+    } catch (err) {
+      console.error('Quick match error:', err);
+    }
+  }, [isGuest, guestName]);
+
   const pollDuel = useCallback(async () => {
     if (!activeDuel || activeDuel.status === "FINISHED") return;
     try {
@@ -634,6 +662,17 @@ const MainMenu: React.FC = () => {
         }
       });
       monaco.editor.setTheme('dynamic-theme');
+    }).catch(err => {
+      // Monaco loader can reject with a cancellation object when the operation
+      // is manually canceled by the loader or during fast HMR. Ignore those.
+      try {
+        if (err && (err.type === 'cancelation' || err.msg === 'operation is manually canceled' || err.name === 'Canceled')) return;
+      } catch (e) {
+        // ignore
+      }
+      // Log other errors so they can be investigated
+      // eslint-disable-next-line no-console
+      console.error('Monaco init error:', err);
     });
   }, [themeIndex, isLoaded]);
 
@@ -1374,6 +1413,7 @@ const MainMenu: React.FC = () => {
         return (
           <BattleWindow 
             startBattle={startBattle} questions={questions}
+            startQuickMatch={startQuickMatch}
             session={session} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest}
             t={t} onDeleteQuestion={handleDeleteQuestion} onEditQuestion={onEditQuestion}
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
@@ -1487,7 +1527,6 @@ const MainMenu: React.FC = () => {
             }}
             runSingleTest={runSingleTest}
             t={t}
-            analysis={analysis}
             isAnalyzing={isAnalyzing}
             onAnalyzeComplexity={analyzeProblemComplexity}
             activeDuel={activeDuel}
@@ -1499,7 +1538,28 @@ const MainMenu: React.FC = () => {
       case "profile":
         return <ProfileWindow session={session} userId={viewingUserId ?? undefined} t={t} />;
       case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>Global</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
-      case "friends": return <FriendsWindow t={t} openProfile={(id: string) => { setViewingUserId(id); toggleWindow("profile"); }} />;
+      case "friends": return (
+        <FriendsWindow 
+          t={t} 
+          openProfile={(id: string) => { 
+            setViewingUserId(id); 
+            setOpenWindows(prev => {
+              if (prev.includes("profile")) {
+                setActiveWindow("profile");
+                return prev;
+              }
+              if (prev.length >= 4) {
+                setShowLimitWarning(true);
+                return prev;
+              }
+              setWindowFlexes(flexes => [...flexes, 1]);
+              if (maximizedWindow) setMaximizedWindow(null);
+              setActiveWindow("profile");
+              return [...prev, "profile"];
+            });
+          }} 
+        />
+      );
       default: return null;
       }
       };

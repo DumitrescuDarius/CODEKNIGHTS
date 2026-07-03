@@ -8,6 +8,7 @@ import { TranslationKey } from "../../constants/translations";
 
 interface BattleWindowProps {
   startBattle: (q?: any) => void;
+  startQuickMatch?: () => Promise<void>;
   questions: Question[];
   session: any;
   isGuest: boolean;
@@ -28,7 +29,7 @@ interface BattleWindowProps {
 }
 
 export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
-  startBattle, setShowWaitingPopup, questions, session, isGuest, handlePlayAsGuest, t, onDeleteQuestion, onEditQuestion,
+  startBattle, startQuickMatch, setShowWaitingPopup, questions, session, isGuest, handlePlayAsGuest, t, onDeleteQuestion, onEditQuestion,
   createDuel, joinDuel, activeDuel, setActiveDuel, setDuelPin, showCancelDuel, setShowCancelDuel, handleCancelDuel, timeLeft
 }) => {
   const [joinPin, setJoinPin] = useState("");
@@ -231,7 +232,18 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               <Zap size={16} /> {t("rapidDeployment")}
             </span>
             <button 
-              onClick={() => startBattle()}
+              onClick={async () => {
+                if (startQuickMatch) {
+                  setIsCreating(true);
+                  try {
+                    await startQuickMatch();
+                  } finally {
+                    setIsCreating(false);
+                  }
+                  return;
+                }
+                startBattle();
+              }}
               style={{ 
                 width: '100%', 
                 background: 'var(--accent)', 

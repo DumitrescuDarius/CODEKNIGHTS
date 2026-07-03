@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo 2048 - Tester Comenzi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            align-items: flex-start;
+        }
+        
+        .game-board {
+            background-color: #bbada0;
+            border-radius: 6px;
+            padding: 6px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            width: 252px;
+            height: 252px;
+            order: 1;
+        }
+        
+        .controls-panel {
+            flex: 1;
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            order: 0;
+        }
+        
+        .board-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+        
+        .board-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .tile {
+            width: 60px;
+            height: 60px;
+            background-color: #cdc1b4;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #776e65;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tile-0 { background-color: #cdc1b4; }
+        .tile-1 { background-color: #eee4da; }
+        .tile-2 { background-color: #ede0c8; }
+        .tile-4 { background-color: #f2b179; }
+        .tile-8 { background-color: #f59563; }
+        .tile-16 { background-color: #f67c5f; }
+        .tile-32 { background-color: #f65e3b; }
+        .tile-64 { background-color: #edcf72; }
+        .tile-128 { background-color: #edcc61; }
+        .tile-256 { background-color: #edc850; }
+        .tile-512 { background-color: #edc53f; }
+        .tile-1024 { background-color: #edc22e; }
+        .tile-2048 { background-color: #edc22e; }
+        .tile-4096 { background-color: #3c3a32; color: white; }
+        .tile-8192 { background-color: #3c3a32; color: white; }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background-color: #8f7a66;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #776e65;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-family: monospace;
+            resize: vertical;
+            background-color: #f9f9f9;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        
+        .status {
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 3px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .instructions {
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .speed-controls {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .speed-controls label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .speed-btn {
+            padding: 5px 10px;
+            min-width: 60px;
+        }
+        
+        .speed-btn.active {
+            background-color: #5cb85c;
+        }
+    </style>
+</head>
+<body>
+    <h1>Demo 2048 - Tester Comenzi</h1>
+    
+    <div class="instructions">
+        <h3>Cum se folosește acest demo:</h3>
+        <ul>
+            <li>Introduceți comenzi în zona de text (câte una pe linie): LEFT, RIGHT, UP, DOWN, DROP</li>
+            <li>Apăsați "Rulează Comenzi" pentru a executa secvența (tabla se resetează automat)</li>
+            <li>Alegeți viteza de simulare: 1 comandă/secundă, 10 comenzi/secundă sau instant</li>
+            <li>Tabla de joc (4×4) se actualizează după fiecare comandă</li>
+            <li>DROP adaugă o nouă piesă (valoare 1) la poziția (4,4) - colțul din dreapta jos</li>
+            <li>Obiectivul este să ajungeți la o piesă cu valoarea 8192</li>
+            <li>Folosiți acest demo pentru a testa secvențele de comenzi ale soluției dvs.</li>
+        </ul>
+        <strong>Acest simulator există pentru a vă ajuta, dar soluția dvs NU va fi evaluată cu acest simulator. De exemplu, în cazul puțin probabil în care există un bug în acest simulator, soluția dvs va fi în continuare considerată corectă numai dacă a primit un punctaj pe interfața de concurs.</strong>
+    </div>
+    
+    <div class="container">
+        <div class="game-board" id="gameBoard">
+            <!-- Board will be generated by JavaScript -->
+        </div>
+        
+        <div class="controls-panel">
+            <div class="status" id="status">Gata să începeți</div>
+            
+            <textarea id="commands" placeholder="Introduceți comenzi aici, câte una pe linie:
+LEFT
+DROP
+UP
+RIGHT
+..." disabled></textarea>
+            
+            <div class="speed-controls">
+                <label>Viteză:</label>
+                <button id="speed1" class="speed-btn active" onclick="setSpeed(1000)">1/s</button>
+                <button id="speed10" class="speed-btn" onclick="setSpeed(100)">10/s</button>
+                <button id="speedInstant" class="speed-btn" onclick="setSpeed(0)">Instant</button>
+            </div>
+            
+            <div class="controls">
+                <button id="runCommands" onclick="runCommands()">Rulează Comenzi</button>
+                <button id="stopCommands" onclick="stopCommands()" disabled>Oprește</button>
+                <button id="clear" onclick="clearCommands()" disabled>Șterge</button>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="moves">0</div>
+                    <div>Mișcări</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="maxValue">0</div>
+                    <div>Valoare Maximă</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const MAX_MOVES = 100000;
+
+        let board = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+        let moves = 0;
+        let gameActive = false;
+        let commands = [];
+        let currentCommandIndex = 0;
+        let executionInterval = null;
+        let speed = 1000; // Default: 1 command per second
+
+        // Initialize the game
+        function init() {
+            board = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+            moves = 0;
+            gameActive = true;
+            updateBoard();
+            updateStatus('Introduceți comenzi și apăsați Rulează.', 'info');
+            document.getElementById('commands').disabled = false;
+            document.getElementById('stopCommands').disabled = true;
+            document.getElementById('clear').disabled = false;
+            document.getElementById('commands').focus();
+        }
+
+        function setButtonsRunning(isRunning) {
+            document.getElementById('runCommands').disabled = isRunning;
+            document.getElementById('stopCommands').disabled = !isRunning;
+        }
+
+        function stopExecution(message, type) {
+            gameActive = false;
+
+            if (executionInterval) {
+                clearInterval(executionInterval);
+                executionInterval = null;
+            }
+
+            if (message) {
+                updateStatus(message, type);
+            }
+
+            setButtonsRunning(false);
+        }
+
+        // Set execution speed
+        function setSpeed(newSpeed) {
+            speed = newSpeed;
+
+            document.getElementById('speed1').classList.remove('active');
+            document.getElementById('speed10').classList.remove('active');
+            document.getElementById('speedInstant').classList.remove('active');
+
+            if (speed === 1000) {
+                document.getElementById('speed1').classList.add('active');
+            } else if (speed === 100) {
+                document.getElementById('speed10').classList.add('active');
+            } else {
+                document.getElementById('speedInstant').classList.add('active');
+            }
+
+            if (executionInterval && speed > 0) {
+                clearInterval(executionInterval);
+                executionInterval = setInterval(executeNextTimedCommand, speed);
+            }
+        }
+
+        // Stop running commands
+        function stopCommands() {
+            stopExecution('Execuția oprită.', 'info');
+        }
+
+        // Clear commands
+        function clearCommands() {
+            document.getElementById('commands').value = '';
+            commands = [];
+            currentCommandIndex = 0;
+
+            if (executionInterval) {
+                clearInterval(executionInterval);
+                executionInterval = null;
+            }
+
+            if (gameActive) {
+                updateStatus('Comenzi șterse. Introduceți comenzi noi.', 'info');
+            }
+
+            setButtonsRunning(false);
+        }
+
+        // Parse commands from textarea
+        function parseCommands() {
+            const commandsText = document.getElementById('commands').value;
+            commands = commandsText.split('\n')
+                .map(cmd => cmd.trim().toUpperCase())
+                .filter(cmd => cmd.length > 0);
+            currentCommandIndex = 0;
+        }
+
+        function resetBoardForRun() {
+            board = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+            moves = 0;
+            gameActive = true;
+            updateBoard();
+        }
+
+        function finishSuccessfulRun() {
+            const maxVal = Math.max(...board.flat());
+            updateStatus(`Comenzi executate. Valoare maximă: ${maxVal}.`, maxVal >= 8192 ? 'success' : 'info');
+            setButtonsRunning(false);
+        }
+
+        function executeNextTimedCommand() {
+            if (currentCommandIndex >= commands.length || !gameActive) {
+                if (executionInterval) {
+                    clearInterval(executionInterval);
+                    executionInterval = null;
+                }
+
+                if (gameActive && currentCommandIndex >= commands.length) {
+                    finishSuccessfulRun();
+                } else {
+                    setButtonsRunning(false);
+                }
+                return;
+            }
+
+            const ok = executeCommand(commands[currentCommandIndex], currentCommandIndex + 1);
+            currentCommandIndex++;
+
+            if (!ok) {
+                setButtonsRunning(false);
+            }
+        }
+
+        // Run commands
+        function runCommands() {
+            parseCommands();
+
+            if (commands.length === 0) {
+                updateStatus('Nicio comandă de executat.', 'error');
+                return;
+            }
+
+            resetBoardForRun();
+
+            if (executionInterval) {
+                clearInterval(executionInterval);
+                executionInterval = null;
+            }
+
+            updateStatus('Se execută comenzi...', 'info');
+            setButtonsRunning(true);
+
+            if (speed === 0) {
+                // Instant execution.
+                // Important: o eroare oprește imediat bucla, altfel erorile puteau fi mascate.
+                while (currentCommandIndex < commands.length && gameActive) {
+                    const ok = executeCommand(commands[currentCommandIndex], currentCommandIndex + 1);
+                    currentCommandIndex++;
+
+                    if (!ok) {
+                        break;
+                    }
+                }
+
+                if (gameActive && currentCommandIndex >= commands.length) {
+                    finishSuccessfulRun();
+                } else {
+                    setButtonsRunning(false);
+                }
+            } else {
+                executionInterval = setInterval(executeNextTimedCommand, speed);
+            }
+        }
+
+        // Execute a single command.
+        // Returnează true dacă execuția poate continua, false dacă apare o eroare.
+        function executeCommand(command, lineNumber) {
+            if (!gameActive) {
+                return false;
+            }
+
+            try {
+                if (command === 'LEFT') {
+                    pushLeft();
+                } else if (command === 'RIGHT') {
+                    pushRight();
+                } else if (command === 'UP') {
+                    pushUp();
+                } else if (command === 'DOWN') {
+                    pushDown();
+                } else if (command === 'DROP') {
+                    dropNew();
+                } else {
+                    // În problema finală nu există SHOW sau STOP.
+                    throw new Error(`Comandă necunoscută la linia ${lineNumber}: ${command}`);
+                }
+
+                if (moves > MAX_MOVES) {
+                    throw new Error(`Prea multe comenzi: ${moves}. Limita este ${MAX_MOVES}.`);
+                }
+
+                updateBoard();
+                return true;
+            } catch (error) {
+                updateBoard();
+                stopExecution('Eroare: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        // Update the visual board
+        function updateBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+
+            for (let row = 0; row < 4; row++) {
+                const boardRow = document.createElement('div');
+                boardRow.className = 'board-row';
+
+                for (let col = 0; col < 4; col++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile tile-' + board[row][col];
+                    tile.textContent = board[row][col] === 0 ? '' : board[row][col];
+                    boardRow.appendChild(tile);
+                }
+
+                gameBoard.appendChild(boardRow);
+            }
+
+            document.getElementById('moves').textContent = moves;
+
+            const maxVal = Math.max(...board.flat());
+            document.getElementById('maxValue').textContent = maxVal;
+
+            // Nu oprim simularea când ajungem la 8192.
+            // Checker-ul real citește toate comenzile până la final, iar o comandă invalidă ulterioară pică soluția.
+            if (maxVal >= 8192 && gameActive) {
+                updateStatus('Ați atins 8192. Simularea continuă pentru a verifica toate comenzile rămase.', 'success');
+            }
+        }
+
+        // Update status message
+        function updateStatus(message, type) {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = 'status ' + type;
+        }
+
+        // Push left operation
+        function pushLeft() {
+            moves++;
+            for (let row = 0; row < 4; row++) {
+                pushArrayLeft(board[row]);
+            }
+        }
+
+        // Push right operation
+        function pushRight() {
+            moves++;
+            for (let row = 0; row < 4; row++) {
+                board[row].reverse();
+                pushArrayLeft(board[row]);
+                board[row].reverse();
+            }
+        }
+
+        // Push up operation
+        function pushUp() {
+            moves++;
+            for (let col = 0; col < 4; col++) {
+                const column = [board[0][col], board[1][col], board[2][col], board[3][col]];
+                pushArrayLeft(column);
+                for (let row = 0; row < 4; row++) {
+                    board[row][col] = column[row];
+                }
+            }
+        }
+
+        // Push down operation
+        function pushDown() {
+            moves++;
+            for (let col = 0; col < 4; col++) {
+                const column = [board[0][col], board[1][col], board[2][col], board[3][col]];
+                column.reverse();
+                pushArrayLeft(column);
+                column.reverse();
+                for (let row = 0; row < 4; row++) {
+                    board[row][col] = column[row];
+                }
+            }
+        }
+
+        // Helper function to push an array left
+        function pushArrayLeft(arr) {
+            let prevIsMergable = false;
+            let nextIdx = 0;
+
+            for (let i = 0; i < 4; i++) {
+                if (arr[i] === 0) continue;
+
+                if (prevIsMergable && arr[i] === arr[nextIdx - 1]) {
+                    prevIsMergable = false;
+                    arr[nextIdx - 1] *= 2;
+                } else {
+                    arr[nextIdx++] = arr[i];
+                    prevIsMergable = true;
+                }
+            }
+
+            for (let i = nextIdx; i < 4; i++) {
+                arr[i] = 0;
+            }
+        }
+
+        // Drop a new tile
+        function dropNew() {
+            moves++;
+
+            if (board[3][3] !== 0) {
+                throw new Error('Nu se poate executa DROP: celula (4,4) nu este goală');
+            }
+
+            board[3][3] = 1;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

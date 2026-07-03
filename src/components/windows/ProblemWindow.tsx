@@ -111,7 +111,6 @@ interface ProblemWindowProps {
   runSingleTest: (input: string, index: number) => void;
   t: (key: TranslationKey) => string;
   analysis: CodeAnalysis | null;
-  isTesting: boolean;
   isAnalyzing: boolean;
   onAnalyzeComplexity: () => void;
   activeDuel?: any;
