@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       data: {
         guestId: userId,
         status: "ACTIVE",
-        createdAt: new Date(),
+        startedAt: new Date(),
       },
       include: {
         question: true,
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json(updatedDuel);
+    return NextResponse.json({ ...updatedDuel, serverTime: Date.now() });
   } catch (err) {
     console.error("Join duel error:", err);
     return NextResponse.json({ error: "Failed to join duel" }, { status: 500 });

@@ -5,14 +5,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { io, Socket } from "socket.io-client";
 import { Language, WindowId, UserStats, Question, SupportedLanguage, AnimationSpeed } from "../types";
 import { THEMES } from "../constants/themes";
 import { FONTS } from "../constants/fonts";
 import { LANG_CONFIG, CPP_STL } from "../constants/languages";
+import beautify from "js-beautify";
 import { TRANSLATIONS, TranslationKey } from "../constants/translations";
 
 import { EditorWindow } from "./windows/EditorWindow";
@@ -79,6 +80,7 @@ interface CodeAnalysis {
   error?: string;
   details?: string;
   quotaExceeded?: boolean;
+  failedSubmissionsCount?: number;
 }
 
 interface Duel {
@@ -87,6 +89,28 @@ interface Duel {
   status: "WAITING" | "ACTIVE" | "FINISHED";
   question: Question;
   players: { id: string; name: string; image?: string }[];
+  createdAt?: string | Date;
+  startedAt?: string | Date;
+  hostId?: string;
+  guestId?: string;
+  hostCodeLength?: number;
+  guestCodeLength?: number;
+  hostLineCount?: number;
+  guestLineCount?: number;
+  hostTestsPassed?: number;
+  guestTestsPassed?: number;
+  hostTestsTotal?: number;
+  guestTestsTotal?: number;
+  hostLastActive?: string;
+  guestLastActive?: string;
+  hostSolveTime?: number | null;
+  guestSolveTime?: number | null;
+  hostPenalty?: number | null;
+  guestPenalty?: number | null;
+  hostRatingChange?: number | null;
+  guestRatingChange?: number | null;
+  host?: any;
+  guest?: any;
 }
 
 const DEFAULT_QUESTION: Question = {
@@ -150,12 +174,25 @@ const MainMenu: React.FC = () => {
     return 0; // Default
   };
 
-  const calculatePenalty = useCallback((timeSeconds: number, wrongAttempts: number, compScores: CodeAnalysisScores | undefined) => {
+  const calculatePenalty = useCallback((
+    timeSeconds: number, 
+    wrongAttempts: number, 
+    compScores: CodeAnalysisScores | undefined,
+    actualComp?: string,
+    idealComp?: string | null
+  ) => {
       const timePenalty = timeSeconds;
       const waPenalty = wrongAttempts * 50;
       const complexityPenalty = (compScores ? (compScores.efficiency + compScores.readability + compScores.maintainability + compScores.security) : 0) * 1;
+      
+      let extraPenalty = 0;
+      if (actualComp && idealComp) {
+        if (actualComp.replace(/\s+/g, '') !== idealComp.replace(/\s+/g, '')) {
+          extraPenalty = 100;
+        }
+      }
 
-      return timePenalty + waPenalty + complexityPenalty;
+      return timePenalty + waPenalty + complexityPenalty + extraPenalty;
   }, []);
   const retryProblem = useCallback(() => {
     setTestResults(null);
@@ -167,13 +204,17 @@ const MainMenu: React.FC = () => {
   
   const [isTesting, setIsTesting] = useState(false);
   const [userStats, setUserStats] = useState<UserStats>({ battlesWon: 0, battlesTotal: 0 });
+  const [fullProfile, setFullProfile] = useState<any>(null);
+  const [cachedFriends, setCachedFriends] = useState<User[] | null>(null);
+  const [cachedRequests, setCachedRequests] = useState<User[] | null>(null);
+  const [incomingInvite, setIncomingInvite] = useState<{hostName: string, pin: string} | null>(null);
   const [showQuitConfirmation, setShowQuitConfirmation] = useState(false);
   const [showCancelDuel, setShowCancelDuel] = useState(false);
   const [battleStartTime, setBattleStartTime] = useState<number | null>(null);
   const [solveTime, setSolveTime] = useState<string | null>(null);
   const [hoveredWindow, setHoveredWindow] = useState<WindowId | null>(null);
   const [activeWindow, setActiveWindow] = useState<WindowId>("editor");
-  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+
   const [cursorPos, setCursorPos] = useState({ ln: 1, col: 1 });
   const [compileErrors, setCompileErrors] = useState<CompileError[]>([]);
   const [maximizedWindow, setMaximizedWindow] = useState<WindowId | null>(null);
@@ -181,6 +222,7 @@ const MainMenu: React.FC = () => {
   const [isReordering, setIsReordering] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(null);
+  const [guestId, setGuestId] = useState<string | null>(null);
   const [uiLang, setUiLang] = useState<SupportedLanguage>("en");
   const [analysis, setAnalysis] = useState<CodeAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -192,8 +234,11 @@ const MainMenu: React.FC = () => {
   }, [activeDuel]);
 
   const [duelPin, setDuelPin] = useState<string>("");
-  const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("none");
+  const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("snappy");
+  const [windowRadius, setWindowRadius] = useState<string>("0.4rem");
+  const [windowGap, setWindowGap] = useState<string>("0.75rem");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [clockOffset, setClockOffset] = useState<number>(0);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
   const [showWrongAnswerPopup, setShowWrongAnswerPopup] = useState(false);
   const [showRatingChangePopup, setShowRatingChangePopup] = useState<{ amount: number, isWin: boolean } | null>(null);
@@ -236,6 +281,10 @@ const MainMenu: React.FC = () => {
   useEffect(() => {
     const saved = localStorage.getItem('animationSpeed') as AnimationSpeed;
     if (saved) setAnimationSpeed(saved);
+    const savedRadius = localStorage.getItem('windowRadius');
+    if (savedRadius) setWindowRadius(savedRadius);
+    const savedGap = localStorage.getItem('windowGap');
+    if (savedGap) setWindowGap(savedGap);
   }, []);
 
   useEffect(() => {
@@ -250,14 +299,9 @@ const MainMenu: React.FC = () => {
     if (animationSpeed === "dramatic") return { type: "spring", stiffness: 60, damping: 25, mass: 1.5 };
     if (animationSpeed === "snappy") return { type: "spring", stiffness: 350, damping: 25, mass: 1 };
     if (animationSpeed === "jello") return { type: "spring", stiffness: 500, damping: 8, mass: 1 };
-    if (animationSpeed === "lazy") return { type: "spring", stiffness: 120, damping: 40, mass: 1.5 };
-    if (animationSpeed === "ghost") return { type: "spring", stiffness: 300, damping: 40, mass: 1 };
-    if (animationSpeed === "teleport") return { type: "spring", stiffness: 2000, damping: 120, mass: 1 };
-    if (animationSpeed === "boing") return { type: "spring", stiffness: 800, damping: 15, mass: 1.2 };
-    if (animationSpeed === "float") return { type: "spring", stiffness: 60, damping: 20, mass: 1 };
-    if (animationSpeed === "erased") return { type: "tween", ease: "easeInOut", duration: 0.4 };
-    if (animationSpeed === "flip") return { type: "spring", stiffness: 350, damping: 25, mass: 1 };
-    if (animationSpeed === "glitch") return { type: "spring", stiffness: 1000, damping: 12, mass: 0.5 };
+    if (animationSpeed === "earthquake") return { type: "spring", stiffness: 1000, damping: 5, mass: 1 };
+    if (animationSpeed === "spin") return { type: "spring", stiffness: 200, damping: 20, mass: 1 };
+    if (animationSpeed === "shrink") return { type: "spring", stiffness: 400, damping: 25, mass: 1 };
     if (animationSpeed === "swapVertical") return { type: "spring", stiffness: 450, damping: 30, mass: 1 };
     if (animationSpeed === "six seven") return { type: "spring", stiffness: 150, damping: 5, mass: 1 };
     return { type: "spring", stiffness: 350, damping: 25, mass: 1 };
@@ -358,11 +402,13 @@ const MainMenu: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (data) {
+          setFullProfile(data);
           setUserStats({
             battlesWon: data.battlesWon || 0,
             battlesTotal: data.battlesTotal || 0,
             rating: data.rating || 1000,
-            dailyWins: data.dailyWins || {}
+            dailyWins: data.dailyWins || {},
+            currentStreak: data.currentStreak || 0
           });
           // Update session-like data for children that depend on it
           if (session.user) {
@@ -373,6 +419,20 @@ const MainMenu: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to fetch stats:", err);
+    }
+  }, [session]);
+
+  const fetchFriendsData = useCallback(async () => {
+    if (!session) return;
+    try {
+      const [friendsRes, requestsRes] = await Promise.all([
+        fetch("/api/user/friends"),
+        fetch("/api/user/requests")
+      ]);
+      if (friendsRes.ok) setCachedFriends(await friendsRes.json());
+      if (requestsRes.ok) setCachedRequests(await requestsRes.json());
+    } catch (err) {
+      console.error("Fetch friends error:", err);
     }
   }, [session]);
 
@@ -387,6 +447,7 @@ const MainMenu: React.FC = () => {
       if (res.ok) {
         if (data.pin) {
           setDuelPin(data.pin);
+          if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(data);
         } else {
           console.error(data.error || "Failed to create duel");
@@ -411,7 +472,9 @@ const MainMenu: React.FC = () => {
         if (data.id) {
           setShowOpponentFoundPopup(true);
           setShowWaitingPopup(false);
+          if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(data);
+          socketRef.current?.emit("duel_update", { duelId: data.id });
         } else {
 
           alert(data.error || "Failed to join duel");
@@ -424,6 +487,40 @@ const MainMenu: React.FC = () => {
     }
   }, [isGuest, guestName]);
 
+  const handleInviteDuel = useCallback(async (targetId: string, targetName: string) => {
+    try {
+      const res = await fetch("/api/duels", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guestName: isGuest ? guestName : undefined })
+      });
+      const data = await res.json();
+      if (res.ok && data.pin) {
+        setDuelPin(data.pin);
+        if (data.serverTime) setClockOffset(data.serverTime - Date.now());
+        setActiveDuel(data);
+        
+        const myName = (session?.user as any)?.name || (session?.user as any)?.username || "Knight";
+        socketRef.current?.emit("invite_duel", { targetId, hostName: myName, pin: data.pin });
+        
+        setOpenWindows(prev => {
+           if (!prev.includes("battle")) {
+               setWindowFlexes(f => [...f, 1]);
+               return [...prev, "battle"];
+           }
+           return prev;
+        });
+        setActiveWindow("battle");
+        
+      } else {
+        alert("Failed to create duel for invite.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create duel.");
+    }
+  }, [isGuest, guestName, session]);
+
   const startQuickMatch = useCallback(async () => {
     try {
       const res = await fetch('/api/duels/quick', {
@@ -435,7 +532,9 @@ const MainMenu: React.FC = () => {
         const data = await res.json();
         if (data) {
           // If returned duel is waiting, show waiting UI; if active, start immediately
+          if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(data);
+          socketRef.current?.emit("duel_update", { duelId: data.id });
           if (data.status === 'WAITING') {
             setShowWaitingPopup(true);
           } else if (data.status === 'ACTIVE') {
@@ -453,9 +552,10 @@ const MainMenu: React.FC = () => {
   }, [isGuest, guestName]);
 
   const pollDuel = useCallback(async () => {
-    if (!activeDuel || activeDuel.status === "FINISHED") return;
+    const currentActiveDuel = activeDuelRef.current;
+    if (!currentActiveDuel || currentActiveDuel.status === "FINISHED") return;
     try {
-      const res = await fetch(`/api/duels/poll?pin=${activeDuel.pin}`);
+      const res = await fetch(`/api/duels/poll?pin=${currentActiveDuel.pin}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         
@@ -464,10 +564,23 @@ const MainMenu: React.FC = () => {
         if (activeDuelRef.current === null) return;
 
         if (data.id) {
-          // Merge partial polled data with the existing full duel object
-          const updatedDuel = { ...activeDuel, ...data };
+          // Merge partial polled data with the existing full duel object, but preserve live socket stats
+          const current = activeDuelRef.current;
+          const updatedDuel = { 
+            ...current, 
+            ...data,
+            hostCodeLength: current.hostCodeLength ?? data.hostCodeLength,
+            hostLineCount: current.hostLineCount ?? data.hostLineCount,
+            hostTestsPassed: current.hostTestsPassed ?? data.hostTestsPassed,
+            hostTestsTotal: current.hostTestsTotal ?? data.hostTestsTotal,
+            hostLastActive: current.hostLastActive ?? data.hostLastActive,
+            guestCodeLength: current.guestCodeLength ?? data.guestCodeLength,
+            guestLineCount: current.guestLineCount ?? data.guestLineCount,
+            guestTestsPassed: current.guestTestsPassed ?? data.guestTestsPassed,
+            guestTestsTotal: current.guestTestsTotal ?? data.guestTestsTotal,
+            guestLastActive: current.guestLastActive ?? data.guestLastActive,
+          };
           
-          console.log("[MainMenu] Polled duel data:", updatedDuel);
           if (updatedDuel.status === "FINISHED" && lastFinishedDuelId.current !== updatedDuel.id) {
             lastFinishedDuelId.current = updatedDuel.id;
             const userId = session?.user ? (session.user as any).id : "guest";
@@ -481,40 +594,146 @@ const MainMenu: React.FC = () => {
               }
               fetchUserStats();
             }
+            window.dispatchEvent(new CustomEvent("duel_update_required", { detail: updatedDuel.id }));
           }
-
-          if (activeDuel && activeDuel.status !== 'ACTIVE' && updatedDuel.status === 'ACTIVE') {
+          
+          if (updatedDuel.status !== "FINISHED" && currentActiveDuel && currentActiveDuel.status !== 'ACTIVE' && updatedDuel.status === 'ACTIVE') {
             setShowOpponentFoundPopup(true);
             setShowWaitingPopup(false);
           }
+          if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(updatedDuel);
         }
       }
     } catch (err) {
       console.error(err);
     }
-  }, [activeDuel, session, fetchUserStats]);
+  }, [session, fetchUserStats]);
+
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    socketRef.current = io();
+    
+    socketRef.current.on("opponent_progress", (data) => {
+      setActiveDuel(prev => {
+        if (!prev || prev.id !== data.duelId) return prev;
+        const userId = session?.user ? (session.user as any).id : guestId;
+        const isHost = prev.hostId === userId;
+        return {
+          ...prev,
+          ...(isHost ? {
+            guestCodeLength: data.codeLength,
+            guestLineCount: data.lineCount,
+            guestTestsPassed: data.testsPassed,
+            guestTestsTotal: data.testsTotal,
+            guestLastActive: new Date().toISOString()
+          } : {
+            hostCodeLength: data.codeLength,
+            hostLineCount: data.lineCount,
+            hostTestsPassed: data.testsPassed,
+            hostTestsTotal: data.testsTotal,
+            hostLastActive: new Date().toISOString()
+          })
+        };
+      });
+    });
+
+    socketRef.current.on("duel_update", () => {
+      pollDuel();
+    });
+
+    socketRef.current.on("duel_invite", (data) => {
+      const userId = session?.user ? (session.user as any).id : null;
+      if (userId && data.targetId === userId) {
+         setIncomingInvite(data);
+      }
+    });
+
+    socketRef.current.on("connect", () => {
+      const id = activeDuelRef.current?.id;
+      if (id) {
+        socketRef.current?.emit("join_duel", id);
+      }
+      
+      const userId = session?.user ? (session.user as any).id : null;
+      if (userId) {
+        socketRef.current?.emit("identify", userId);
+      }
+    });
+
+    const handleCustomDuelUpdate = (e: any) => {
+      const id = e.detail || activeDuelRef.current?.id;
+      if (id) {
+        socketRef.current?.emit("duel_update", { duelId: id });
+        pollDuel();
+      }
+    };
+    window.addEventListener("duel_update_required", handleCustomDuelUpdate);
+
+    return () => {
+      window.removeEventListener("duel_update_required", handleCustomDuelUpdate);
+      socketRef.current?.disconnect();
+    };
+  }, [session, guestId, pollDuel]);
+
+  useEffect(() => {
+    const id = activeDuel?.id;
+    if (id && socketRef.current?.connected) {
+      socketRef.current.emit("join_duel", id);
+    }
+    return () => {
+      if (id && socketRef.current?.connected) {
+        socketRef.current.emit("leave_duel", id);
+      }
+    };
+  }, [activeDuel?.id]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
-    if (activeDuel && activeDuel.status !== "FINISHED") {
-      interval = setInterval(pollDuel, 200);
+    if (activeDuel?.status === "ACTIVE") {
+      // Fallback polling in case of missed WebSocket events
+      interval = setInterval(() => {
+        pollDuel();
+      }, 5000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeDuel, pollDuel]);
+  }, [activeDuel?.status, pollDuel]);
+
+  // Send real-time progress updates to the server every 2 seconds during an active duel
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined;
+    if (activeDuel?.status === "ACTIVE") {
+      interval = setInterval(() => {
+        if (socketRef.current) {
+          const body = {
+            duelId: activeDuel.id,
+            codeLength: code.length,
+            lineCount: code.split("\n").length,
+            testsPassed: testResults?.passed || 0,
+            testsTotal: testResults?.total || 0,
+          };
+          socketRef.current.emit("progress_update", body);
+        }
+      }, 100); // Super fast 100ms updates directly via WebSocket!
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeDuel, code, testResults, session, guestId]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
-    if (activeDuel && (activeDuel.status === "ACTIVE" || activeDuel.status === "WAITING") && !solveTime) {
+    if (activeDuel && activeDuel.status === "ACTIVE" && !solveTime) {
       const difficultyTimeLimits: Record<string, number> = {
         "Easy": 8 * 60,
         "Medium": 12 * 60,
         "Hard": 18 * 60
       };
       const limit = difficultyTimeLimits[activeDuel.question?.difficulty] || 8 * 60;
-      const startTime = new Date(activeDuel.createdAt).getTime();
+      const startTime = new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset;
 
       interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -710,8 +929,9 @@ const MainMenu: React.FC = () => {
     if (isLoaded) {
       fetchQuestions();
       fetchUserStats();
+      fetchFriendsData();
     }
-  }, [isLoaded, fetchQuestions, fetchUserStats]);
+  }, [isLoaded, fetchQuestions, fetchUserStats, fetchFriendsData]);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -876,8 +1096,8 @@ const MainMenu: React.FC = () => {
     setTestResults(null);
     setWrongAttemptCount(0); // Reset
     
-    // If it's a duel, use createdAt as the start time, otherwise now.
-    const startTime = activeDuel ? new Date(activeDuel.createdAt).getTime() : Date.now();
+    // If it's a duel, use startedAt as the start time, otherwise now.
+    const startTime = activeDuel ? new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset : Date.now();
     setBattleStartTime(startTime);
     
     setSolveTime(null);
@@ -979,7 +1199,8 @@ const MainMenu: React.FC = () => {
                 duelId: activeDuel.id, 
                 solveTime: time * 1000,
                 complexityScore: totalComplexity,
-                totalPenalty: totalPenalty
+                totalPenalty: totalPenalty,
+                code: code
             })
           });
         }
@@ -1023,8 +1244,18 @@ const MainMenu: React.FC = () => {
   };
 
   const handleBeautify = async () => {
-    // Basic beautify logic or call an API
-    console.log("Beautify requested");
+    try {
+      if (lang === "cpp" || lang === "c" || lang === "java") {
+        const formatted = beautify.js(code, { indent_size: 4, space_in_empty_paren: true, brace_style: "collapse" });
+        setCode(formatted);
+      } else {
+        if (editorRef.current) {
+          editorRef.current.getAction('editor.action.formatDocument')?.run();
+        }
+      }
+    } catch (err) {
+      console.error("Beautify failed", err);
+    }
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -1071,7 +1302,6 @@ const MainMenu: React.FC = () => {
     }
   }, [openWindows]);
 
-  const [guestId, setGuestId] = useState<string | null>(null);
 
   const handlePlayAsGuest = useCallback(() => {
     const randomId = Math.floor(1000 + Math.random() * 9000);
@@ -1190,7 +1420,7 @@ const MainMenu: React.FC = () => {
         });
         if (maximizedWindow === id) setMaximizedWindow(null);
         if (activeWindow === id) setActiveWindow("editor");
-        if (id === "profile") setViewingUserId(null);
+
         const nextWindows = prev.filter(w => w !== id);
         // Safety: always ensure editor is there
         if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
@@ -1210,7 +1440,7 @@ const MainMenu: React.FC = () => {
         return nextWindows;
       }
     });
-  }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow, setMaximizedWindow, setActiveWindow, setOpenWindows, setWindowFlexes, setViewingUserId, setActiveQuestion, setTestResults, setShowQuitConfirmation, setShowCancelDuel, setShowLimitWarning]);
+  }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow, setMaximizedWindow, setActiveWindow, setOpenWindows, setWindowFlexes, setActiveQuestion, setTestResults, setShowQuitConfirmation, setShowCancelDuel, setShowLimitWarning]);
 
   const moveWindow = (id: WindowId, direction: 'left' | 'right') => {
     ignoreHoverRef.current = true;
@@ -1400,11 +1630,21 @@ const MainMenu: React.FC = () => {
       case "settings":
         return (
           <SettingsWindow 
-            themeIndex={themeIndex} setThemeIndex={setThemeIndex} fontFamily={fontFamily} setFontFamily={setFontFamily}
-            fontSize={fontSize} setFontSize={setFontSize} terminalFontSize={terminalFontSize} 
-            setTerminalFontSize={setTerminalFontSize} vimMode={vimMode} setVimMode={setVimMode}
+            themeIndex={themeIndex} setThemeIndex={setThemeIndex}
+            fontFamily={fontFamily} setFontFamily={setFontFamily}
+            fontSize={fontSize} setFontSize={setFontSize}
+            terminalFontSize={terminalFontSize} setTerminalFontSize={setTerminalFontSize}
+            vimMode={vimMode} setVimMode={setVimMode}
             uiLang={uiLang} setUiLang={setUiLang}
             animationSpeed={animationSpeed} setAnimationSpeed={setAnimationSpeed}
+            windowRadius={windowRadius} setWindowRadius={(r) => {
+              setWindowRadius(r);
+              localStorage.setItem('windowRadius', r);
+            }}
+            windowGap={windowGap} setWindowGap={(g) => {
+              setWindowGap(g);
+              localStorage.setItem('windowGap', g);
+            }}
             t={t}
           />
         );
@@ -1432,7 +1672,7 @@ const MainMenu: React.FC = () => {
                       await fetch("/api/duels/submit", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ duelId: currentDuel.id, surrender: true })
+                        body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code })
                       });
                     } catch (err) {
                         console.error("Failed to terminate duel:", err);
@@ -1471,6 +1711,14 @@ const MainMenu: React.FC = () => {
             retryProblem={retryProblem}
             showQuitConfirmation={showQuitConfirmation}
             setShowQuitConfirmation={setShowQuitConfirmation}
+            onOpenUserProfile={(userId) => {
+              const winId = `profile_${userId}` as WindowId;
+              if (!openWindows.includes(winId)) {
+                toggleWindow(winId);
+              } else {
+                setActiveWindow(winId);
+              }
+            }}
             handleQuitBattle={async () => {
               const currentDuel = activeDuel;
               const isDuelActive = activeDuel?.status === "ACTIVE";
@@ -1494,13 +1742,23 @@ const MainMenu: React.FC = () => {
               // Then handle the network request in the background
               if (currentDuel && isDuelActive) {
                 try {
-                  await fetch("/api/duels/submit", {
+                  const res = await fetch("/api/duels/submit", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ duelId: currentDuel.id, surrender: true })
+                    body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code })
                   });
+                  const updatedDuel = await res.json();
+                  window.dispatchEvent(new CustomEvent("duel_update_required", { detail: currentDuel.id }));
+
+                  const userId = session?.user ? (session.user as any).id : "guest";
+                  const isHost = updatedDuel.hostId === userId;
+                  const change = isHost ? updatedDuel.hostRatingChange : updatedDuel.guestRatingChange;
+                  if (change !== null && change !== undefined && change !== 0) {
+                      setShowRatingChangePopup({ amount: change, isWin: change > 0 });
+                      fetchUserStats();
+                  }
                 } catch (err) {
-                  console.error("Failed to surrender:", err);
+                  console.error("Surrender failed:", err);
                 }
               }
             }}
@@ -1536,16 +1794,22 @@ const MainMenu: React.FC = () => {
           />
         );
       case "profile":
-        return <ProfileWindow session={session} userId={viewingUserId ?? undefined} t={t} />;
+        return <ProfileWindow 
+                 session={session} 
+                 userId={undefined} 
+                 t={t} 
+                 cachedProfile={fullProfile} 
+                 onInviteDuel={handleInviteDuel}
+               />;
       case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>Global</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
       case "friends": return (
         <FriendsWindow 
           t={t} 
           openProfile={(id: string) => { 
-            setViewingUserId(id); 
+            const winId = `profile_${id}` as WindowId;
             setOpenWindows(prev => {
-              if (prev.includes("profile")) {
-                setActiveWindow("profile");
+              if (prev.includes(winId)) {
+                setActiveWindow(winId);
                 return prev;
               }
               if (prev.length >= 4) {
@@ -1554,13 +1818,25 @@ const MainMenu: React.FC = () => {
               }
               setWindowFlexes(flexes => [...flexes, 1]);
               if (maximizedWindow) setMaximizedWindow(null);
-              setActiveWindow("profile");
-              return [...prev, "profile"];
+              setActiveWindow(winId);
+              return [...prev, winId];
             });
           }} 
         />
       );
-      default: return null;
+      default: 
+        if (id.startsWith("profile_")) {
+          const targetId = id.replace("profile_", "");
+          const isSelf = targetId === (session?.user as any)?.id;
+          return <ProfileWindow 
+                   session={session} 
+                   userId={targetId} 
+                   t={t} 
+                   cachedProfile={isSelf ? fullProfile : undefined} 
+                   onInviteDuel={handleInviteDuel}
+                 />;
+        }
+        return null;
       }
       };
   const renderedWindows = openWindows
@@ -1588,7 +1864,12 @@ const MainMenu: React.FC = () => {
   }, [renderedWindows.length]);
 
   return (
-    <div className="main-header">
+    <div className="main-header" style={{ 
+      '--window-radius': windowRadius, 
+      '--gap': windowGap,
+      '--header-margin': '0px',
+      '--header-radius': '0px'
+    } as React.CSSProperties}>
       <AnimatePresence>
         {showRatingChangePopup && (
           <motion.div
@@ -1649,31 +1930,77 @@ const MainMenu: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {incomingInvite && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg)', padding: '2rem', borderRadius: '1rem', border: '1px solid var(--accent)', maxWidth: '400px', textAlign: 'center', boxShadow: '0 0 40px rgba(122,162,247,0.3)' }}>
+            <h2 style={{ color: 'var(--text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}><Sword size={24} /> Duel Challenge!</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
+              <strong style={{ color: 'var(--accent)' }}>{incomingInvite.hostName}</strong> has challenged you to a duel!
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                className="btn" 
+                onClick={() => {
+                  joinDuel(incomingInvite.pin);
+                  setOpenWindows(prev => {
+                     if (!prev.includes("battle")) {
+                         setWindowFlexes(f => [...f, 1]);
+                         return [...prev, "battle"];
+                     }
+                     return prev;
+                  });
+                  setActiveWindow("battle");
+                  setIncomingInvite(null);
+                }} 
+                style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.8rem 2rem', fontWeight: 800, borderRadius: '0.5rem', cursor: 'pointer' }}
+              >
+                Accept
+              </button>
+              <button 
+                className="btn" 
+                onClick={() => setIncomingInvite(null)} 
+                style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--line)', padding: '0.8rem 2rem', fontWeight: 800, borderRadius: '0.5rem', cursor: 'pointer' }}
+              >
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={`loading-overlay ${isLoaded ? "loading-overlay--hidden" : ""}`}>
         <div className="loading-spinner" />
         <div><span style={{ color: 'var(--accent)' }}>CODE</span>&nbsp;KNIGHTS</div>
       </div>
       <nav className="nav">
         <div className="nav-inner">
-          <Link href="/" className="brand" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-            <div 
-              style={{ 
-                height: '40px', 
-                width: '48px',
-                backgroundColor: 'var(--accent)',
-                WebkitMaskImage: 'url(/assets/logo_white.png)',
-                maskImage: 'url(/assets/logo_white.png)',
-                WebkitMaskSize: 'contain',
-                maskSize: 'contain',
-                WebkitMaskRepeat: 'no-repeat',
-                maskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                maskPosition: 'center',
-                filter: 'drop-shadow(0 0 10px var(--accent))'
-              }}
-            />
-            <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Link href="/" className="brand" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 0 }}>
+              <div 
+                style={{ 
+                  height: '24px', 
+                  width: '28px',
+                  backgroundColor: 'var(--accent)',
+                  WebkitMaskImage: 'url(/assets/logo_white.png)',
+                  maskImage: 'url(/assets/logo_white.png)',
+                  WebkitMaskSize: 'contain',
+                  maskSize: 'contain',
+                  WebkitMaskRepeat: 'no-repeat',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskPosition: 'center',
+                  maskPosition: 'center',
+                  filter: 'drop-shadow(0 0 10px var(--accent))'
+                }}
+              />
+              <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
+            </Link>
+            {(userStats.currentStreak !== undefined && session) && (
+               <div title={`Current Win Streak: ${userStats.currentStreak}`} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#ffb86c', filter: 'drop-shadow(0 0 8px rgba(255, 184, 108, 0.4))' }}>
+                  <Flame size={20} fill="#ffb86c" />
+                  <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>{userStats.currentStreak}</span>
+               </div>
+            )}
+          </div>
           <ul className="nav-links">
             {navLinks.map(link => {
               const isDisabled = link.id === "battle" && activeQuestion;
@@ -1736,11 +2063,6 @@ const MainMenu: React.FC = () => {
                                 <ChevronRight size={12} />
                               </button>
                             )}
-
-                            <Link href="/settings/profile" onClick={() => setIsProfileMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', textDecoration: 'none', color: 'inherit', background: 'rgba(255,255,255,0.02)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Settings size={14} /><span style={{ fontSize: '0.85rem' }}>{t("configureProfile")}</span></div>
-                              <ChevronRight size={12} />
-                            </Link>
                             </>
                             )}
 
@@ -1774,7 +2096,9 @@ const MainMenu: React.FC = () => {
             if (id === 'friends') icon = <Users size={16} />;
             if (id === 'problem') icon = <Target size={16} />;
             if (id === 'admin') icon = <Database size={16} />;
+            if (id.startsWith('profile')) icon = <User size={16} />;
             
+            const displayId = id.startsWith('profile_') ? 'profile' : id;
             const isMax = id === maximizedWindow;
             const originalIdx = openWindows.indexOf(id);
             const rwIdx = renderedWindows.indexOf(id);
@@ -1789,21 +2113,25 @@ const MainMenu: React.FC = () => {
                   layout={animationSpeed !== "none" && !isDragging}
                   initial={
                     animationSpeed === "none" ? false : 
-                    animationSpeed === "erased" ? { clipPath: 'inset(0% 100% 0% 0%)', opacity: 0 } :
-                    animationSpeed === "flip" ? { rotateY: 90, opacity: 0 } :
-                    animationSpeed === "glitch" ? { x: 50, skewX: 20, opacity: 0 } :
                     { opacity: 0, scale: 0.95 }
                   }
                   animate={{ 
-                    opacity: (animationSpeed === "ghost" && isReordering) ? 0.4 : 1, 
-                    scale: isReordering ? (animationSpeed === "boing" ? 1.1 : 0.98) : 1,
-                    rotate: isReordering ? (animationSpeed === "jello" ? 2 : (animationSpeed === "boing" ? -2 : 0)) : 0,
+                    opacity: 1, 
+                    scale: isReordering ? (
+                      animationSpeed === "shrink" ? 0.5 :
+                      1
+                    ) : 1,
+                    rotate: isReordering ? (
+                      animationSpeed === "jello" ? 2 : 
+                      animationSpeed === "spin" ? 360 :
+                      animationSpeed === "earthquake" ? [-5, 5, -3, 3, -4, 4] :
+                      0
+                    ) : 0,
                     rotateY: 0,
-                    x: 0,
+                    x: isReordering && animationSpeed === "earthquake" ? [-10, 10, -10, 10] : 0,
                     skewX: 0,
                     clipPath: 'inset(0% 0% 0% 0%)',
                     y: isReordering ? (
-                      animationSpeed === "float" ? -20 : 
                       animationSpeed === "swapVertical" ? (id.length % 2 === 0 ? -150 : 150) : 0
                     ) : (animationSpeed === "six seven" ? (idx % 2 === 0 ? [-10, 10, -10] : [10, -10, 10]) : 0),
                     zIndex: draggedWindow === id ? 50 : 1,
@@ -1811,16 +2139,15 @@ const MainMenu: React.FC = () => {
                   }}
                   exit={
                     animationSpeed === "none" ? { opacity: 0 } : 
-                    animationSpeed === "erased" ? { clipPath: 'inset(0% 0% 0% 100%)', opacity: 0 } :
-                    animationSpeed === "flip" ? { rotateY: -90, opacity: 0 } :
-                    animationSpeed === "glitch" ? { x: -50, skewX: -20, opacity: 0 } :
                     { opacity: 0, scale: 0.95 }
                   }
                   transition={{ 
                     layout: (isReordering && animationSpeed === "six seven") ? { type: "spring", stiffness: 500, damping: 40, mass: 1 } : getTransition(),
                     scale: { duration: animationSpeed === "none" ? 0 : 0.1 },
                     opacity: { duration: animationSpeed === "none" ? 0 : 0.1 },
-                    y: (animationSpeed === "six seven" && !isReordering) ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : { duration: 0.1 }
+                    y: (animationSpeed === "six seven" && !isReordering) ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : { duration: 0.1 },
+                    rotate: (isReordering && animationSpeed === "earthquake") ? { repeat: Infinity, duration: 0.2 } : { duration: 0.2 },
+                    x: (isReordering && animationSpeed === "earthquake") ? { repeat: Infinity, duration: 0.2 } : { duration: 0.2 }
                   }}
                   className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''} ${activeWindow === id ? 'twm-window--active' : ''}`}
                   style={{ flex: isMax ? 1 : (windowFlexes[originalIdx] || 1) }}
@@ -1842,7 +2169,7 @@ const MainMenu: React.FC = () => {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <span className="twm-window-title" style={{ pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ color: 'var(--accent)' }}>{icon}</span> {id}
+                          <span style={{ color: 'var(--accent)' }}>{icon}</span> {displayId}
                         </span>
                         {id === 'editor' && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>

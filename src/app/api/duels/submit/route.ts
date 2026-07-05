@@ -5,10 +5,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = session?.user ? (session.user as any).id : "guest";
 
   try {
-    const { duelId, solveTime, surrender, complexityScore, totalPenalty, finalize } = await req.json();
+    const { duelId, solveTime, surrender, complexityScore, totalPenalty, finalize, guestUserId, code } = await req.json();
+    const userId = session?.user ? (session.user as any).id : guestUserId || "guest";
     const TIME_LIMIT = 420 * 1000; // 7 minutes
 
     const duel = await prisma.duel.findUnique({
@@ -43,9 +43,11 @@ export async function POST(req: NextRequest) {
     if (surrender || isTimedOut) {
       if (isHost) { 
         updateData.hostPenalty = INFINITE_PENALTY; 
+        if (code) updateData.hostCode = code;
       }
       if (isGuest) { 
         updateData.guestPenalty = INFINITE_PENALTY; 
+        if (code) updateData.guestCode = code;
       }
       if (surrender) {
           updateData.hostFinalized = true;
@@ -53,8 +55,18 @@ export async function POST(req: NextRequest) {
           updateData.status = "FINISHED";
       }
     } else if (finalize) {
-      if (isHost) updateData.hostFinalized = true;
-      if (isGuest) updateData.guestFinalized = true;
+      if (isHost) {
+        updateData.hostFinalized = true;
+        if (solveTime) updateData.hostSolveTime = solveTime;
+        if (complexityScore) updateData.hostComplexity = complexityScore;
+        if (code) updateData.hostCode = code;
+      }
+      if (isGuest) {
+        updateData.guestFinalized = true;
+        if (solveTime) updateData.guestSolveTime = solveTime;
+        if (complexityScore) updateData.guestComplexity = complexityScore;
+        if (code) updateData.guestCode = code;
+      }
     } else {
       if (isHost) {
         const currentPenalty = duel.hostPenalty || INFINITE_PENALTY;
@@ -106,10 +118,16 @@ export async function POST(req: NextRequest) {
       if (isDraw) {
           updateData.hostRatingChange = 0;
           updateData.guestRatingChange = 0;
+          updateData.finishReason = "DRAW";
       } else {
           const eloChange = 100;
           updateData.hostRatingChange = hostWon ? eloChange : -eloChange;
           updateData.guestRatingChange = hostWon ? -eloChange : eloChange;
+          if (hostSurrendered || guestSurrendered) {
+              updateData.finishReason = isTimedOut ? "TIMEOUT" : "SURRENDERED";
+          } else {
+              updateData.finishReason = "SOLVED";
+          }
       }
     }
 

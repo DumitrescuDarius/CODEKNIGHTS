@@ -81,7 +81,7 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
               <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text)', letterSpacing: '0.1em' }}>{tournament.title.toUpperCase()}</h3>
             </div>
             <p style={{ color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.2em', opacity: 0.8 }}>
-              STATUS: {tournament.status} // {tournament.participants.length} ELITE KNIGHTS
+              STATUS: {tournament.status} {"//"} {tournament.participants.length} ELITE KNIGHTS
             </p>
           </div>
           <button 
@@ -265,7 +265,6 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
                     cursor: 'pointer', 
                     fontSize: '0.9rem', 
                     opacity: participants.length < 2 ? 0.4 : 1, 
-                    boxShadow: participants.length < 2 ? 'none' : '0 0 20px rgba(122, 162, 247, 0.3)',
                     letterSpacing: '0.2em'
                   }}
                 >

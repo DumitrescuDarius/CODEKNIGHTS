@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const friends = requests.map(r => r.senderId === userId ? r.receiver : r.sender);
+    const friends = requests.map(r => {
+      const friend = r.senderId === userId ? r.receiver : r.sender;
+      return { ...friend, isOnline: global.onlineUsers ? global.onlineUsers.has(friend.id) : false };
+    });
 
     return NextResponse.json(friends);
   } catch (err) {

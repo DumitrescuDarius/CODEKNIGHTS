@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
-    const googleKey = process.env.GOOGLE_API_KEY;
+    const googleKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
     const googleModel = process.env.GOOGLE_MODEL || "gemini-1.5-flash";
     const providerOverride = process.env.AI_PROVIDER?.toLowerCase();
 
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     let selectedModel: string | null = null;
     const googleFallbackModels = ['gemini-robotics-er-1.6-preview', 'gemini-2.5-computer-use-preview-10-2025'];
 
-    async function listModels() {
+    const listModels = async () => {
       const endpoint = `${googleEndpointBase}/models?key=${googleKey}`;
       try {
         const r = await fetch(endpoint);
@@ -42,9 +42,9 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         console.error(`[api/agent] Failed to list models: ${e}`);
       }
-    }
+    };
 
-    async function callGoogleWithModel(model: string) {
+    const callGoogleWithModel = async (model: string) => {
       // Endpoint format: .../v1beta/models/<modelName>:generateContent
       const endpoint = `${googleEndpointBase}/models/${model}:generateContent?key=${googleKey}`;
       const body = JSON.stringify({ 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         return { resp: null, data: String(e), model, responseText: null };
       }
-    }
+    };
 
     if (useGoogle) {
       await listModels(); // Debug

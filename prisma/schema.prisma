@@ -112,7 +112,24 @@ model Duel {
   hostRatingChange Int?
   guestRatingChange Int?
   
+  hostCode      String?
+  guestCode     String?
+  finishReason  String?  // e.g., "SOLVED", "SURRENDERED", "TIMEOUT"
+  
+  // Real-time progress stats
+  hostCodeLength  Int       @default(0)
+  guestCodeLength Int       @default(0)
+  hostLineCount   Int       @default(0)
+  guestLineCount  Int       @default(0)
+  hostTestsPassed Int       @default(0)
+  guestTestsPassed Int      @default(0)
+  hostTestsTotal  Int       @default(0)
+  guestTestsTotal Int       @default(0)
+  hostLastActive  DateTime?
+  guestLastActive DateTime?
+
   createdAt   DateTime @default(now())
+  startedAt   DateTime?
   expiresAt   DateTime
 
   question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)

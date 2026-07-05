@@ -227,24 +227,43 @@ function estimateComplexity(code: string) {
 
   // Heuristic for time complexity
   let time = "O(1)";
+  const hasLogNHint = /\/\s*2|>>\s*1/.test(cleaned);
+  
   if (isRecursive && maxNesting >= 1) {
-    time = "O(n^2)";
+    time = "O(2^n)";
   } else if (isRecursive) {
     time = "O(n)";
-  } else if (maxNesting >= 3) time = `O(n^${maxNesting})`;
-  else if (maxNesting === 2) time = "O(n^2)";
-  else if (maxNesting === 1) time = "O(n)";
-  else if (hasSort) time = "O(n log n)";
+  } else if (maxNesting >= 3) {
+    time = `O(n^${maxNesting})`;
+  } else if (maxNesting === 2) {
+    time = "O(n^2)";
+  } else if (maxNesting === 1) {
+    if (hasLogNHint) time = "O(log n)";
+    else if (hasSort) time = "O(n log n)";
+    else time = "O(n)";
+  } else if (hasSort) {
+    time = "O(n log n)";
+  }
 
   // Heuristic space complexity detection
+  const has2DArrayAlloc = /\[\]\s*\[\]|\bvector\s*<\s*vector\s*<|\bnew\s+[^\s]+\s*\[[^\]]+\]\s*\[/.test(cleaned);
+  const hasMapSet = /\bnew\s+Map\b|\bnew\s+Set\b|\bnew\s+HashMap\b|\bnew\s+HashSet\b|\bunordered_map\s*<|\bunordered_set\s*</i.test(cleaned);
   const hasArrayAlloc = /\bnew\s+Array\b|\[\s*\]|\.push\s*\(|\bconcat\s*\(|\bslice\s*\(|\bvector\s*<|\bstd::vector\s*<|\bdeque\s*<|\bstd::deque\s*<|\bstd::array\s*<|\bnew\s+[^\s]+\s*\[|\bmalloc\s*\(/i.test(cleaned);
-  const space = hasArrayAlloc ? "O(n)" : "O(1)";
+  
+  let space = "O(1)";
+  if (has2DArrayAlloc) space = "O(n^2)";
+  else if (hasArrayAlloc || hasMapSet || isRecursive) space = "O(n)";
 
   // Explanation
   const explanationParts: string[] = [];
-  if (maxNesting > 0) explanationParts.push(`Detected up to ${maxNesting} nested loop${maxNesting > 1 ? "s" : ""}, heuristic assumes linear iteration per loop.`);
+  if (maxNesting > 0 && !hasLogNHint) explanationParts.push(`Detected up to ${maxNesting} nested loop${maxNesting > 1 ? "s" : ""}, heuristic assumes linear iteration per loop.`);
+  if (maxNesting === 1 && hasLogNHint) explanationParts.push("Detected a loop with division/shift, often implying O(log n) time.");
   if (hasSort) explanationParts.push("Detected sort operation, which typically implies O(n log n) time.");
   if (isRecursive) explanationParts.push("Detected potential recursion; recursion depth is unknown so estimate is conservative.");
+  if (has2DArrayAlloc) explanationParts.push("Detected 2D array/vector allocation, suggesting O(n^2) space.");
+  else if (hasMapSet) explanationParts.push("Detected Map/Set allocation, suggesting O(n) space.");
+  else if (hasArrayAlloc) explanationParts.push("Detected linear data structure allocation, suggesting O(n) space.");
+  
   if (explanationParts.length === 0) explanationParts.push("No loops, sorting, or obvious recursion detected.");
 
   return {

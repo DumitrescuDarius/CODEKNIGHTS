@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
         image: true,
         battlesWon: true,
         battlesTotal: true,
+        rating: true,
+        rank: true,
       },
       take: 10,
     });

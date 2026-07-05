@@ -5,6 +5,8 @@ import { Language } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
 import { Bot, Code2, Sparkles, Loader2 } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface AgentWindowProps {
   t: (k: TranslationKey) => string;
@@ -56,58 +58,16 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
     });
   };
 
-  const formatInlineMarkdown = (text: string) => {
-    // Parser for inline markdown
-    const parts = text.split(/(\*\*.*?\*\*|==.*?==|_.*?_|~~.*?~~|`.*?`|\[.*?\]\(.*?\)|`?\$[^\$]+\$`?)/g);
-    return (
-      <span style={{ whiteSpace: 'pre-wrap' }}>
-        {parts.map((part, i) => {
-          if (part.startsWith("**") && part.endsWith("**")) {
-            return <strong key={i}>{part.slice(2, -2)}</strong>;
-          }
-          if (part.startsWith("==") && part.endsWith("==")) {
-            return <mark key={i} style={{ background: 'var(--accent)', color: '#000', padding: '0 0.2rem', borderRadius: '0.1rem' }}>{part.slice(2, -2)}</mark>;
-          }
-          if (part.startsWith("_") && part.endsWith("_")) {
-            return <em key={i}>{part.slice(1, -1)}</em>;
-          }
-          if (part.startsWith("~~") && part.endsWith("~~")) {
-            return <del key={i}>{part.slice(2, -2)}</del>;
-          }
-          if (part.startsWith("`") && part.endsWith("`")) {
-            return <code key={i} style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '0.2rem' }}>{part.slice(1, -1)}</code>;
-          }
-          if (part.startsWith("$") && part.endsWith("$")) {
-            return <code key={i} style={{ fontFamily: 'monospace', color: 'var(--accent)' }}>{part.slice(1, -1)}</code>;
-          }
-          if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
-            const label = part.substring(1, part.indexOf("]("));
-            const url = part.substring(part.indexOf("](") + 2, part.length - 1);
-            return <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>{label}</a>;
-          }
-          return <span key={i}>{part}</span>;
-        })}
-      </span>
-    );
-  };
-
-  const formatBlockMarkdown = (text: string) => {
-    const lines = text.split('\n');
-    return lines.map((line, i) => {
-      if (line.startsWith('### ')) return <h3 key={i} style={{fontSize: '1.1rem', fontWeight: 800, margin: '0.5rem 0'}}>{formatInlineMarkdown(line.slice(4))}</h3>;
-      if (line.startsWith('## ')) return <h2 key={i} style={{fontSize: '1.3rem', fontWeight: 800, margin: '0.5rem 0'}}>{formatInlineMarkdown(line.slice(3))}</h2>;
-      if (line.startsWith('# ')) return <h1 key={i} style={{fontSize: '1.5rem', fontWeight: 800, margin: '0.5rem 0'}}>{formatInlineMarkdown(line.slice(2))}</h1>;
-      return <div key={i}>{formatInlineMarkdown(line)}</div>;
-    });
-  };
-
-  const formatAnswer = (text: string) => {
-    const parts = text.split(/(```[\s\S]*?```)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith("```") && part.endsWith("```")) {
-        const codeContent = part.slice(3, -3).replace(/^(cpp|bash|python|java|javascript|json)\n/, '');
+  const MarkdownComponents = {
+    code(props: any) {
+      const { children, className, node, ...rest } = props;
+      const match = /language-(\w+)/.exec(className || '');
+      const isBlock = match || String(children).includes('\n');
+      
+      if (isBlock) {
+        const codeContent = String(children).replace(/\n$/, '');
         return (
-          <div key={i} style={{ margin: '0.5rem 0' }}>
+          <div style={{ margin: '0.5rem 0' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.2)', padding: '0.25rem 0.5rem', borderRadius: '0.4rem 0.4rem 0 0' }}>
               <button onClick={() => setCode(codeContent)} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <Code2 size={12} /> Add to Editor
@@ -120,13 +80,37 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
               overflowX: 'auto',
               margin: 0
             }}>
-              <code style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{simpleHighlightCpp(codeContent)}</code>
+              <code style={{ fontFamily: 'monospace', fontSize: '0.85rem' }} {...rest}>
+                {simpleHighlightCpp(codeContent)}
+              </code>
             </pre>
           </div>
         );
       }
-      return formatBlockMarkdown(part);
-    });
+      
+      const content = String(children);
+      if (!isBlock && !className && content.startsWith("MATH:")) {
+        return <code style={{ fontFamily: 'monospace', color: 'var(--accent)' }}>{content.slice(5)}</code>;
+      }
+
+      return (
+        <code style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '0.2rem' }} {...rest}>
+          {children}
+        </code>
+      );
+    },
+    a(props: any) {
+      return <a {...props} style={{ color: 'var(--accent)' }} target="_blank" rel="noopener noreferrer" />;
+    },
+    p(props: any) {
+      return <p {...props} style={{ marginBottom: '1rem' }} />;
+    },
+    h1(props: any) { return <h1 {...props} style={{ fontSize: '1.5rem', fontWeight: 800, margin: '1rem 0 0.5rem 0' }} />; },
+    h2(props: any) { return <h2 {...props} style={{ fontSize: '1.3rem', fontWeight: 800, margin: '1rem 0 0.5rem 0' }} />; },
+    h3(props: any) { return <h3 {...props} style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0.5rem 0' }} />; },
+    ul(props: any) { return <ul {...props} style={{ margin: '0.5rem 0 1rem 1.5rem', listStyleType: 'disc' }} />; },
+    ol(props: any) { return <ol {...props} style={{ margin: '0.5rem 0 1rem 1.5rem', listStyleType: 'decimal' }} />; },
+    li(props: any) { return <li {...props} style={{ marginBottom: '0.25rem' }} />; },
   };
 
   if (isBattleActive) {
@@ -214,7 +198,11 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
             lineHeight: 1.6,
             color: 'var(--text)'
         }}>
-          {answer ? formatAnswer(answer) : (isLoading ? t("analyzingCode") : t("noResponseYet"))}
+          {answer ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
+              {answer.replace(/\$([^\$]+)\$/g, '`MATH:$1`')}
+            </ReactMarkdown>
+          ) : (isLoading ? t("analyzingCode") : t("noResponseYet"))}
         </div>
       </div>
     </div>

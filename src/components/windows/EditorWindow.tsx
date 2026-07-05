@@ -172,10 +172,6 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
               <div className="terminal-label">Stdout</div>
               <div className="terminal-output" style={{ fontSize: `${terminalFontSize}px`, fontFamily: fontFamily, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ flex: 1, overflowY: 'auto' }}>{terminalOutput}</div>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: 'auto' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time:</div>
-                  <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{isAnalyzing ? '...' : (analysis?.timeComplexity || 'N/A')}</div>
-                </div>
               </div>
             </div>
           </div>

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const { guestName } = await req.json();
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json(duel);
+    return NextResponse.json({ ...duel, serverTime: Date.now() });
   } catch (err: any) {
     console.error("Failed to create duel:", err);
     return NextResponse.json({ error: "Failed to create duel" }, { status: 500 });
@@ -67,8 +69,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Duel not found" }, { status: 404 });
     }
 
-    return NextResponse.json(duel);
-  } catch (err) {
+    return NextResponse.json({ ...duel, serverTime: Date.now() });
+  } catch (err: any) {
     return NextResponse.json({ error: "Failed to fetch duel" }, { status: 500 });
   }
 }

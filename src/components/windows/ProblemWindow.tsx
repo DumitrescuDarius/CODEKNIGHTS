@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote } from "lucide-react";
+import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye } from "lucide-react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
@@ -19,6 +19,7 @@ type CodeAnalysis = {
   error?: string;
   details?: string;
   quotaExceeded?: boolean;
+  failedSubmissionsCount?: number;
 };
 
 function isQuotaOrRateLimitError(a: CodeAnalysis | null | undefined): boolean {
@@ -121,13 +122,15 @@ interface ProblemWindowProps {
   retryProblem: () => void;
   setActiveDuel?: (val: any) => void;
   setDuelPin?: (val: string) => void;
+  onOpenUserProfile?: (userId: string) => void;
 }
 
 export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   userId, activeQuestion, testResults, totalPenalty, wrongAttemptCount, calculatePenalty, retryProblem, showQuitConfirmation, setShowQuitConfirmation,
   handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
-  analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin
+  analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin,
+  onOpenUserProfile
 }) => {
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
   const isDuelFinished = activeDuel?.status === "FINISHED";
@@ -159,13 +162,92 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     );
   };
 
+  const renderOpponentProgress = () => {
+    if (!activeDuel || activeDuel.status !== "ACTIVE" || isDuelFinished) return null;
+
+    const isCurrentUserHost = activeDuel.hostId === userId;
+    const opponent = isCurrentUserHost ? activeDuel.guest : activeDuel.host;
+    const opponentName = opponent?.username || opponent?.name || "Opponent";
+    const opponentAvatar = opponent?.image || null;
+
+    const opponentCodeLength = isCurrentUserHost ? activeDuel.guestCodeLength : activeDuel.hostCodeLength;
+    const opponentLineCount = isCurrentUserHost ? activeDuel.guestLineCount : activeDuel.hostLineCount;
+    const opponentTestsPassed = isCurrentUserHost ? activeDuel.guestTestsPassed : activeDuel.hostTestsPassed;
+    const opponentTestsTotal = isCurrentUserHost ? activeDuel.guestTestsTotal : activeDuel.hostTestsTotal;
+    const opponentLastActive = isCurrentUserHost ? activeDuel.guestLastActive : activeDuel.hostLastActive;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -10, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          width: 'fit-content'
+        }}
+      >
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em', lineHeight: 1 }}>Opponent:</span>
+        
+        <div 
+          style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+          onClick={() => {
+            if (onOpenUserProfile && opponent?.id) {
+              onOpenUserProfile(opponent.id);
+            }
+          }}
+        >
+          {opponentAvatar ? (
+            <img 
+              src={opponentAvatar} 
+              alt={opponentName} 
+              style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} 
+            />
+          ) : (
+            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Eye size={10} color="var(--text-muted)" />
+            </div>
+          )}
+        </div>
+
+        <span 
+          onClick={() => {
+            if (onOpenUserProfile && opponent?.id) {
+              onOpenUserProfile(opponent.id);
+            }
+          }}
+          style={{ 
+            fontSize: '0.85rem', 
+            fontWeight: 800, 
+            color: 'var(--text)', 
+            lineHeight: 1,
+            cursor: 'pointer',
+            textDecoration: 'underline transparent',
+            transition: 'color 0.2s, text-decoration-color 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--accent)';
+            e.currentTarget.style.textDecorationColor = 'var(--accent)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--text)';
+            e.currentTarget.style.textDecorationColor = 'transparent';
+          }}
+        >
+          {opponentName}
+        </span>
+      </motion.div>
+    );
+  };
+
   const [liveTime, setLiveTime] = useState(0);
   const [isPenaltyOpen, setIsPenaltyOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    let interval = setInterval(() => setLiveTime(prev => prev + 1), 1000);
+    const interval = setInterval(() => setLiveTime(prev => prev + 1), 1000);
     return () => clearInterval(interval);
   }, []);
   
@@ -208,22 +290,37 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         components={{
           code({node, inline, className, children, ...props}: any) {
             return (
-              <code className={className} style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '0.2rem', fontFamily: 'monospace' }} {...props}>
+              <code className={className} style={{ 
+                background: 'rgba(122, 162, 247, 0.15)', 
+                color: 'var(--accent)',
+                padding: '0.2rem 0.4rem', 
+                borderRadius: '0.3rem', 
+                fontFamily: '"Fira Code", monospace',
+                fontSize: '0.9em',
+                fontWeight: 600
+              }} {...props}>
                 {children}
               </code>
             );
           },
           pre({children, ...props}: any) {
-            return <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '0.4rem', overflow: 'auto' }} {...props}>{children}</pre>;
+            return <pre style={{ 
+              background: 'rgba(0,0,0,0.4)', 
+              padding: '1.25rem', 
+              borderRadius: '0.5rem', 
+              overflow: 'auto',
+              border: '1px solid rgba(255,255,255,0.05)',
+              boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
+            }} {...props}>{children}</pre>;
           },
           p({children, ...props}: any) {
-            return <p style={{ margin: '0.2rem 0' }} {...props}>{children}</p>;
+            return <p style={{ margin: '0.5rem 0', lineHeight: 1.8, fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)' }} {...props}>{children}</p>;
           },
           ul({children, ...props}: any) {
-            return <ul style={{ paddingLeft: '1.2rem', margin: '0.2rem 0' }} {...props}>{children}</ul>;
+            return <ul style={{ paddingLeft: '1.5rem', margin: '0.5rem 0', color: 'rgba(255,255,255,0.85)' }} {...props}>{children}</ul>;
           },
           li({children, ...props}: any) {
-            return <li style={{ marginBottom: '0.1rem' }} {...props}>{children}</li>;
+            return <li style={{ marginBottom: '0.5rem', lineHeight: 1.6 }} {...props}>{children}</li>;
           }
         }}
       >
@@ -251,6 +348,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             totalPenalty: totalPenalty
         })
       });
+      window.dispatchEvent(new CustomEvent("duel_update_required", { detail: activeDuel.id }));
       setSubmitted(true);
     } catch (err) {
       console.error("Final submit failed:", err);
@@ -260,8 +358,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   };
 
   if (isDuelFinished) {
-    const hostSurrendered = activeDuel.hostSolveTime === SURRENDER_TIME;
-    const guestSurrendered = activeDuel.guestSolveTime === SURRENDER_TIME;
+    const hostSurrendered = (activeDuel.hostPenalty ?? 999999999) === 999999999;
+    const guestSurrendered = (activeDuel.guestPenalty ?? 999999999) === 999999999;
 
     const hostPenalty = activeDuel.hostPenalty ?? 999999999;
     const guestPenalty = activeDuel.guestPenalty ?? 999999999;
@@ -308,7 +406,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             <div style={{ fontSize: guestSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : 'inherit') }}>{activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime/1000)) : "--:--"}</div>
           </div>
         </div>
-        {draw && <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '2rem' }}>⚔️ IT'S A FAIR DRAW! ⚔️</p>}
+        {draw && <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '2rem' }}>⚔️ IT&apos;S A FAIR DRAW! ⚔️</p>}
         <button onClick={() => { setActiveDuel?.(null); setDuelPin?.(""); handleQuitBattle(); }} className="btn" style={{ width: '100%', maxWidth: '300px', background: 'var(--line)', border: 'none', padding: '1rem' }}>BACK TO ARENA</button>
       </div>
     );
@@ -322,7 +420,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         </div>
         <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '1rem' }}>WAITING FOR OPPONENT</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '400px', marginBottom: '2rem' }}>
-          You have finalized your solution. Waiting for your opponent to click "Final Submit" or for the timer to run out.
+          You have finalized your solution. Waiting for your opponent to click &quot;Final Submit&quot; or for the timer to run out.
         </p>
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', padding: '1rem 2rem', borderRadius: '0.5rem', fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)' }}>
            {timeLeft !== null && timeLeft !== undefined ? formatTime(timeLeft) : "--:--"}
@@ -353,8 +451,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                     cursor: (isSubmitting || submitted) ? 'default' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
-                    boxShadow: submitted ? 'none' : '0 0 15px rgba(80, 250, 123, 0.3)'
+                    gap: '0.5rem'
                   }}
                 >
                   {isSubmitting ? "SUBMITTING..." : (submitted ? "SUBMITTED" : "FINAL SUBMIT")}
@@ -478,7 +575,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   return (
     <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto', position: 'relative' }}>
       {timeLeft !== null && timeLeft !== undefined && activeDuel && (
-          <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
               {renderTimer()}
           </div>
       )}
@@ -488,65 +585,134 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <p>{t("quitBattle") === "Părăsești lupta?" ? "Nicio luptă activă. Selectează o provocare în Arena de Luptă." : "No active battle. Select a challenge in the Battle Arena."}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{activeQuestion.title}</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            gap: '0.5rem',
+            paddingBottom: '1.25rem',
+            borderBottom: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            {renderOpponentProgress()}
+            <h2 style={{ 
+              fontSize: '1.8rem', 
+              fontWeight: 900, 
+              margin: 0, 
+              background: 'linear-gradient(135deg, var(--accent) 0%, #fff 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '-0.02em',
+              textShadow: '0 2px 10px rgba(122, 162, 247, 0.2)'
+            }}>
+              {activeQuestion.title}
+            </h2>
           </div>
-          <div style={{ lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+          
+          <div style={{ 
+            lineHeight: 1.8, 
+            color: 'rgba(255,255,255,0.85)', 
+            whiteSpace: 'pre-wrap',
+            fontSize: '1.05rem'
+          }}>
             {renderFormattedText(activeQuestion.description)}
           </div>
 
           {activeQuestion.restrictions && (
-            <div style={{ padding: '1rem', background: 'rgba(var(--accent-rgb, 122, 162, 247), 0.05)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <ShieldCheck size={14} /> RESTRICTIONS
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ 
+                padding: '1.25rem', 
+                background: 'linear-gradient(to right, rgba(255,85,85,0.05), rgba(255,85,85,0.01))', 
+                borderLeft: '4px solid #ff5555',
+                borderRadius: '0 0.5rem 0.5rem 0',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.05, transform: 'translate(20%, -20%)' }}>
+                <ShieldCheck size={100} />
               </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#ff5555', textTransform: 'uppercase', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', letterSpacing: '0.1em' }}>
+                <ShieldCheck size={16} /> RESTRICTIONS
+              </div>
+              <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
                 {renderFormattedText(activeQuestion.restrictions)}
               </div>
-            </div>
+            </motion.div>
           )}
 
-          <div className="settings-group">
-            <span className="settings-label">{t("examples")}</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="settings-group" style={{ marginTop: '1rem' }}>
+            <span className="settings-label" style={{ fontSize: '1.1rem', color: 'var(--text)', marginBottom: '1.5rem', display: 'inline-block' }}>{t("examples")}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {currentTestCases.map((tc: any, i: number) => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>{t("examples").slice(0, -1)} {i + 1}</span>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  style={{ 
+                    background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', 
+                    border: '1px solid rgba(255,255,255,0.05)', 
+                    borderRadius: '0.75rem', 
+                    padding: '1.5rem',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent)', opacity: 0.5 }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                      {t("examples").slice(0, -1)} {i + 1}
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button 
                         onClick={() => { setStdin(tc.input); setShowTerminal(true); }}
-                        className="btn btn-ghost" 
-                        style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', cursor: 'pointer' }}
+                        style={{ 
+                          fontSize: '0.75rem', padding: '0.4rem 0.75rem', cursor: 'pointer',
+                          background: 'rgba(255,255,255,0.05)', color: 'var(--text)',
+                          border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.4rem',
+                          display: 'flex', alignItems: 'center', gap: '0.4rem',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
                       >
                         {t("addToStdin")}
                       </button>
                       <button 
                         onClick={() => runSingleTest(tc.input, i)}
-                        className="btn" 
-                        style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'var(--accent)', color: '#000', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                        style={{ 
+                          fontSize: '0.75rem', padding: '0.4rem 1rem', cursor: 'pointer',
+                          background: 'var(--accent)', color: '#000',
+                          border: 'none', borderRadius: '0.4rem', fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: '0.4rem',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
                       >
-                        {t("runExample")}
+                        <Play size={12} fill="currentColor" /> {t("runExample")}
                       </button>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase' }}>Input</div>
-                      <pre style={{ margin: 0, padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.25rem', fontSize: '0.8rem', overflow: 'auto' }}>{tc.input}</pre>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Input</div>
+                      <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: 'var(--text)', fontFamily: '"Fira Code", monospace' }}>{tc.input}</pre>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase' }}>Output</div>
-                      <pre style={{ margin: 0, padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.25rem', fontSize: '0.8rem', overflow: 'auto' }}>{tc.output}</pre>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Output</div>
+                      <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: '#50fa7b', fontFamily: '"Fira Code", monospace' }}>{tc.output}</pre>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
-          <div style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
+          <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
           </div>
         </div>
       )}

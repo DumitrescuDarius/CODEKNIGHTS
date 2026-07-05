@@ -57,7 +57,7 @@ body.resizing * {
   width: 100%;
   flex-shrink: 0;
   border: 1px solid var(--line);
-  border-radius: 0.4rem;
+  border-radius: var(--window-radius, 0.4rem);
   background: rgba(255, 255, 255, 0.02);
   transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -96,7 +96,7 @@ body.resizing * {
   min-height: 0; /* Critical for flex child to not overflow parent */
   min-width: 0;
   display: flex;
-  gap: 0; 
+  gap: var(--gap); 
   width: 100%;
   overflow-x: hidden;
 }
@@ -106,21 +106,17 @@ body.resizing * {
   flex-direction: column;
   background: var(--window-bg);
   border: 1px solid var(--line);
-  border-radius: 0.4rem;
+  border-radius: var(--window-radius, 0.4rem);
   overflow: hidden;
-  transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  margin: 0 calc(var(--gap) / 2); 
+  transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 0; 
   flex: 1; /* Default to filling space */
 }
 
 .twm-window:first-child:last-child {
-  margin: 0;
   width: 100%;
   flex: 1 !important;
 }
-
-.twm-window:first-child { margin-left: 0; }
-.twm-window:last-child { margin-right: 0; }
 
 .twm-resizer {
   width: var(--gap);
@@ -129,7 +125,7 @@ body.resizing * {
   align-items: center;
   justify-content: center;
   z-index: 10;
-  margin: 0 calc(var(--gap) / -2); 
+  margin: 0 calc(var(--gap) * -1); 
 }
 
 .twm-resizer::after {
@@ -147,12 +143,8 @@ body.resizing * {
   background: var(--accent);
 }
 
-.twm-window:hover, .twm-window--active {
+.twm-window:hover {
   border-color: var(--accent);
-}
-
-.twm-window--active {
-  box-shadow: 0 0 15px -5px var(--accent);
 }
 
 .twm-window-header {
@@ -167,7 +159,10 @@ body.resizing * {
   box-sizing: border-box;
   flex-shrink: 0;
   min-width: 0;
-  transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: var(--header-margin, 0px);
+  border-bottom-left-radius: var(--header-radius, 0px);
+  border-bottom-right-radius: var(--header-radius, 0px);
+  transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .twm-window-header > *:first-child {
@@ -748,7 +743,6 @@ body.resizing * {
 .friend-btn--primary:hover:not(:disabled) {
   background: rgba(122, 162, 247, 0.18);
   border-color: rgba(122, 162, 247, 0.45);
-  box-shadow: 0 0 10px rgba(122, 162, 247, 0.15);
 }
 
 .friend-btn--success {
@@ -760,7 +754,6 @@ body.resizing * {
 .friend-btn--success:hover:not(:disabled) {
   background: rgba(80, 250, 123, 0.18);
   border-color: rgba(80, 250, 123, 0.45);
-  box-shadow: 0 0 10px rgba(80, 250, 123, 0.15);
 }
 
 .friend-btn--danger {
@@ -772,7 +765,6 @@ body.resizing * {
 .friend-btn--danger:hover:not(:disabled) {
   background: rgba(255, 85, 85, 0.18);
   border-color: rgba(255, 85, 85, 0.45);
-  box-shadow: 0 0 10px rgba(255, 85, 85, 0.15);
 }
 
 

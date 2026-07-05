@@ -5,6 +5,13 @@ import { Question } from "../../types";
 import { signIn } from "next-auth/react";
 import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
+import { motion } from "framer-motion";
+
+const FAKE_PLAYERS = [
+  "ShadowKnight", "ByteSlayer", "NullPointer", "CodeWizard", "AlgoPro", 
+  "VimMaster", "ReactGod", "O(n)Ninja", "SyntaxTerror", "ScriptKiddie",
+  "MergeConflict", "DevOpsGuru", "StackOverflowRep", "BugMagnet", "MemoryLeak"
+];
 
 interface BattleWindowProps {
   startBattle: (q?: any) => void;
@@ -35,6 +42,18 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   const [joinPin, setJoinPin] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [isQuickMatchMode, setIsQuickMatchMode] = useState(false);
+  const [searchIndex, setSearchIndex] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isQuickMatchMode) {
+      interval = setInterval(() => {
+        setSearchIndex(prev => (prev + 1) % FAKE_PLAYERS.length);
+      }, 150);
+    }
+    return () => clearInterval(interval);
+  }, [isQuickMatchMode]);
 
   const isAdmin = !!session?.user?.isAdmin;
 
@@ -202,6 +221,94 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
     );
   }
 
+  if (isQuickMatchMode && (!activeDuel || activeDuel.status === "WAITING")) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
+        <div style={{ position: 'relative', width: '150px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3rem' }}>
+          <motion.div
+            animate={{ 
+              scale: [1, 2, 2.5],
+              opacity: [0.8, 0.4, 0],
+              borderWidth: ['2px', '4px', '1px']
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeOut"
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              borderColor: 'var(--accent)',
+              borderStyle: 'solid'
+            }}
+          />
+          <motion.div
+            animate={{ 
+              scale: [1, 2.5, 3],
+              opacity: [0.6, 0.2, 0],
+              borderWidth: ['2px', '4px', '1px']
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeOut",
+              delay: 0.5
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              borderColor: 'var(--accent)',
+              borderStyle: 'solid'
+            }}
+          />
+          <Search size={48} color="var(--accent)" />
+        </div>
+        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1.5rem', letterSpacing: '0.1em', color: 'var(--text)' }}>
+          SEARCHING FOR OPPONENT
+        </h2>
+        <div style={{ 
+          fontSize: '1.25rem', 
+          color: 'var(--text-muted)', 
+          fontFamily: 'monospace', 
+          height: '2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          justifyContent: 'center',
+          background: 'rgba(255,255,255,0.03)',
+          padding: '1rem 2rem',
+          borderRadius: '2rem',
+          border: '1px solid var(--line)'
+        }}>
+          SCANNING: <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{FAKE_PLAYERS[searchIndex]}</span>
+        </div>
+        <button 
+          onClick={() => {
+            setIsQuickMatchMode(false);
+            if (activeDuel) handleCancelDuel();
+          }}
+          style={{
+             marginTop: '3rem',
+             background: 'transparent',
+             border: 'none',
+             color: 'rgba(255,85,85,0.6)',
+             cursor: 'pointer',
+             fontWeight: 700,
+             textDecoration: 'underline',
+             fontSize: '0.9rem',
+             letterSpacing: '0.1em'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = '#ff5555'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 85, 85, 0.6)'}
+        >
+          CANCEL SEARCH
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '2.5rem 1.5rem', height: '100%', overflow: 'auto', position: 'relative' }}>
@@ -234,11 +341,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             <button 
               onClick={async () => {
                 if (startQuickMatch) {
-                  setIsCreating(true);
+                  setIsQuickMatchMode(true);
                   try {
                     await startQuickMatch();
-                  } finally {
-                    setIsCreating(false);
+                  } catch (e) {
+                    setIsQuickMatchMode(false);
                   }
                   return;
                 }

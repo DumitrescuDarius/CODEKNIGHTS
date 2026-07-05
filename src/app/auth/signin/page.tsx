@@ -59,11 +59,11 @@ export default function SignIn() {
     <div className="main-header" style={{ padding: 'var(--gap)', height: '100dvh', width: '100vw', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', gap: 'var(--gap)', background: 'var(--bg)', color: 'var(--text)' }}>
       <nav className="nav">
         <div className="nav-inner">
-          <Link href="/" className="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', color: 'inherit' }}>
+          <Link href="/" className="brand" style={{ display: 'flex', alignItems: 'center', gap: 0, textDecoration: 'none', color: 'inherit' }}>
             <div 
               style={{ 
-                height: '40px', 
-                width: '60px',
+                height: '24px', 
+                width: '28px',
                 backgroundColor: 'var(--accent)',
                 WebkitMaskImage: 'url(/assets/logo_white.png)',
                 maskImage: 'url(/assets/logo_white.png)',
@@ -90,6 +90,7 @@ export default function SignIn() {
         <AnimatePresence>
           {/* Rules Window */}
           <motion.section 
+            key="rules-window"
             initial={{ opacity: 0, scale: 0.95, x: -20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
@@ -120,6 +121,7 @@ export default function SignIn() {
 
           {/* Sign In Window */}
           <motion.section 
+            key="signin-window"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
@@ -203,6 +205,7 @@ export default function SignIn() {
 
           {/* Benefits Window */}
           <motion.section 
+            key="benefits-window"
             initial={{ opacity: 0, scale: 0.95, x: 20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}

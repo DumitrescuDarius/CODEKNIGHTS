@@ -1,7 +1,7 @@
 export type Language = "c" | "cpp" | "python" | "java";
 export type SupportedLanguage = "en" | "ro" | "fr" | "de" | "hi" | "ru" | "hu" | "es" | "it" | "zh" | "ja" | "pt";
-export type WindowId = "editor" | "practice" | "tournaments" | "leaderboard" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin" | "agent";
-export type AnimationSpeed = "none" | "smooth" | "bouncy" | "elastic" | "dramatic" | "snappy" | "jello" | "lazy" | "ghost" | "teleport" | "boing" | "float" | "erased" | "flip" | "glitch" | "swapVertical" | "six seven" | "fast";
+export type WindowId = "editor" | "practice" | "tournaments" | "leaderboard" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin" | "agent" | `profile_${string}`;
+export type AnimationSpeed = "none" | "smooth" | "bouncy" | "elastic" | "dramatic" | "snappy" | "jello" | "swapVertical" | "six seven" | "earthquake" | "spin" | "shrink";
 
 export interface Theme {
   name: string;
@@ -35,6 +35,7 @@ export interface UserStats {
   battlesTotal: number;
   rating?: number;
   dailyWins?: any;
+  currentStreak?: number;
 }
 
 export interface Match {
@@ -62,5 +63,6 @@ export interface User {
   battlesWon: number;
   battlesTotal: number;
   rating?: number;
+  rank?: string;
   dailyWins?: any;
 }

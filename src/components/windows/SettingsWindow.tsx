@@ -21,13 +21,17 @@ interface SettingsWindowProps {
   setUiLang: (lang: SupportedLanguage) => void;
   animationSpeed: AnimationSpeed;
   setAnimationSpeed: (speed: AnimationSpeed) => void;
+  windowRadius: string;
+  setWindowRadius: (radius: string) => void;
+  windowGap: string;
+  setWindowGap: (gap: string) => void;
   t: (key: TranslationKey) => string;
 }
 
 export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
   themeIndex, setThemeIndex, fontFamily, setFontFamily, fontSize, setFontSize,
   terminalFontSize, setTerminalFontSize, vimMode, setVimMode, uiLang, setUiLang,
-  animationSpeed, setAnimationSpeed, t
+  animationSpeed, setAnimationSpeed, windowRadius, setWindowRadius, windowGap, setWindowGap, t
 }) => {
   return (
     <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto' }}>
@@ -70,26 +74,20 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
       <div className="settings-group">
         <span className="settings-label">{t("windowAnimations")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
-          {(['none', 'snappy', 'fast', 'smooth', 'bouncy', 'elastic', 'dramatic', 'jello', 'lazy', 'ghost', 'teleport', 'boing', 'float', 'erased', 'flip', 'glitch', 'swapVertical', 'six seven'] as const).map((speed) => {
+          {(['none', 'snappy', 'smooth', 'bouncy', 'elastic', 'dramatic', 'jello', 'swapVertical', 'six seven', 'earthquake', 'spin', 'shrink'] as const).map((speed) => {
             const labels = {
-              snappy: t("animationSnappy"),
-              fast: t("animationFast"),
-              smooth: t("animationSmooth"),
               none: t("animationNone"),
+              snappy: t("animationSnappy"),
+              smooth: t("animationSmooth"),
               bouncy: t("animationBouncy"),
               elastic: t("animationElastic"),
               dramatic: t("animationDramatic"),
               jello: t("animationJello"),
-              lazy: t("animationLazy"),
-              ghost: t("animationGhost"),
-              teleport: t("animationTeleport"),
-              boing: t("animationBoing"),
-              float: t("animationFloat"),
-              erased: t("animationErased"),
-              flip: t("animationFlip"),
-              glitch: t("animationGlitch"),
               swapVertical: t("animationSwapVertical"),
-              "six seven": t("animationSixSeven")
+              "six seven": t("animationSixSeven"),
+              earthquake: "Earthquake!",
+              spin: "Spin Cycle",
+              shrink: "Shrink"
             };
             return (
               <button 
@@ -116,6 +114,75 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
           })}
         </div>
       </div>
+
+      {/* 2.5. Window Angles (Radius) */}
+      <div className="settings-group" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+        <span className="settings-label">Window Angles</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
+          {[
+            { label: 'Sharp', value: '0px' },
+            { label: 'Slight', value: '0.2rem' },
+            { label: 'Standard', value: '0.4rem' },
+            { label: 'Rounded', value: '0.8rem' },
+            { label: 'Roundest', value: '1.5rem' }
+          ].map((r) => (
+            <button 
+              key={r.value} 
+              onClick={() => setWindowRadius(r.value)} 
+              className={`btn`}
+              style={{ 
+                height: '44px',
+                borderRadius: r.value,
+                border: `1px solid ${windowRadius === r.value ? 'var(--accent)' : 'var(--line)'}`,
+                color: windowRadius === r.value ? 'var(--accent)' : 'var(--text)',
+                boxShadow: windowRadius === r.value ? `inset 0 0 0 2px var(--accent)` : 'none',
+                transition: 'all 0.2s ease',
+                background: 'rgba(255,255,255,0.02)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.8rem'
+              }}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2.6. Window Gaps */}
+      <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
+        <span className="settings-label">Window Gap</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
+          {[
+            { label: 'None', value: '0px' },
+            { label: 'Tight', value: '0.25rem' },
+            { label: 'Standard', value: '0.75rem' },
+            { label: 'Loose', value: '1.5rem' },
+            { label: 'Spacious', value: '2.5rem' }
+          ].map((g) => (
+            <button 
+              key={g.value} 
+              onClick={() => setWindowGap(g.value)} 
+              className={`btn`}
+              style={{ 
+                height: '44px',
+                borderRadius: '0.4rem',
+                border: `1px solid ${windowGap === g.value ? 'var(--accent)' : 'var(--line)'}`,
+                color: windowGap === g.value ? 'var(--accent)' : 'var(--text)',
+                boxShadow: windowGap === g.value ? `inset 0 0 0 2px var(--accent)` : 'none',
+                transition: 'all 0.2s ease',
+                background: 'rgba(255,255,255,0.02)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.8rem'
+              }}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
 
       {/* 3. Text Size */}
       <div className="settings-group">

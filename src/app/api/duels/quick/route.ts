@@ -23,17 +23,17 @@ export async function POST(req: NextRequest) {
     // Try to find a waiting duel to join (not hosted by this user)
     const now = new Date();
     const waiting = await prisma.duel.findFirst({
-      where: { status: 'WAITING', hostId: { not: userId }, expiresAt: { gt: now } },
+      where: { status: 'WAITING', hostId: { not: userId }, pin: { startsWith: 'QM-' }, expiresAt: { gt: now } },
       orderBy: { createdAt: 'asc' }
     });
 
     if (waiting) {
       const updated = await prisma.duel.update({
         where: { id: waiting.id },
-        data: { guestId: userId, status: 'ACTIVE', createdAt: new Date() },
+        data: { guestId: userId, status: 'ACTIVE', startedAt: new Date() },
         include: { question: true, host: true, guest: true }
       });
-      return NextResponse.json(updated);
+      return NextResponse.json({ ...updated, serverTime: Date.now() });
     }
 
     // No waiting duel found: create one for this user
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No questions available" }, { status: 400 });
     }
     const randomQuestionId = questions[Math.floor(Math.random() * questions.length)].id;
-    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+    const pin = "QM-" + Math.floor(100000 + Math.random() * 900000).toString();
 
     const duel = await prisma.duel.create({
       data: {
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json(duel);
+    return NextResponse.json({ ...duel, serverTime: Date.now() });
   } catch (err: any) {
     console.error("Quick match error:", err);
     return NextResponse.json({ error: "Quick match failed" }, { status: 500 });
