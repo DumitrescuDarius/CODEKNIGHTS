@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       if (change !== null && change !== undefined) {
           if (change > 0) {
               currentStreak++;
-          } else {
+          } else if (change < 0) {
               break;
           }
       }
@@ -104,6 +104,29 @@ export async function POST(req: Request) {
     return NextResponse.json(updatedUser);
   } catch (error) {
     console.error("Profile update error:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  try {
+    const userId = (session.user as any).id;
+    
+    // Prisma will cascade delete Accounts, Sessions, etc. if configured,
+    // but just in case, we can delete the user directly.
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return new NextResponse("Account deleted", { status: 200 });
+  } catch (error) {
+    console.error("Account deletion error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

@@ -11,9 +11,12 @@ interface ProfileWindowProps {
   t: (key: TranslationKey) => string;
   cachedProfile?: any;
   onInviteDuel?: (targetId: string, name: string) => void;
+  isOnline?: boolean;
+  pendingInviteTargetId?: string | null;
+  onCancelInvite?: () => void;
 }
 
-export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session, userId, t, cachedProfile, onInviteDuel }) => {
+export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session, userId, t, cachedProfile, onInviteDuel, isOnline, pendingInviteTargetId, onCancelInvite }) => {
   const [profile, setProfile] = useState<any>(cachedProfile || null);
   const [isLoading, setIsLoading] = useState(!cachedProfile);
   const [daysRange, setDaysRange] = useState(180);
@@ -132,25 +135,25 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
      }
   }
   
+  let rawHistory = fullRatingHistory.filter(d => !d.hideNode).reverse();
   let ratingHistory: any[] = [];
-  ratingHistory.push({ rating: rating, name: 'Current', date: new Date(), hideNode: true });
+  const seenDays = new Set();
   
-  let addedStartNode = false;
-  for (const item of fullRatingHistory) {
-      if (item.date >= cutoffDate) {
-          ratingHistory.push(item);
-      } else if (!addedStartNode) {
-          ratingHistory.push({ rating: item.rating, name: 'Start', date: cutoffDate, hideNode: true });
-          addedStartNode = true;
+  for (let i = rawHistory.length - 1; i >= 0; i--) {
+      const d = rawHistory[i];
+      const dayString = d.date.toLocaleDateString();
+      if (!seenDays.has(dayString)) {
+          seenDays.add(dayString);
+          ratingHistory.unshift(d);
       }
   }
   
-  if (!addedStartNode) {
-      const oldestRating = fullRatingHistory.length > 0 ? fullRatingHistory[fullRatingHistory.length - 1].rating : rating;
-      ratingHistory.push({ rating: oldestRating, name: 'Start', date: cutoffDate, hideNode: true });
+  if (ratingHistory.length === 0) {
+      ratingHistory.push({ rating: rating, name: 'Start', date: new Date(Date.now() - 86400000), hideNode: false });
+      ratingHistory.push({ rating: rating, name: 'Current', date: new Date(), hideNode: false });
+  } else if (ratingHistory.length === 1) {
+      ratingHistory.unshift({ rating: ratingHistory[0].rating, name: 'Start', date: new Date(ratingHistory[0].date.getTime() - 86400000), hideNode: false });
   }
-
-  ratingHistory.reverse();
 
   // Define padding and inner chart dimensions
   const padding = { top: 15, right: 15, bottom: 25, left: 45 };
@@ -167,15 +170,26 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
   const paddedMax = maxRating + 20;
   const range = (paddedMax - paddedMin) || 100;
   
-  const now = new Date().getTime();
-  const cut = cutoffDate.getTime();
-  const timeRange = Math.max(1, now - cut);
-  
-  const points = ratingHistory.map((d) => {
-     const x = padding.left + ((d.date.getTime() - cut) / timeRange) * chartWidth;
+  const points = ratingHistory.map((d, i) => {
+     const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + (i / (ratingHistory.length - 1)) * chartWidth;
      const y = padding.top + chartHeight - ((d.rating - paddedMin) / range) * chartHeight;
      return `${x},${y}`;
   }).join(' ');
+
+  let lastLabelX = -100;
+  ratingHistory.forEach((d, i) => {
+    const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + (i / (ratingHistory.length - 1)) * chartWidth;
+    if (!d.hideNode) {
+      if (x - lastLabelX > 60 || i === ratingHistory.length - 1) {
+        d.showLabel = true;
+        lastLabelX = x;
+      } else {
+        d.showLabel = false;
+      }
+    } else {
+      d.showLabel = false;
+    }
+  });
 
   const getLastMonths = () => {
     const today = new Date();
@@ -210,33 +224,55 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
       
       {/* Profile Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          {profile.image ? (
-            <img src={profile.image} alt="Profile" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--accent)' }} />
-          ) : (
-            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={40} /></div>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', display: 'flex' }}>
+            {profile.image ? (
+              <img src={profile.image} alt="Profile" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--accent)' }} />
+            ) : (
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={40} /></div>
+            )}
+            {userId && userId !== session?.user?.id && (
+              <span style={{ 
+                position: 'absolute',
+                bottom: '4px',
+                right: '4px',
+                width: '18px', 
+                height: '18px', 
+                borderRadius: '50%', 
+                background: isOnline ? '#50fa7b' : 'var(--text-muted)', 
+                display: 'inline-block',
+                boxShadow: isOnline ? '0 0 10px rgba(80, 250, 123, 0.4)' : 'none',
+                border: '3px solid var(--bg)',
+                zIndex: 10
+              }} title={isOnline ? 'Online' : 'Offline'} />
+            )}
+          </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.75rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {profile.username || profile.name || "Knight"}
-                {userId && userId !== session?.user?.id && (
-                  <span style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    borderRadius: '50%', 
-                    background: profile.isOnline ? '#50fa7b' : 'var(--text-muted)', 
-                    display: 'inline-block',
-                    boxShadow: profile.isOnline ? '0 0 10px rgba(80, 250, 123, 0.4)' : 'none',
-                    border: '2px solid var(--bg)'
-                  }} title={profile.isOnline ? 'Online' : 'Offline'} />
-                )}
               </h2>
               {isAdmin && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--accent)', color: '#000', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>
                   <ShieldCheck size={12} />
                   ADMIN
                 </div>
+              )}
+              {userId && userId !== session?.user?.id && (
+                pendingInviteTargetId === userId ? (
+                 <button onClick={() => onCancelInvite && onCancelInvite()} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.8rem', background: 'transparent', color: '#ff5555', border: '1px solid #ff5555', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 800, transition: 'all 0.2s ease', marginLeft: '1rem' }}
+                         onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)'; }}
+                         onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'transparent'; }}>
+                   <span style={{ fontSize: '0.8rem' }}>CANCEL</span>
+                 </button>
+                ) : (
+                 <button onClick={() => onInviteDuel && onInviteDuel(userId, profile.username || profile.name)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.8rem', background: '#ff5555', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 800, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(255, 85, 85, 0.3)', marginLeft: '1rem' }}
+                         onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#ff6b6b'; }}
+                         onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#ff5555'; }}>
+                   <Sword size={14} fill="currentColor" />
+                   <span style={{ fontSize: '0.8rem' }}>DUEL!</span>
+                 </button>
+                )
               )}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
@@ -265,14 +301,6 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
            </button>
         )}
 
-        {userId && userId !== session?.user?.id && (
-           <button onClick={() => onInviteDuel && onInviteDuel(userId, profile.username || profile.name)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#ff5555', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 800, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(255, 85, 85, 0.3)' }}
-                   onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#ff6b6b'; }}
-                   onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#ff5555'; }}>
-             <Sword size={16} fill="currentColor" />
-             <span>DUEL!</span>
-           </button>
-        )}
       </div>
 
       {isEditingProfile ? (
@@ -303,6 +331,38 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
                       }
                    });
                 }} style={{ padding: '0.75rem 1.5rem', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
+            </div>
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '1rem 0' }} />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Password Settings</label>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)' }}>
+                  You are authenticated via a third-party provider (GitHub / Google). Password management is handled by your provider.
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+                <label style={{ fontSize: '0.85rem', color: '#ff5555', fontWeight: 600 }}>Danger Zone</label>
+                <div style={{ background: 'rgba(255,85,85,0.05)', border: '1px solid rgba(255,85,85,0.2)', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text)', fontWeight: 600 }}>Delete Account</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Permanently delete your account and all data. This cannot be undone.</span>
+                  </div>
+                  <button onClick={() => {
+                     if (confirm("Are you ABSOLUTELY sure you want to delete your account? This action cannot be undone.")) {
+                        fetch('/api/user/profile', { method: 'DELETE' }).then(res => {
+                           if (res.ok) {
+                              window.location.reload();
+                           } else {
+                              alert("Failed to delete account.");
+                           }
+                        });
+                     }
+                  }} style={{ padding: '0.5rem 1rem', background: 'transparent', color: '#ff5555', border: '1px solid #ff5555', borderRadius: '0.4rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#ff5555'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ff5555'; }}>Delete Account</button>
+                </div>
             </div>
          </div>
       ) : (
@@ -432,24 +492,22 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
                     <polyline fill="none" stroke="var(--accent)" strokeWidth="3" points={points} style={{ strokeLinejoin: "round", strokeLinecap: "round" }} />
                     
                     {ratingHistory.map((d, i) => {
-                        const x = padding.left + ((d.date.getTime() - cut) / timeRange) * chartWidth;
+                        const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + (i / (ratingHistory.length - 1)) * chartWidth;
                         const y = padding.top + chartHeight - ((d.rating - paddedMin) / range) * chartHeight;
-                        const showLabel = i === 0 || i === ratingHistory.length - 1 || ratingHistory.length < 8 || i % Math.ceil(ratingHistory.length / 5) === 0;
+                        
                         return (
                             <g key={i}>
-                                {showLabel && (
+                                {d.showLabel && (
                                     <text x={x} y={height - 5} fill="var(--text-muted)" fontSize="9" textAnchor="middle">
                                         {d.name === 'Current' ? 'Now' : d.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                     </text>
                                 )}
-                                {!d.hideNode && (
                                     <g style={{ transition: 'all 0.3s ease' }} className="chart-node">
                                         <circle cx={x} cy={y} r="5" fill="var(--bg)" stroke="var(--accent)" strokeWidth="2" />
                                         <circle cx={x} cy={y} r="12" fill="transparent" style={{ cursor: 'pointer' }}>
                                             <title>{d.name}: {d.rating}</title>
                                         </circle>
                                     </g>
-                                )}
                             </g>
                         )
                     })}

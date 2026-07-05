@@ -76,13 +76,16 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
     parameterHints: { enabled: true }, 
     formatOnType: true, 
     tabCompletion: "on" as const, 
+    snippetSuggestions: "inline" as const,
+    suggestOnTriggerCharacters: true,
+    acceptSuggestionOnEnter: "on" as const,
     autoClosingBrackets: "always" as const, 
     autoClosingQuotes: "always" as const, 
     autoClosingOvertype: "always" as const, 
     autoSurround: "languageDefined" as const, 
     bracketPairColorization: { enabled: true }, 
-    wordBasedSuggestions: "allDocuments" as const, 
-    wordBasedSuggestionsOnlySameLanguage: false 
+    wordBasedSuggestions: "currentDocument" as const, 
+    wordBasedSuggestionsOnlySameLanguage: true 
   }), [fontSize, fontFamily, isResizing]);
 
   useEffect(() => {
@@ -130,6 +133,23 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
     }
   }, [compileErrors, monaco, editorRef, lang]);
 
+  const emittedValues = React.useRef(new Set<string>());
+
+  useEffect(() => {
+    if (editorRef.current) {
+      const model = editorRef.current.getModel();
+      if (emittedValues.current.has(code)) {
+        // This is an echo from a state update we initiated. Ignore it.
+        emittedValues.current.delete(code);
+      } else {
+        // This is a genuine external update (e.g. format, revert).
+        if (model && model.getValue() !== code) {
+          editorRef.current.setValue(code);
+        }
+      }
+    }
+  }, [code, editorRef]);
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
       <div style={{ flex: 1, minHeight: 0, position: 'relative', background: 'var(--bg)' }}>
@@ -137,8 +157,16 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
           height="100%"
           language={lang}
           theme="dynamic-theme"
-          value={code}
-          onChange={(val) => setCode(val || "")}
+          defaultValue={code}
+          onChange={(val) => {
+            const newValue = val || "";
+            emittedValues.current.add(newValue);
+            if (emittedValues.current.size > 20) {
+              const iterator = emittedValues.current.values();
+              emittedValues.current.delete(iterator.next().value);
+            }
+            setCode(newValue);
+          }}
           onMount={(editor) => { 
             editorRef.current = editor; 
             editor.onDidChangeCursorPosition((e: any) => {

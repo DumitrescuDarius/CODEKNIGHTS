@@ -21,6 +21,10 @@ interface FriendsWindowProps {
   openProfile: (userId: string) => void;
   cachedFriends?: User[];
   cachedRequests?: User[];
+  onlineUsers?: Set<string>;
+  onInviteDuel?: (userId: string, username: string) => void;
+  pendingInviteTargetId?: string | null;
+  onCancelInvite?: () => void;
 }
 
 const getRankClass = (rank: string | undefined) => {
@@ -34,7 +38,7 @@ const getRankClass = (rank: string | undefined) => {
   return "bronze";
 };
 
-export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, openProfile, cachedFriends, cachedRequests }) => {
+export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, openProfile, cachedFriends, cachedRequests, onlineUsers, onInviteDuel, pendingInviteTargetId, onCancelInvite }) => {
   const [activeTab, setActiveTab] = useState<"friends" | "find" | "requests">("friends");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -197,7 +201,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     <div className="friend-status-dot" />
                   </div>
                   <div className="friend-meta">
-                    <div className="friend-username">{user.username || user.name || "Unknown"}</div>
+                    <div className="friend-username" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      {user.username || user.name || "Unknown"}
+                    </div>
                     <div className={`friend-rank rank--${getRankClass(user.rank)}`}>{user.rank || "Novice"}</div>
                     <div className="friend-rating">
                       <Trophy size={10} style={{ color: 'var(--text-muted)' }} />
@@ -223,6 +229,11 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                 </div>
                 <div className="friend-card-actions">
                   <button className="friend-btn friend-btn--primary" onClick={() => openProfile(user.id)}>{t("view")}</button>
+                  {pendingInviteTargetId === user.id ? (
+                    <button className="friend-btn friend-btn--primary" style={{ background: 'transparent', color: '#ff5555', border: '1px solid #ff5555' }} onClick={() => onCancelInvite && onCancelInvite()}>CANCEL</button>
+                  ) : (
+                    <button className="friend-btn friend-btn--primary" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => onInviteDuel && onInviteDuel(user.id, user.username || user.name || "Knight")}>DUEL!</button>
+                  )}
                 </div>
               </div>
             ))}
@@ -246,7 +257,19 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     )}
                   </div>
                   <div className="friend-meta">
-                    <div className="friend-username">{user.username || user.name || "Unknown"}</div>
+                    <div className="friend-username" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      {user.username || user.name || "Unknown"}
+                      {onlineUsers?.has(user.id) && (
+                        <span style={{ 
+                          width: '8px', 
+                          height: '8px', 
+                          borderRadius: '50%', 
+                          background: '#50fa7b', 
+                          display: 'inline-block',
+                          boxShadow: '0 0 8px rgba(80, 250, 123, 0.4)',
+                        }} title="Online" />
+                      )}
+                    </div>
                     <div className={`friend-rank rank--${getRankClass(user.rank)}`}>{user.rank || "Novice"}</div>
                     <div className="friend-rating">
                       <Trophy size={10} style={{ color: 'var(--text-muted)' }} />
@@ -302,7 +325,19 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     )}
                   </div>
                   <div className="friend-meta">
-                    <div className="friend-username">{user.username || user.name || "Unknown"}</div>
+                    <div className="friend-username" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      {user.username || user.name || "Unknown"}
+                      {onlineUsers?.has(user.id) && (
+                        <span style={{ 
+                          width: '8px', 
+                          height: '8px', 
+                          borderRadius: '50%', 
+                          background: '#50fa7b', 
+                          display: 'inline-block',
+                          boxShadow: '0 0 8px rgba(80, 250, 123, 0.4)',
+                        }} title="Online" />
+                      )}
+                    </div>
                     <div className={`friend-rank rank--${getRankClass(user.rank)}`}>{user.rank || "Novice"}</div>
                     <div className="friend-rating">
                       <Trophy size={10} style={{ color: 'var(--text-muted)' }} />

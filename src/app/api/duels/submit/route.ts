@@ -86,17 +86,14 @@ export async function POST(req: NextRequest) {
     const hostFinalized = (isHost && finalize) || duel.hostFinalized || (isHost && (surrender || isTimedOut));
     const guestFinalized = (isGuest && finalize) || duel.guestFinalized || (isGuest && (surrender || isTimedOut));
     
-    if ((hostFinalized && guestFinalized) || isTimedOut) {
+    if ((hostFinalized && guestFinalized) || isTimedOut || surrender) {
         updateData.status = "FINISHED";
     }
 
     // Final calculations if finished
     if (updateData.status === "FINISHED") {
-      const hostPenalty = (isHost ? (updateData.hostPenalty ?? duel.hostPenalty) : duel.hostPenalty) ?? INFINITE_PENALTY;
-      const guestPenalty = (isGuest ? (updateData.guestPenalty ?? duel.guestPenalty) : duel.guestPenalty) ?? INFINITE_PENALTY;
-
-      const hostSurrendered = hostPenalty === INFINITE_PENALTY;
-      const guestSurrendered = guestPenalty === INFINITE_PENALTY;
+      const hostSurrendered = (isHost && surrender) || duel.hostPenalty === INFINITE_PENALTY;
+      const guestSurrendered = (isGuest && surrender) || duel.guestPenalty === INFINITE_PENALTY;
 
       let hostWon = false;
       let isDraw = false;
@@ -110,6 +107,9 @@ export async function POST(req: NextRequest) {
           hostWon = true;
       } else {
           // If neither surrendered, compare penalties
+          const hostPenalty = (isHost ? (updateData.hostPenalty ?? duel.hostPenalty) : duel.hostPenalty) ?? INFINITE_PENALTY;
+          const guestPenalty = (isGuest ? (updateData.guestPenalty ?? duel.guestPenalty) : duel.guestPenalty) ?? INFINITE_PENALTY;
+          
           const isClose = Math.abs(hostPenalty - guestPenalty) < 0.0001;
           isDraw = isClose;
           hostWon = !isClose && hostPenalty < guestPenalty;
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
           updateData.guestRatingChange = 0;
           updateData.finishReason = "DRAW";
       } else {
-          const eloChange = 100;
+          const eloChange = Math.floor(Math.random() * 21) + 50;
           updateData.hostRatingChange = hostWon ? eloChange : -eloChange;
           updateData.guestRatingChange = hostWon ? -eloChange : eloChange;
           if (hostSurrendered || guestSurrendered) {

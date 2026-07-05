@@ -179,7 +179,7 @@ export async function POST(req: Request) {
 
       if (hasDocker) {
         // --pull=never: skip registry round-trip; host already has the image from a prior run
-        const dockerArgs = `--rm --pull=never --network none --memory 128m --cpus 0.5 -v "${jobDir}:/app" -w /app`;
+        const dockerArgs = `--rm --pull=never --network none --memory 512m --cpus 1.0 -v "${jobDir}:/app" -w /app`;
         const fullRunCmd = `docker run ${dockerArgs} ${dockerImage} ${containerCmd}`;
         if (process.env.NODE_ENV === "development") {
           console.log(`[API/RUN] Executing Docker: ${fullRunCmd}`);

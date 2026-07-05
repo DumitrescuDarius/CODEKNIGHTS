@@ -119,13 +119,13 @@ body.resizing * {
 }
 
 .twm-resizer {
-  width: var(--gap);
+  width: 12px;
   cursor: col-resize;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  margin: 0 calc(var(--gap) * -1); 
+  margin: 0 calc(var(--gap) / -2 - 6px); 
 }
 
 .twm-resizer::after {
@@ -543,7 +543,7 @@ body.resizing * {
 
 .friends-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 1rem;
 }
 
@@ -596,6 +596,7 @@ body.resizing * {
   align-items: center;
   gap: 0.8rem;
   margin-bottom: 0.8rem;
+  flex-wrap: wrap;
 }
 
 .friend-avatar-wrapper {
@@ -679,6 +680,8 @@ body.resizing * {
   padding: 0.5rem 0.75rem;
   margin-bottom: 0.8rem;
   font-size: 0.7rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .friend-stat-item {

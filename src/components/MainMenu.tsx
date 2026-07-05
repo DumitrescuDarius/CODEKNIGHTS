@@ -207,6 +207,7 @@ const MainMenu: React.FC = () => {
   const [fullProfile, setFullProfile] = useState<any>(null);
   const [cachedFriends, setCachedFriends] = useState<User[] | null>(null);
   const [cachedRequests, setCachedRequests] = useState<User[] | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [incomingInvite, setIncomingInvite] = useState<{hostName: string, pin: string} | null>(null);
   const [showQuitConfirmation, setShowQuitConfirmation] = useState(false);
   const [showCancelDuel, setShowCancelDuel] = useState(false);
@@ -234,7 +235,7 @@ const MainMenu: React.FC = () => {
   }, [activeDuel]);
 
   const [duelPin, setDuelPin] = useState<string>("");
-  const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("snappy");
+  const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("none");
   const [windowRadius, setWindowRadius] = useState<string>("0.4rem");
   const [windowGap, setWindowGap] = useState<string>("0.75rem");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -252,6 +253,8 @@ const MainMenu: React.FC = () => {
   }, [showRatingChangePopup]);
 
   const [showWaitingPopup, setShowWaitingPopup] = useState(false);
+  const [showInviteSentPopup, setShowInviteSentPopup] = useState(false);
+  const [pendingInviteTargetId, setPendingInviteTargetId] = useState<string | null>(null);
   const [showOpponentFoundPopup, setShowOpponentFoundPopup] = useState(false);
 
   useEffect(() => {
@@ -279,17 +282,25 @@ const MainMenu: React.FC = () => {
   }, [showOpponentFoundPopup]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('animationSpeed') as AnimationSpeed;
+    const userId = session?.user ? (session.user as any).id : 'guest';
+    const saved = localStorage.getItem(`animationSpeed_${userId}`) as AnimationSpeed;
     if (saved) setAnimationSpeed(saved);
     const savedRadius = localStorage.getItem('windowRadius');
     if (savedRadius) setWindowRadius(savedRadius);
     const savedGap = localStorage.getItem('windowGap');
     if (savedGap) setWindowGap(savedGap);
-  }, []);
+  }, [session]);
+
+  const handleSetAnimationSpeed = useCallback((speed: AnimationSpeed) => {
+    setAnimationSpeed(speed);
+    const userId = session?.user ? (session.user as any).id : 'guest';
+    localStorage.setItem(`animationSpeed_${userId}`, speed);
+  }, [session]);
 
   useEffect(() => {
-    localStorage.setItem('animationSpeed', animationSpeed);
-  }, [animationSpeed]);
+    const userId = session?.user ? (session.user as any).id : 'guest';
+    localStorage.setItem(`animationSpeed_${userId}`, animationSpeed);
+  }, [animationSpeed, session]);
 
   const getTransition = (): Transition => {
     if (animationSpeed === "none") return { type: "tween", duration: 0 };
@@ -472,9 +483,18 @@ const MainMenu: React.FC = () => {
         if (data.id) {
           setShowOpponentFoundPopup(true);
           setShowWaitingPopup(false);
+          setShowInviteSentPopup(false);
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(data);
           socketRef.current?.emit("duel_update", { duelId: data.id });
+          setOpenWindows(prev => {
+             if (!prev.includes("battle")) {
+                 setWindowFlexes(f => [...f, 1]);
+                 return [...prev, "battle"];
+             }
+             return prev;
+          });
+          setActiveWindow("battle");
         } else {
 
           alert(data.error || "Failed to join duel");
@@ -503,14 +523,8 @@ const MainMenu: React.FC = () => {
         const myName = (session?.user as any)?.name || (session?.user as any)?.username || "Knight";
         socketRef.current?.emit("invite_duel", { targetId, hostName: myName, pin: data.pin });
         
-        setOpenWindows(prev => {
-           if (!prev.includes("battle")) {
-               setWindowFlexes(f => [...f, 1]);
-               return [...prev, "battle"];
-           }
-           return prev;
-        });
-        setActiveWindow("battle");
+        setPendingInviteTargetId(targetId);
+        setShowInviteSentPopup(true);
         
       } else {
         alert("Failed to create duel for invite.");
@@ -520,6 +534,16 @@ const MainMenu: React.FC = () => {
       alert("Failed to create duel.");
     }
   }, [isGuest, guestName, session]);
+
+  const cancelInviteDuel = useCallback(() => {
+    if (activeDuel && activeDuel.pin) {
+      socketRef.current?.emit("cancel_invite", { targetId: "any", pin: activeDuel.pin });
+      setShowInviteSentPopup(false);
+      setPendingInviteTargetId(null);
+      setActiveDuel(null);
+      setDuelPin("");
+    }
+  }, [activeDuel]);
 
   const startQuickMatch = useCallback(async () => {
     try {
@@ -600,6 +624,16 @@ const MainMenu: React.FC = () => {
           if (updatedDuel.status !== "FINISHED" && currentActiveDuel && currentActiveDuel.status !== 'ACTIVE' && updatedDuel.status === 'ACTIVE') {
             setShowOpponentFoundPopup(true);
             setShowWaitingPopup(false);
+            setShowInviteSentPopup(false);
+            setPendingInviteTargetId(null);
+            setOpenWindows(prev => {
+               if (!prev.includes("battle")) {
+                   setWindowFlexes(f => [...f, 1]);
+                   return [...prev, "battle"];
+               }
+               return prev;
+            });
+            setActiveWindow("battle");
           }
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(updatedDuel);
@@ -645,9 +679,18 @@ const MainMenu: React.FC = () => {
 
     socketRef.current.on("duel_invite", (data) => {
       const userId = session?.user ? (session.user as any).id : null;
+      console.log("RECEIVED duel_invite. targetId:", data.targetId, "my userId:", userId, "data:", data);
       if (userId && data.targetId === userId) {
          setIncomingInvite(data);
       }
+    });
+
+    socketRef.current.on("cancel_invite", (data) => {
+      setIncomingInvite(prev => prev?.pin === data.pin ? null : prev);
+    });
+
+    socketRef.current.on("online_users_update", (usersArray: string[]) => {
+      setOnlineUsers(new Set(usersArray));
     });
 
     socketRef.current.on("connect", () => {
@@ -878,6 +921,12 @@ const MainMenu: React.FC = () => {
           'editor.selectionBackground': theme.accent + '66',
           'editor.selectionHighlightBackground': theme.accent + '33',
           'editorLineNumber.foreground': isLightTheme ? '#00000059' : '#ffffff59',
+          'editorSuggestWidget.background': theme.bg,
+          'editorSuggestWidget.border': theme.accent + '66',
+          'editorSuggestWidget.foreground': isLightTheme ? '#000000' : '#ffffff',
+          'editorSuggestWidget.selectedBackground': theme.accent + '44',
+          'editorSuggestWidget.highlightForeground': theme.accent,
+          'editorSuggestWidget.focusHighlightForeground': theme.accent,
         }
       });
       monaco.editor.setTheme('dynamic-theme');
@@ -1636,7 +1685,7 @@ const MainMenu: React.FC = () => {
             terminalFontSize={terminalFontSize} setTerminalFontSize={setTerminalFontSize}
             vimMode={vimMode} setVimMode={setVimMode}
             uiLang={uiLang} setUiLang={setUiLang}
-            animationSpeed={animationSpeed} setAnimationSpeed={setAnimationSpeed}
+            animationSpeed={animationSpeed} setAnimationSpeed={handleSetAnimationSpeed}
             windowRadius={windowRadius} setWindowRadius={(r) => {
               setWindowRadius(r);
               localStorage.setItem('windowRadius', r);
@@ -1665,6 +1714,7 @@ const MainMenu: React.FC = () => {
                 setDuelPin(""); 
                 setShowCancelDuel(false); 
                 setShowWaitingPopup(false);
+                setShowInviteSentPopup(false);
                 if (maximizedWindow === "battle") setMaximizedWindow(null);
 
                 if (currentDuel) {
@@ -1800,6 +1850,8 @@ const MainMenu: React.FC = () => {
                  t={t} 
                  cachedProfile={fullProfile} 
                  onInviteDuel={handleInviteDuel}
+                 pendingInviteTargetId={pendingInviteTargetId}
+                 onCancelInvite={cancelInviteDuel}
                />;
       case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>Global</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
       case "friends": return (
@@ -1822,6 +1874,12 @@ const MainMenu: React.FC = () => {
               return [...prev, winId];
             });
           }} 
+          cachedFriends={cachedFriends || undefined}
+          cachedRequests={cachedRequests || undefined}
+          onlineUsers={onlineUsers}
+          onInviteDuel={handleInviteDuel}
+          pendingInviteTargetId={pendingInviteTargetId}
+          onCancelInvite={cancelInviteDuel}
         />
       );
       default: 
@@ -1834,6 +1892,9 @@ const MainMenu: React.FC = () => {
                    t={t} 
                    cachedProfile={isSelf ? fullProfile : undefined} 
                    onInviteDuel={handleInviteDuel}
+                   pendingInviteTargetId={pendingInviteTargetId}
+                   onCancelInvite={cancelInviteDuel}
+                   isOnline={onlineUsers.has(targetId)}
                  />;
         }
         return null;
@@ -1902,7 +1963,7 @@ const MainMenu: React.FC = () => {
           </motion.div>
         )}
 
-        {(showLimitWarning || showWrongAnswerPopup || showWaitingPopup || showOpponentFoundPopup) && (
+        {(showLimitWarning || showWrongAnswerPopup || showWaitingPopup || showOpponentFoundPopup || showInviteSentPopup) && (
           <motion.div
             initial={{ opacity: 0, x: 20, y: -20 }}
             animate={{ opacity: 1, x: 0, y: 0 }}
@@ -1913,7 +1974,7 @@ const MainMenu: React.FC = () => {
               right: '1rem',
               zIndex: 9999,
               background: 'var(--bg)',
-              border: `1px solid ${showWrongAnswerPopup ? '#ff5555' : (showWaitingPopup ? 'var(--text-muted)' : (showOpponentFoundPopup ? '#50fa7b' : 'var(--accent)'))}`,
+              border: `1px solid ${showWrongAnswerPopup ? '#ff5555' : (showWaitingPopup || showInviteSentPopup ? 'var(--text-muted)' : (showOpponentFoundPopup ? '#50fa7b' : 'var(--accent)'))}`,
               padding: '0.75rem 1rem',
               borderRadius: '0.4rem',
               color: showWrongAnswerPopup ? '#ff5555' : 'var(--text)',
@@ -1924,8 +1985,10 @@ const MainMenu: React.FC = () => {
               boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
             }}
           >
-            <AlertCircle size={18} color={showWrongAnswerPopup ? '#ff5555' : (showWaitingPopup ? 'var(--text-muted)' : (showOpponentFoundPopup ? '#50fa7b' : 'var(--accent)'))} />
-            {showWrongAnswerPopup ? "Wrong Answer! Check your logic." : (showWaitingPopup ? `Waiting for opponent... PIN: ${activeDuel?.pin || ''}` : (showOpponentFoundPopup ? "Opponent found!" : "Maximum of 4 windows allowed."))}
+            <AlertCircle size={18} color={showWrongAnswerPopup ? '#ff5555' : (showWaitingPopup || showInviteSentPopup ? 'var(--text-muted)' : (showOpponentFoundPopup ? '#50fa7b' : 'var(--accent)'))} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+              <span>{showWrongAnswerPopup ? "Wrong Answer! Check your logic." : (showInviteSentPopup ? "Invite sent! Waiting for response..." : (showWaitingPopup ? `Waiting for opponent... PIN: ${activeDuel?.pin || ''}` : (showOpponentFoundPopup ? "Opponent found!" : "Maximum of 4 windows allowed.")))}</span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1995,8 +2058,8 @@ const MainMenu: React.FC = () => {
               <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
             </Link>
             {(userStats.currentStreak !== undefined && session) && (
-               <div title={`Current Win Streak: ${userStats.currentStreak}`} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#ffb86c', filter: 'drop-shadow(0 0 8px rgba(255, 184, 108, 0.4))' }}>
-                  <Flame size={20} fill="#ffb86c" />
+               <div title={`Current Win Streak: ${userStats.currentStreak}`} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: userStats.currentStreak > 0 ? '#ffb86c' : 'var(--text-muted)', filter: userStats.currentStreak > 0 ? 'drop-shadow(0 0 8px rgba(255, 184, 108, 0.4))' : 'none' }}>
+                  <Flame size={20} fill={userStats.currentStreak > 0 ? "#ffb86c" : "none"} />
                   <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>{userStats.currentStreak}</span>
                </div>
             )}
@@ -2085,9 +2148,9 @@ const MainMenu: React.FC = () => {
         </div>
       </nav>
 
-      <main className="twm-workspace" ref={workspaceRef}>
+      <motion.main className="twm-workspace" ref={workspaceRef} layout={animationSpeed !== "none" && !isDragging} transition={getTransition()}>
         <AnimatePresence>
-          {renderedWindows.map((id, idx) => {
+          {renderedWindows.flatMap((id, idx) => {
             const navItem = navLinks.find(l => l.id === id);
             let icon = navItem?.icon;
             if (id === 'editor') icon = <Code size={16} />;
@@ -2106,8 +2169,9 @@ const MainMenu: React.FC = () => {
             const canMoveLeft = canReorder && rwIdx > 0;
             const canMoveRight = canReorder && rwIdx < renderedWindows.length - 1;
 
-            return (
-              <React.Fragment key={id}>
+            const elements = [];
+            
+            elements.push(
                 <motion.section 
                   key={id}
                   layout={animationSpeed !== "none" && !isDragging}
@@ -2127,27 +2191,23 @@ const MainMenu: React.FC = () => {
                       animationSpeed === "earthquake" ? [-5, 5, -3, 3, -4, 4] :
                       0
                     ) : 0,
-                    rotateY: 0,
-                    x: isReordering && animationSpeed === "earthquake" ? [-10, 10, -10, 10] : 0,
-                    skewX: 0,
                     clipPath: 'inset(0% 0% 0% 0%)',
-                    y: isReordering ? (
-                      animationSpeed === "swapVertical" ? (id.length % 2 === 0 ? -150 : 150) : 0
-                    ) : (animationSpeed === "six seven" ? (idx % 2 === 0 ? [-10, 10, -10] : [10, -10, 10]) : 0),
                     zIndex: draggedWindow === id ? 50 : 1,
-                    boxShadow: isReordering ? "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)" : "none"
+                    boxShadow: isReordering ? "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)" : "none",
+                    ...(isReordering && animationSpeed === "earthquake" ? { x: [-10, 10, -10, 10] } : {}),
+                    ...(isReordering && animationSpeed === "swapVertical" ? { y: (id.length % 2 === 0 ? -150 : 150) } : (!isReordering && animationSpeed === "six seven" ? { y: (idx % 2 === 0 ? [-10, 10, -10] : [10, -10, 10]) } : {}))
                   }}
                   exit={
                     animationSpeed === "none" ? { opacity: 0 } : 
                     { opacity: 0, scale: 0.95 }
                   }
                   transition={{ 
+                    ...getTransition(),
                     layout: (isReordering && animationSpeed === "six seven") ? { type: "spring", stiffness: 500, damping: 40, mass: 1 } : getTransition(),
                     scale: { duration: animationSpeed === "none" ? 0 : 0.1 },
                     opacity: { duration: animationSpeed === "none" ? 0 : 0.1 },
-                    y: (animationSpeed === "six seven" && !isReordering) ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : { duration: 0.1 },
-                    rotate: (isReordering && animationSpeed === "earthquake") ? { repeat: Infinity, duration: 0.2 } : { duration: 0.2 },
-                    x: (isReordering && animationSpeed === "earthquake") ? { repeat: Infinity, duration: 0.2 } : { duration: 0.2 }
+                    ...(animationSpeed === "six seven" && !isReordering ? { y: { repeat: Infinity, duration: 2, ease: "easeInOut" } } : {}),
+                    ...(isReordering && animationSpeed === "earthquake" ? { rotate: { repeat: Infinity, duration: 0.2 }, x: { repeat: Infinity, duration: 0.2 } } : {})
                   }}
                   className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''} ${activeWindow === id ? 'twm-window--active' : ''}`}
                   style={{ flex: isMax ? 1 : (windowFlexes[originalIdx] || 1) }}
@@ -2235,24 +2295,29 @@ const MainMenu: React.FC = () => {
                     </motion.div>
                   </div>
                 </motion.section>
-                {!maximizedWindow && idx < renderedWindows.length - 1 && (
+            );
+
+            if (!maximizedWindow && idx < renderedWindows.length - 1) {
+              const rightId = renderedWindows[idx + 1];
+              if (rightId !== undefined) {
+                elements.push(
                   <motion.div 
-                    key={`resizer-${id}-${renderedWindows[idx+1]}`}
+                    key={`resizer-${idx}`}
                     layout={animationSpeed !== "none" && !isDragging}
                     transition={getTransition()}
                     className="twm-resizer" 
                     onMouseDown={(e) => {
-                      const rightId = renderedWindows[idx + 1];
-                      if (rightId === undefined) return;
                       startResizing(e, openWindows.indexOf(id), openWindows.indexOf(rightId));
                     }}
                   />
-                )}
-              </React.Fragment>
-            );
+                );
+              }
+            }
+              
+            return elements;
           })}
         </AnimatePresence>
-      </main>
+      </motion.main>
     </div>
   );
 };
