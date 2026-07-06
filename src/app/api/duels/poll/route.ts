@@ -12,26 +12,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const selectFields = {
-      id: true, pin: true, status: true,
-      hostPenalty: true, guestPenalty: true,
-      hostFinalized: true, guestFinalized: true,
-      hostRatingChange: true, guestRatingChange: true,
-      hostSolveTime: true, guestSolveTime: true,
-      hostComplexity: true, guestComplexity: true,
-      hostCodeLength: true, guestCodeLength: true,
-      hostLineCount: true, guestLineCount: true,
-      hostTestsPassed: true, guestTestsPassed: true,
-      hostTestsTotal: true, guestTestsTotal: true,
-      hostLastActive: true, guestLastActive: true,
-      host: true, guest: true, startedAt: true,
-      question: true, hostId: true, guestId: true,
-      createdAt: true
-    };
-
     let duel = await prisma.duel.findUnique({
       where: { pin },
-      select: selectFields
+      include: {
+        host: true,
+        guest: true,
+        question: true
+      }
     });
 
     if (!duel) {
@@ -56,9 +43,8 @@ export async function GET(req: NextRequest) {
           const merged = await prisma.duel.update({
             where: { id: olderWaiting.id },
             data: { guestId: duel.hostId, status: 'ACTIVE', startedAt: new Date() },
-            select: selectFields
+            include: { host: true, guest: true, question: true }
           });
-          // Delete our newer duel since we joined the older one
           await prisma.duel.delete({ where: { id: duel.id } }).catch(() => {});
           duel = merged as any;
         } catch (mergeErr) {
@@ -67,7 +53,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ...duel, serverTime: Date.now() });
+    const safeDuel = { ...duel };
+    if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
+       (safeDuel.question as any).hiddenTestCases = null;
+    }
+
+    return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
   } catch (err) {
     console.error("Poll error:", err);
     return NextResponse.json({ error: "Failed to fetch duel" }, { status: 500 });

@@ -306,21 +306,52 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
         <div style={{
           position: 'absolute', top: '1rem', right: '1rem',
           background: 'var(--bg)', border: '1px solid var(--line)',
-          padding: '0.25rem 0.75rem', borderRadius: '0.4rem',
-          fontSize: '1rem', fontWeight: 800,
+          padding: '0.2rem 0.6rem', borderRadius: '0.4rem',
+          fontSize: '0.85rem', fontWeight: 800,
           color: (timeLeft || 0) < 60 ? '#ff5555' : 'var(--accent)',
-          display: 'flex', alignItems: 'center', gap: '0.5rem'
+          display: 'flex', alignItems: 'center', gap: '0.4rem'
         }}>
           <Zap size={14} /> {timeLeft !== null ? formatTime(timeLeft) : "--:--"}
         </div>
-        <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1.5rem', borderRadius: '50%', marginBottom: '2rem' }}>
-          <Users size={64} />
+        <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1rem', borderRadius: '50%', marginBottom: '1rem' }}>
+          <Users size={48} />
         </div>
-        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '0.05em' }}>{t("waitingForOpponent")}</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '450px', marginBottom: '3rem', lineHeight: 1.6 }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '0.05em' }}>{t("waitingForOpponent")}</h2>
+        
+        <button 
+          onClick={() => setShowCancelDuel(true)}
+          style={{ 
+            marginBottom: '1rem', 
+            background: 'rgba(255, 85, 85, 0.1)', 
+            border: '1px solid #ff5555', 
+            color: '#ff5555', 
+            fontWeight: 800, 
+            padding: '0.4rem 1rem',
+            borderRadius: '0.4rem',
+            cursor: 'pointer', 
+            fontSize: '0.75rem',
+            letterSpacing: '0.05em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#ff5555';
+            e.currentTarget.style.color = '#000';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)';
+            e.currentTarget.style.color = '#ff5555';
+          }}
+        >
+          <X size={14} strokeWidth={3} /> {t("abortUplink") === "ABORT UPLINK" ? "TERMINATE DUEL" : "Terminează Duelul"}
+        </button>
+
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '450px', marginBottom: '1.5rem', lineHeight: 1.6 }}>
           {t("duelUplinkMessage")}
         </p>
-        
+
         <div 
           onClick={() => {
             if (activeDuel?.pin) {
@@ -331,14 +362,14 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           style={{ 
             background: 'rgba(255,255,255,0.03)', 
             border: '1px solid var(--line)', 
-            padding: '2rem 4rem', 
+            padding: '1.5rem 3rem', 
             borderRadius: '1rem', 
             cursor: 'pointer',
             transition: 'all 0.2s ease',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '1rem',
+            gap: '0.75rem',
             boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
           }}
           onMouseEnter={(e) => {
@@ -350,33 +381,14 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
           }}
         >
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.2em' }}>{t("duelPin")}</div>
-          <div style={{ fontSize: '4rem', fontWeight: 950, color: 'var(--accent)', letterSpacing: '0.3em', fontFamily: 'monospace' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.2em' }}>{t("duelPin")}</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 950, color: 'var(--accent)', letterSpacing: '0.3em', fontFamily: 'monospace' }}>
             {activeDuel.pin}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 700 }}>
-            <Copy size={14} /> {t("clickToCopy")}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 700 }}>
+            <Copy size={12} /> {t("clickToCopy")}
           </div>
         </div>
-
-        <button 
-          onClick={() => setShowCancelDuel(true)}
-          style={{ 
-            marginTop: '4rem', 
-            background: 'transparent', 
-            border: 'none', 
-            color: 'rgba(255, 85, 85, 0.6)', 
-            fontWeight: 700, 
-            cursor: 'pointer', 
-            fontSize: '0.9rem',
-            letterSpacing: '0.1em',
-            textDecoration: 'underline'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = '#ff5555'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 85, 85, 0.6)'}
-        >
-          {t("abortUplink")}
-        </button>
       </div>
     );
   }
@@ -384,7 +396,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   if (isQuickMatchMode && (!activeDuel || activeDuel.status === "WAITING")) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
-        <div style={{ position: 'relative', width: '150px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3rem' }}>
+        <div style={{ position: 'relative', width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
           <motion.div
             animate={{ 
               scale: [1, 2, 2.5],
@@ -424,22 +436,22 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               borderStyle: 'solid'
             }}
           />
-          <Search size={48} color="var(--accent)" />
+          <Search size={32} color="var(--accent)" />
         </div>
-        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1.5rem', letterSpacing: '0.1em', color: 'var(--text)' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '0.1em', color: 'var(--text)' }}>
           SEARCHING FOR OPPONENT
         </h2>
         <div style={{ 
-          fontSize: '1.25rem', 
+          fontSize: '1rem', 
           color: 'var(--text-muted)', 
           fontFamily: 'monospace', 
-          height: '2rem',
+          height: '1.5rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '1rem',
+          gap: '0.75rem',
           justifyContent: 'center',
           background: 'rgba(255,255,255,0.03)',
-          padding: '1rem 2rem',
+          padding: '0.75rem 1.5rem',
           borderRadius: '2rem',
           border: '1px solid var(--line)'
         }}>
@@ -451,20 +463,31 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             if (activeDuel) handleCancelDuel();
           }}
           style={{
-             marginTop: '3rem',
-             background: 'transparent',
-             border: 'none',
-             color: 'rgba(255,85,85,0.6)',
-             cursor: 'pointer',
-             fontWeight: 700,
-             textDecoration: 'underline',
-             fontSize: '0.9rem',
-             letterSpacing: '0.1em'
+            marginTop: '1.5rem', 
+            background: 'rgba(255, 85, 85, 0.1)', 
+            border: '1px solid #ff5555', 
+            color: '#ff5555', 
+            fontWeight: 800, 
+            padding: '0.6rem 1.5rem',
+            borderRadius: '0.5rem',
+            cursor: 'pointer', 
+            fontSize: '0.8rem',
+            letterSpacing: '0.05em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.2s ease'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.color = '#ff5555'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 85, 85, 0.6)'}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#ff5555';
+            e.currentTarget.style.color = '#000';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)';
+            e.currentTarget.style.color = '#ff5555';
+          }}
         >
-          CANCEL SEARCH
+          <X size={18} strokeWidth={3} /> TERMINATE SEARCH
         </button>
       </div>
     );
@@ -480,7 +503,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           </div>
         </div>
       )}
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', opacity: (isCreating || isJoining) ? 0 : 1, pointerEvents: (isCreating || isJoining) ? 'none' : 'auto', transition: 'opacity 0.2s ease' }}>
         <div style={{ marginBottom: '3.5rem', textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
             <Sword size={32} color="var(--accent)" />

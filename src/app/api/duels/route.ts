@@ -50,7 +50,12 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ ...duel, serverTime: Date.now() });
+    const safeDuel = { ...duel };
+    if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
+       (safeDuel.question as any).hiddenTestCases = null;
+    }
+
+    return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
   } catch (err: any) {
     console.error("Failed to create duel:", err);
     return NextResponse.json({ error: "Failed to create duel" }, { status: 500 });

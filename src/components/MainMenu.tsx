@@ -143,6 +143,70 @@ const MainMenu: React.FC = () => {
   const [draggedWindow, setDraggedWindow] = useState<WindowId | null>(null);
   const [langSelectorOpen, setLangSelectorOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  const [activeWorkspace, setActiveWorkspace] = useState(0);
+  const workspacesRef = useRef<{ openWindows: WindowId[], windowFlexes: number[] }[]>(
+    Array.from({ length: 9 }, (_, i) => ({
+      openWindows: ["editor"],
+      windowFlexes: [1]
+    }))
+  );
+
+  const switchWorkspace = useCallback((index: number) => {
+    if (activeWorkspace === index) return;
+    
+    // Save current workspace state directly
+    workspacesRef.current[activeWorkspace] = { 
+      openWindows: openWindows, 
+      windowFlexes: windowFlexes 
+    };
+    
+    // Load new workspace state
+    setActiveWorkspace(index);
+    setOpenWindows(workspacesRef.current[index].openWindows);
+    setWindowFlexes(workspacesRef.current[index].windowFlexes);
+  }, [activeWorkspace, openWindows, windowFlexes]);
+
+  const closeWorkspace = useCallback(() => {
+    const isExisting = (i: number) => {
+      if (i === activeWorkspace) {
+        return openWindows.length > 1 || (openWindows.length === 1 && openWindows[0] !== "editor");
+      }
+      const ws = workspacesRef.current[i];
+      if (!ws) return false;
+      return ws.openWindows.length > 1 || (ws.openWindows.length === 1 && ws.openWindows[0] !== "editor");
+    };
+
+    let activeCount = 0;
+    for (let i = 0; i < 9; i++) {
+      if (isExisting(i)) activeCount++;
+    }
+
+    if (activeCount <= 1 && isExisting(activeWorkspace)) {
+      setShowWorkspaceWarning(true);
+      return;
+    }
+
+    // Reset the current workspace
+    workspacesRef.current[activeWorkspace] = { openWindows: ["editor"], windowFlexes: [1] };
+    
+    // Find next workspace to switch to
+    let nextWorkspace = -1;
+    for (let i = 1; i < 9; i++) {
+      if (activeWorkspace + i < 9 && isExisting(activeWorkspace + i)) { nextWorkspace = activeWorkspace + i; break; }
+      if (activeWorkspace - i >= 0 && isExisting(activeWorkspace - i)) { nextWorkspace = activeWorkspace - i; break; }
+    }
+
+    if (nextWorkspace !== -1) {
+      // Just call switchWorkspace logic but we know current is already reset
+      setActiveWorkspace(nextWorkspace);
+      setOpenWindows(workspacesRef.current[nextWorkspace].openWindows);
+      setWindowFlexes(workspacesRef.current[nextWorkspace].windowFlexes);
+    } else {
+      setOpenWindows(["editor"]);
+      setWindowFlexes([1]);
+    }
+  }, [activeWorkspace, openWindows]);
   
   const [stdin, setStdin] = useState<string>("");
   const [terminalOutput, setTerminalOutput] = useState<string>("Welcome to Code Knights terminal.\nProvide input and click RUN.");
@@ -244,6 +308,7 @@ const MainMenu: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [clockOffset, setClockOffset] = useState<number>(0);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
+  const [showWorkspaceWarning, setShowWorkspaceWarning] = useState(false);
   const [showWrongAnswerPopup, setShowWrongAnswerPopup] = useState(false);
   const [showRatingChangePopup, setShowRatingChangePopup] = useState<{ amount: number, isWin: boolean } | null>(null);
   const [showSignInOptions, setShowSignInOptions] = useState(false);
@@ -267,6 +332,13 @@ const MainMenu: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [showLimitWarning]);
+
+  useEffect(() => {
+    if (showWorkspaceWarning) {
+      const timer = setTimeout(() => setShowWorkspaceWarning(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showWorkspaceWarning]);
 
   useEffect(() => {
     if (showWrongAnswerPopup) {
@@ -1197,46 +1269,46 @@ const MainMenu: React.FC = () => {
     setCompileErrors([]);
     
     try {
-      const publicTests = typeof activeQuestion.testCases === 'string' 
-        ? JSON.parse(activeQuestion.testCases) 
-        : activeQuestion.testCases;
-      
-      const hiddenTests = activeQuestion.hiddenTestCases 
-        ? (typeof activeQuestion.hiddenTestCases === 'string' ? JSON.parse(activeQuestion.hiddenTestCases) : activeQuestion.hiddenTestCases)
-        : [];
+      setTerminalOutput("Running tests securely on the server...\nThis might take a few seconds.");
 
-      const allTests = [...publicTests, ...hiddenTests];
-        
-      let passed = 0;
-      const details = [];
+      const res = await fetch("/api/run-tests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, language: lang, questionId: activeQuestion.id })
+      });
 
-      for (let i = 0; i < allTests.length; i++) {
-        const tc = allTests[i];
-        setTerminalOutput(`Running Test Case ${i + 1}/${allTests.length}...`);
-        
-        const res = await fetch("/api/run", { 
-          method: "POST", 
-          headers: { "Content-Type": "application/json" }, 
-          body: JSON.stringify({ code, language: lang, stdin: tc.input }) 
-        });
-        
-        if (res.ok) {
-          const data = await res.json();
-          if (data.compileErrors) {
-            setCompileErrors(data.compileErrors);
-            setTerminalOutput(`Compilation Error:\n${data.error}`);
-            setIsTesting(false);
-            return;
-          }
-          const isCorrect = data.output?.trimEnd() === tc.output?.trimEnd();
-          if (isCorrect) passed++;
-
-          details.push({ input: tc.input, expected: tc.output, actual: data.output, passed: isCorrect });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (errorData.compileErrors) {
+          setCompileErrors(errorData.compileErrors);
+          setTerminalOutput(`Compilation Error:\n${errorData.error}`);
+        } else {
+          setTerminalOutput(`Error: ${errorData.error || 'Failed to run tests'}`);
         }
+        setIsTesting(false);
+        return;
       }
+
+      const data = await res.json();
       
-      setTestResults({ passed, total: allTests.length, details });
-      if (passed === allTests.length) {
+      if (data.compileErrors) {
+        setCompileErrors(data.compileErrors);
+        setTerminalOutput(`Compilation Error:\n${data.error}`);
+        setIsTesting(false);
+        return;
+      }
+
+      if (data.error) {
+         setTerminalOutput(`Error:\n${data.error}`);
+         setIsTesting(false);
+         return;
+      }
+
+      const { passed, total, details } = data;
+      const allTestsLength = total || details.length;
+      
+      setTestResults({ passed, total: allTestsLength, details });
+      if (passed === allTestsLength) {
         // Penalty calculation
         const time = Math.floor((Date.now() - (battleStartTime || Date.now())) / 1000);
 
@@ -1600,6 +1672,21 @@ const MainMenu: React.FC = () => {
         return;
       }
 
+      // Alt + Shift + Q to close workspace
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'q') {
+        e.preventDefault();
+        closeWorkspace();
+        return;
+      }
+
+      // Alt + 1-9 to switch workspaces
+      if (e.altKey && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        const index = parseInt(e.key) - 1;
+        switchWorkspace(index);
+        return;
+      }
+
       // Alt + ' to run code
       if (e.altKey && (e.key === "'" || e.key === "Enter")) {
         e.preventDefault();
@@ -1682,7 +1769,7 @@ const MainMenu: React.FC = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [vimMode, runCode, openWindows, maximizedWindow, hoveredWindow, activeWindow, toggleWindow, toggleMaximize]);
+  }, [vimMode, runCode, openWindows, maximizedWindow, hoveredWindow, activeWindow, toggleWindow, toggleMaximize, switchWorkspace, closeWorkspace]);
 
   const renderWindowContent = (id: WindowId) => {
     switch (id) {
@@ -1986,12 +2073,13 @@ const MainMenu: React.FC = () => {
       <AnimatePresence>
         {showRatingChangePopup && (
           <motion.div
-            initial={{ opacity: 0, y: -20, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            initial={{ opacity: 0, x: '-50%' }}
+            animate={{ opacity: 1, x: '-50%' }}
+            exit={{ opacity: 0, x: '-50%' }}
+            transition={{ duration: 0.2 }}
             style={{
               position: 'fixed',
-              top: '80px',
+              top: '20px',
               left: '50%',
               zIndex: 1000,
               background: showRatingChangePopup.isWin ? 'rgba(80, 250, 123, 0.1)' : 'rgba(255, 85, 85, 0.1)',
@@ -2014,74 +2102,82 @@ const MainMenu: React.FC = () => {
             <span>Rating {showRatingChangePopup.isWin ? 'Increased' : 'Decreased'} {showRatingChangePopup.amount > 0 ? '+' : ''}{showRatingChangePopup.amount}</span>
           </motion.div>
         )}
-
-        {(showLimitWarning || showWrongAnswerPopup || showWaitingPopup || showOpponentFoundPopup || showInviteSentPopup) && (
-          <motion.div
-            initial={{ opacity: 0, x: 20, y: -20 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, x: 20, y: -20 }}
-            style={{
-              position: 'fixed',
-              top: '1rem',
-              right: '1rem',
-              zIndex: 9999,
-              background: 'var(--bg)',
-              border: `1px solid ${showWrongAnswerPopup ? '#ff5555' : (showWaitingPopup || showInviteSentPopup ? 'var(--text-muted)' : (showOpponentFoundPopup ? '#50fa7b' : 'var(--accent)'))}`,
-              padding: '0.75rem 1rem',
-              borderRadius: '0.4rem',
-              color: showWrongAnswerPopup ? '#ff5555' : 'var(--text)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.9rem',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}
-          >
-            <AlertCircle size={18} color={showWrongAnswerPopup ? '#ff5555' : (showWaitingPopup || showInviteSentPopup ? 'var(--text-muted)' : (showOpponentFoundPopup ? '#50fa7b' : 'var(--accent)'))} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-              <span>{showWrongAnswerPopup ? "Wrong Answer! Check your logic." : (showInviteSentPopup ? "Invite sent! Waiting for response..." : (showWaitingPopup ? `Waiting for opponent... PIN: ${activeDuel?.pin || ''}` : (showOpponentFoundPopup ? "Opponent found!" : "Maximum of 4 windows allowed.")))}</span>
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
 
-      {incomingInvite && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg)', padding: '2rem', borderRadius: '1rem', border: '1px solid var(--accent)', maxWidth: '400px', textAlign: 'center', boxShadow: '0 0 40px rgba(122,162,247,0.3)' }}>
-            <h2 style={{ color: 'var(--text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}><Sword size={24} /> Duel Challenge!</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-              <strong style={{ color: 'var(--accent)' }}>{incomingInvite.hostName}</strong> has challenged you to a duel!
-            </p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button 
-                className="btn" 
-                onClick={() => {
-                  joinDuel(incomingInvite.pin);
-                  setOpenWindows(prev => {
-                     if (!prev.includes("battle")) {
-                         setWindowFlexes(f => [...f, 1]);
-                         return [...prev, "battle"];
-                     }
-                     return prev;
-                  });
-                  setActiveWindow("battle");
-                  setIncomingInvite(null);
-                }} 
-                style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.8rem 2rem', fontWeight: 800, borderRadius: '0.5rem', cursor: 'pointer' }}
-              >
-                Accept
-              </button>
-              <button 
-                className="btn" 
-                onClick={() => setIncomingInvite(null)} 
-                style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--line)', padding: '0.8rem 2rem', fontWeight: 800, borderRadius: '0.5rem', cursor: 'pointer' }}
-              >
-                Decline
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', pointerEvents: 'none' }}>
+        <AnimatePresence>
+          {[
+            showLimitWarning && { id: 'limit', color: 'var(--accent)', content: <span>Maximum of 4 windows allowed.</span> },
+            showWorkspaceWarning && { id: 'workspace', color: '#ff5555', content: <span>You need at least one workspace available.</span> },
+            showWrongAnswerPopup && { id: 'wrong', color: '#ff5555', content: <span>Wrong Answer! Check your logic.</span> },
+            showInviteSentPopup && { id: 'invite', color: 'var(--text-muted)', content: <span>Invite sent! Waiting for response...</span> },
+            showWaitingPopup && { id: 'waiting', color: 'var(--text-muted)', content: <span>{`Waiting for opponent... PIN: ${activeDuel?.pin || ''}`}</span> },
+            showOpponentFoundPopup && { id: 'opponent', color: '#50fa7b', content: <span>Opponent found!</span> },
+            incomingInvite && {
+              id: 'incoming',
+              color: 'var(--accent)',
+              icon: <Sword size={18} color="var(--accent)" />,
+              content: (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span><strong style={{ color: 'var(--accent)' }}>{incomingInvite.hostName}</strong> challenged you!</span>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                    <button 
+                      onClick={() => {
+                        joinDuel(incomingInvite.pin);
+                        setOpenWindows(prev => {
+                           if (!prev.includes("battle")) {
+                               setWindowFlexes(f => [...f, 1]);
+                               return [...prev, "battle"];
+                           }
+                           return prev;
+                        });
+                        setActiveWindow("battle");
+                        setIncomingInvite(null);
+                      }} 
+                      style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '0.2rem', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem' }}
+                    >
+                      Accept
+                    </button>
+                    <button 
+                      onClick={() => setIncomingInvite(null)} 
+                      style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--line)', padding: '0.3rem 0.6rem', borderRadius: '0.2rem', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem' }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+          ].filter(Boolean).map((notif: any) => (
+            <motion.div
+              key={notif.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                background: 'var(--bg)',
+                border: `1px solid ${notif.color}`,
+                padding: '1rem',
+                borderRadius: '0.4rem',
+                color: 'var(--text)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.75rem',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                fontWeight: 800,
+                fontSize: '0.9rem',
+                pointerEvents: 'auto'
+              }}
+            >
+              <div style={{ marginTop: '0.1rem' }}>
+                {notif.icon || <AlertCircle size={18} color={notif.color} />}
+              </div>
+              <div>{notif.content}</div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       <div className={`loading-overlay ${isLoaded ? "loading-overlay--hidden" : ""}`}>
         <div className="loading-spinner" />
@@ -2109,6 +2205,40 @@ const MainMenu: React.FC = () => {
               />
               <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
             </Link>
+
+            {/* Workspace Selector */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginLeft: '1.5rem', alignItems: 'center' }}>
+               {Array.from({ length: 9 }).map((_, i) => {
+                 const ws = workspacesRef.current[i];
+                 const isExisting = ws.openWindows.length > 1 || (ws.openWindows.length === 1 && ws.openWindows[0] !== "editor");
+                 const isCurrent = activeWorkspace === i;
+                 
+                 if (!isCurrent && !isExisting) return null;
+
+                 return (
+                   <button
+                     key={i}
+                     onClick={() => switchWorkspace(i)}
+                     style={{
+                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                       background: 'transparent',
+                       color: isCurrent ? 'var(--accent)' : 'var(--text-muted)',
+                       border: 'none', cursor: 'pointer',
+                       fontSize: '0.9rem', fontWeight: isCurrent ? 900 : 600,
+                       transition: 'all 0.2s ease',
+                       fontFamily: 'monospace',
+                       padding: 0,
+                       opacity: isCurrent ? 1 : 0.6
+                     }}
+                     title={`Workspace ${i + 1} (Alt+${i + 1})`}
+                     onMouseEnter={(e) => { if (!isCurrent) { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.opacity = '1'; } }}
+                     onMouseLeave={(e) => { if (!isCurrent) { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.opacity = '0.6'; } }}
+                   >
+                     {i + 1}
+                   </button>
+                 );
+               })}
+            </div>
 
           </div>
           <ul className="nav-links">

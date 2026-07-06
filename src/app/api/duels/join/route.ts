@@ -51,7 +51,12 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ ...updatedDuel, serverTime: Date.now() });
+    const safeDuel = { ...updatedDuel };
+    if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
+       (safeDuel.question as any).hiddenTestCases = null;
+    }
+
+    return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
   } catch (err) {
     console.error("Join duel error:", err);
     return NextResponse.json({ error: "Failed to join duel" }, { status: 500 });

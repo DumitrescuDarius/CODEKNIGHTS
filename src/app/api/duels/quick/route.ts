@@ -17,8 +17,17 @@ export async function POST(req: NextRequest) {
     }
 
     // If user already has a waiting duel, return it
-    const existing = await prisma.duel.findFirst({ where: { hostId: userId, status: 'WAITING' }, include: { question: true, host: true } });
-    if (existing) return NextResponse.json(existing);
+    const existing = await prisma.duel.findFirst({ 
+      where: { hostId: userId, status: 'WAITING' }, 
+      include: { question: true, host: true }
+    });
+    if (existing) {
+      const safeExisting = { ...existing };
+      if (safeExisting.question && 'hiddenTestCases' in safeExisting.question) {
+        (safeExisting.question as any).hiddenTestCases = null;
+      }
+      return NextResponse.json(safeExisting);
+    }
 
     // Try to find a waiting duel to join (not hosted by this user)
     const now = new Date();
@@ -33,7 +42,11 @@ export async function POST(req: NextRequest) {
         data: { guestId: userId, status: 'ACTIVE', startedAt: new Date() },
         include: { question: true, host: true, guest: true }
       });
-      return NextResponse.json({ ...updated, serverTime: Date.now() });
+      const safeUpdated = { ...updated };
+      if (safeUpdated.question && 'hiddenTestCases' in safeUpdated.question) {
+        (safeUpdated.question as any).hiddenTestCases = null;
+      }
+      return NextResponse.json({ ...safeUpdated, serverTime: Date.now() });
     }
 
     // No waiting duel found: create one for this user
@@ -58,7 +71,12 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ ...duel, serverTime: Date.now() });
+    const safeDuel = { ...duel };
+    if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
+      (safeDuel.question as any).hiddenTestCases = null;
+    }
+
+    return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
   } catch (err: any) {
     console.error("Quick match error:", err);
     return NextResponse.json({ error: "Quick match failed", details: err?.message || String(err) }, { status: 500 });
