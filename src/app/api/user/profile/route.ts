@@ -60,7 +60,18 @@ export async function GET(req: Request) {
     // Check if online
     const isOnline = global.onlineUsers ? global.onlineUsers.has(userId) : false;
     
-    return NextResponse.json({ ...user, pastDuels, failedSubmissionsCount, currentStreak, isOnline });
+    // Calculate global rank
+    const userRating = user.rating || 1000;
+    const higherRatedCount = await prisma.user.count({
+      where: {
+        rating: {
+          gt: userRating
+        }
+      }
+    });
+    const globalRank = higherRatedCount + 1;
+    
+    return NextResponse.json({ ...user, pastDuels, failedSubmissionsCount, currentStreak, isOnline, globalRank });
   } catch (error) {
     console.error("Profile fetch error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
@@ -78,8 +89,8 @@ export async function POST(req: Request) {
     const { username, image } = await req.json();
 
     // Basic validation
-    if (username && (username.length < 3 || username.length > 20)) {
-      return new NextResponse("Username must be between 3 and 20 characters", { status:400 });
+    if (username && (username.length < 4 || username.length > 20)) {
+      return new NextResponse("Username must be between 4 and 20 characters", { status: 400 });
     }
 
     // Check if username is taken by someone else

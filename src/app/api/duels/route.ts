@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const { guestName } = await req.json();
+  const { guestName, demoMode } = await req.json();
 
   let userId = session?.user ? (session.user as any).id : null;
   let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
@@ -18,18 +18,28 @@ export async function POST(req: NextRequest) {
       userId = newUser.id;
     }
 
-    const questions = await prisma.question.findMany({ select: { id: true } });
-    if (questions.length === 0) {
-      return NextResponse.json({ error: "No questions available" }, { status: 400 });
+    let targetQuestionId = null;
+    if (demoMode) {
+      const demoQuestion = await prisma.question.findFirst({ where: { title: "Maximum Subarray Sum" }, select: { id: true } });
+      if (demoQuestion) {
+        targetQuestionId = demoQuestion.id;
+      }
     }
-    const randomQuestionId = questions[Math.floor(Math.random() * questions.length)].id;
+
+    if (!targetQuestionId) {
+      const questions = await prisma.question.findMany({ select: { id: true } });
+      if (questions.length === 0) {
+        return NextResponse.json({ error: "No questions available" }, { status: 400 });
+      }
+      targetQuestionId = questions[Math.floor(Math.random() * questions.length)].id;
+    }
     
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
 
     const duel = await prisma.duel.create({
       data: {
         pin,
-        questionId: randomQuestionId,
+        questionId: targetQuestionId,
         status: "WAITING",
         hostId: userId,
         expiresAt: new Date(Date.now() + 30 * 60000),

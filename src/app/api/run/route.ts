@@ -55,6 +55,54 @@ function parseCompileError(stderr: string, fileName: string) {
   return errors;
 }
 
+function checkMaliciousCode(code: string, language: string): string | null {
+  const patterns: Record<string, RegExp[]> = {
+    python: [
+      /import\s+(os|subprocess|pty|socket|sys|shlex|pty)/i,
+      /from\s+(os|subprocess|pty|socket|sys|shlex|pty)\s+import/i,
+      /__(import|builtins|class|subclasses)__/i,
+      /eval\s*\(/i,
+      /exec\s*\(/i,
+      /open\s*\(/i,
+    ],
+    cpp: [
+      /system\s*\(/i,
+      /popen\s*\(/i,
+      /execl?\w*\s*\(/i,
+      /fork\s*\(/i,
+      /#include\s*<(unistd\.h|stdlib\.h|sys\/|fstream|arpa\/|netdb\.h|sys\/socket\.h)>/i,
+      /fstream/i,
+      /ifstream/i,
+      /ofstream/i,
+      /syscall\s*\(/i,
+    ],
+    c: [
+      /system\s*\(/i,
+      /popen\s*\(/i,
+      /execl?\w*\s*\(/i,
+      /fork\s*\(/i,
+      /#include\s*<(unistd\.h|stdlib\.h|sys\/|fstream|arpa\/|netdb\.h|sys\/socket\.h)>/i,
+      /syscall\s*\(/i,
+    ],
+    java: [
+      /java\.io\./i,
+      /java\.nio\./i,
+      /java\.net\./i,
+      /java\.lang\.reflect\./i,
+      /Runtime\.getRuntime\(\)/i,
+      /ProcessBuilder/i,
+    ]
+  };
+
+  const rules = patterns[language] || [];
+  for (const regex of rules) {
+    if (regex.test(code)) {
+      return regex.toString(); // Return the matched pattern
+    }
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   let jobDir = "";
   let language = "";
@@ -72,6 +120,14 @@ export async function POST(req: Request) {
 
     if (!code) {
       return NextResponse.json({ error: "No code provided" }, { status: 400 });
+    }
+
+    const maliciousPattern = checkMaliciousCode(code, language);
+    if (maliciousPattern) {
+      console.warn(`[API/RUN] Malicious code detected. Language: ${language}, Pattern: ${maliciousPattern}`);
+      return NextResponse.json({ 
+        error: `Execution Blocked: Code contains restricted patterns or system calls.\nMatched restricted rule: ${maliciousPattern}` 
+      }, { status: 403 });
     }
 
     // We use os.tmpdir() which is usually /tmp on Linux

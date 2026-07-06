@@ -67,6 +67,12 @@ app.prepare().then(() => {
       }
     });
 
+    socket.on("opponent_surrendered", (data) => {
+      if (data.duelId) {
+        socket.to(data.duelId).emit("opponent_surrendered", data);
+      }
+    });
+
     socket.on("invite_duel", (data) => {
       // data: { targetId, hostName, pin }
       if (data.targetId) {

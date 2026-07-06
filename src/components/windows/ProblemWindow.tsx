@@ -250,19 +250,19 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     const interval = setInterval(() => setLiveTime(prev => prev + 1), 1000);
     return () => clearInterval(interval);
   }, []);
-  
-  const getComplexityPenalty = () => {
-    if (!analysis?.scores) return 0;
-    return (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) * 1;
-  };
+
+  useEffect(() => {
+    if (timeLeft === 0 && !submitted && activeDuel?.status === "ACTIVE") {
+      handleFinalSubmit();
+    }
+  }, [timeLeft, submitted, activeDuel]);
   
   const penaltyBreakdown = {
       time: solveTime ? solveTime.split(':').reduce((acc, time) => (60 * acc) + +time, 0) : 0,
-      wa: wrongAttemptCount * 50,
-      complexityPenalty: getComplexityPenalty()
+      wa: wrongAttemptCount * 50
   };
 
-  const livePenalty = penaltyBreakdown.time + penaltyBreakdown.wa + penaltyBreakdown.complexityPenalty;
+  const livePenalty = penaltyBreakdown.time + penaltyBreakdown.wa;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -412,19 +412,36 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     );
   }
 
+  const opponentCode = isHost ? activeDuel?.guestCode : activeDuel?.hostCode;
+
   if (userFinalized && !isDuelFinished) {
     return (
-      <div style={{ padding: '2rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-        <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1.5rem', borderRadius: '50%', marginBottom: '2rem' }}>
-          <Activity size={64} />
+      <div style={{ padding: '2rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1.5rem', borderRadius: '50%', marginBottom: '1rem' }}>
+          <Activity size={48} />
         </div>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '1rem' }}>WAITING FOR OPPONENT</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '400px', marginBottom: '2rem' }}>
-          You have finalized your solution. Waiting for your opponent to click &quot;Final Submit&quot; or for the timer to run out.
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>WAITING FOR OPPONENT</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '400px', marginBottom: '1.5rem' }}>
+          You have finalized your solution. Waiting for your opponent to finish...
         </p>
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', padding: '1rem 2rem', borderRadius: '0.5rem', fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)' }}>
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '1.5rem' }}>
            {timeLeft !== null && timeLeft !== undefined ? formatTime(timeLeft) : "--:--"}
         </div>
+        
+        {opponentCode ? (
+          <div style={{ width: '100%', maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.5rem', overflow: 'hidden' }}>
+            <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Eye size={14} /> LIVE OPPONENT CODE
+            </div>
+            <pre style={{ margin: 0, padding: '1rem', fontSize: '0.85rem', fontFamily: 'monospace', color: 'var(--text)', overflow: 'auto', textAlign: 'left', flex: 1 }}>
+              {opponentCode}
+            </pre>
+          </div>
+        ) : (
+          <div style={{ width: '100%', maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.5rem', color: 'var(--text-muted)' }}>
+             <p>No code synced yet...</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -491,7 +508,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             <div style={{ position: 'relative', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer' }}>
               <div onClick={() => setIsPenaltyOpen(!isPenaltyOpen)} style={{ padding: '1.25rem' }}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Penalty Score ℹ️</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{penaltyBreakdown.time + penaltyBreakdown.wa + penaltyBreakdown.complexityPenalty}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{penaltyBreakdown.time + penaltyBreakdown.wa}</div>
               </div>
               
               <AnimatePresence>
@@ -521,7 +538,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Lifetime Bad Submissions:</span><span style={{color: 'var(--text)'}}>{analysis?.failedSubmissionsCount || 0}</span></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time Penalty:</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.time}</span></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Wrong Answers ({wrongAttemptCount} × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.wa}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Complexity Penalty (Metrics × 1):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.complexityPenalty}</span></div>
+
                     </motion.div>                )}
                 </AnimatePresence>
                 </div>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -23,8 +23,10 @@ import { ProblemWindow } from "./windows/ProblemWindow";
 import { ProfileWindow } from "./windows/ProfileWindow";
 import { AdminWindow } from "./windows/AdminWindow";
 import { TournamentWindow } from "./windows/TournamentWindow";
+import { LegalWindow } from "./windows/LegalWindow";
 import { FriendsWindow } from "./windows/FriendsWindow";
 import { AgentWindow } from "./windows/AgentWindow";
+import { TutorialWindow } from "./windows/TutorialWindow";
 import { Transition } from "framer-motion";
 
 declare global {
@@ -183,7 +185,6 @@ const MainMenu: React.FC = () => {
   ) => {
       const timePenalty = timeSeconds;
       const waPenalty = wrongAttempts * 50;
-      const complexityPenalty = (compScores ? (compScores.efficiency + compScores.readability + compScores.maintainability + compScores.security) : 0) * 1;
       
       let extraPenalty = 0;
       if (actualComp && idealComp) {
@@ -192,7 +193,7 @@ const MainMenu: React.FC = () => {
         }
       }
 
-      return timePenalty + waPenalty + complexityPenalty + extraPenalty;
+      return timePenalty + waPenalty + extraPenalty;
   }, []);
   const retryProblem = useCallback(() => {
     setTestResults(null);
@@ -238,11 +239,14 @@ const MainMenu: React.FC = () => {
   const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("none");
   const [windowRadius, setWindowRadius] = useState<string>("0.4rem");
   const [windowGap, setWindowGap] = useState<string>("0.75rem");
+  const [windowBorderThickness, setWindowBorderThickness] = useState<string>("1px");
+  const [navStyle, setNavStyle] = useState<string>("rgba(255, 255, 255, 0.02)");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [clockOffset, setClockOffset] = useState<number>(0);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
   const [showWrongAnswerPopup, setShowWrongAnswerPopup] = useState(false);
   const [showRatingChangePopup, setShowRatingChangePopup] = useState<{ amount: number, isWin: boolean } | null>(null);
+  const [showSignInOptions, setShowSignInOptions] = useState(false);
   const lastFinishedDuelId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -289,6 +293,10 @@ const MainMenu: React.FC = () => {
     if (savedRadius) setWindowRadius(savedRadius);
     const savedGap = localStorage.getItem('windowGap');
     if (savedGap) setWindowGap(savedGap);
+    const savedBorder = localStorage.getItem('windowBorderThickness');
+    if (savedBorder) setWindowBorderThickness(savedBorder);
+    const savedNav = localStorage.getItem('navStyle');
+    if (savedNav) setNavStyle(savedNav);
   }, [session]);
 
   const handleSetAnimationSpeed = useCallback((speed: AnimationSpeed) => {
@@ -304,11 +312,6 @@ const MainMenu: React.FC = () => {
 
   const getTransition = (): Transition => {
     if (animationSpeed === "none") return { type: "tween", duration: 0 };
-    if (animationSpeed === "smooth") return { type: "spring", stiffness: 120, damping: 25, mass: 1 };
-    if (animationSpeed === "bouncy") return { type: "spring", stiffness: 500, damping: 20, mass: 1 };
-    if (animationSpeed === "elastic") return { type: "spring", stiffness: 400, damping: 10, mass: 1 };
-    if (animationSpeed === "dramatic") return { type: "spring", stiffness: 60, damping: 25, mass: 1.5 };
-    if (animationSpeed === "snappy") return { type: "spring", stiffness: 350, damping: 25, mass: 1 };
     if (animationSpeed === "jello") return { type: "spring", stiffness: 500, damping: 8, mass: 1 };
     if (animationSpeed === "earthquake") return { type: "spring", stiffness: 1000, damping: 5, mass: 1 };
     if (animationSpeed === "spin") return { type: "spring", stiffness: 200, damping: 20, mass: 1 };
@@ -425,6 +428,12 @@ const MainMenu: React.FC = () => {
           if (session.user) {
             (session.user as any).rating = data.rating;
             (session.user as any).dailyWins = data.dailyWins;
+            
+            if (data.battlesTotal === 0 && typeof localStorage !== 'undefined' && !localStorage.getItem("hasSeenTutorial")) {
+              localStorage.setItem("hasSeenTutorial", "true");
+              setOpenWindows(prev => prev.includes("tutorial") ? prev : [...prev, "tutorial"]);
+              setActiveWindow("tutorial");
+            }
           }
         }
       }
@@ -447,12 +456,12 @@ const MainMenu: React.FC = () => {
     }
   }, [session]);
 
-  const createDuel = useCallback(async () => {
+  const createDuel = useCallback(async (demoMode: boolean = false) => {
     try {
       const res = await fetch("/api/duels", { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestName: isGuest ? guestName : undefined })
+        body: JSON.stringify({ guestName: isGuest ? guestName : undefined, demoMode })
       });
       const data = await res.json();
       if (res.ok) {
@@ -487,14 +496,8 @@ const MainMenu: React.FC = () => {
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(data);
           socketRef.current?.emit("duel_update", { duelId: data.id });
-          setOpenWindows(prev => {
-             if (!prev.includes("battle")) {
-                 setWindowFlexes(f => [...f, 1]);
-                 return [...prev, "battle"];
-             }
-             return prev;
-          });
-          setActiveWindow("battle");
+          const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
+          startBattle(data.question, actualStart);
         } else {
 
           alert(data.error || "Failed to join duel");
@@ -559,11 +562,11 @@ const MainMenu: React.FC = () => {
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(data);
           socketRef.current?.emit("duel_update", { duelId: data.id });
-          if (data.status === 'WAITING') {
-            setShowWaitingPopup(true);
-          } else if (data.status === 'ACTIVE') {
+          if (data.status === 'ACTIVE') {
             setShowWaitingPopup(false);
             setShowOpponentFoundPopup(true);
+            const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
+            startBattle(data.question, actualStart);
           }
         }
       } else {
@@ -626,14 +629,8 @@ const MainMenu: React.FC = () => {
             setShowWaitingPopup(false);
             setShowInviteSentPopup(false);
             setPendingInviteTargetId(null);
-            setOpenWindows(prev => {
-               if (!prev.includes("battle")) {
-                   setWindowFlexes(f => [...f, 1]);
-                   return [...prev, "battle"];
-               }
-               return prev;
-            });
-            setActiveWindow("battle");
+            const actualStart = new Date(updatedDuel.startedAt || updatedDuel.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
+            startBattle(updatedDuel.question, actualStart);
           }
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           setActiveDuel(updatedDuel);
@@ -661,13 +658,15 @@ const MainMenu: React.FC = () => {
             guestLineCount: data.lineCount,
             guestTestsPassed: data.testsPassed,
             guestTestsTotal: data.testsTotal,
-            guestLastActive: new Date().toISOString()
+            guestLastActive: new Date().toISOString(),
+            guestCode: data.code
           } : {
             hostCodeLength: data.codeLength,
             hostLineCount: data.lineCount,
             hostTestsPassed: data.testsPassed,
             hostTestsTotal: data.testsTotal,
-            hostLastActive: new Date().toISOString()
+            hostLastActive: new Date().toISOString(),
+            hostCode: data.code
           })
         };
       });
@@ -675,6 +674,21 @@ const MainMenu: React.FC = () => {
 
     socketRef.current.on("duel_update", () => {
       pollDuel();
+    });
+
+    socketRef.current.on("opponent_surrendered", () => {
+      setActiveDuel(prev => {
+        if (!prev) return prev;
+        const userId = session?.user ? (session.user as any).id : guestId;
+        const isHost = prev.hostId === userId;
+        return {
+            ...prev,
+            [isHost ? 'guestPenalty' : 'hostPenalty']: 999999999,
+            status: "FINISHED"
+        };
+      });
+      // Allow database to finish updating before polling for Elo changes
+      setTimeout(pollDuel, 500);
     });
 
     socketRef.current.on("duel_invite", (data) => {
@@ -757,10 +771,11 @@ const MainMenu: React.FC = () => {
             lineCount: code.split("\n").length,
             testsPassed: testResults?.passed || 0,
             testsTotal: testResults?.total || 0,
+            code: code,
           };
           socketRef.current.emit("progress_update", body);
         }
-      }, 100); // Super fast 100ms updates directly via WebSocket!
+      }, 500); // Super fast 100ms updates directly via WebSocket!
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -769,13 +784,24 @@ const MainMenu: React.FC = () => {
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
-    if (activeDuel && activeDuel.status === "ACTIVE" && !solveTime) {
+    if (activeDuel && activeDuel.status === "ACTIVE") {
       const difficultyTimeLimits: Record<string, number> = {
         "Easy": 8 * 60,
         "Medium": 12 * 60,
         "Hard": 18 * 60
       };
-      const limit = difficultyTimeLimits[activeDuel.question?.difficulty] || 8 * 60;
+      let limit = difficultyTimeLimits[activeDuel.question?.difficulty] || 8 * 60;
+      
+      const currentUserId = session?.user ? (session.user as any).id : guestId;
+      const isHostLocal = activeDuel.hostId === currentUserId;
+      const opponentFinalized = isHostLocal ? activeDuel.guestFinalized : activeDuel.hostFinalized;
+      const opponentSolveTimeMs = isHostLocal ? activeDuel.guestSolveTime : activeDuel.hostSolveTime;
+      
+      if (opponentFinalized && opponentSolveTimeMs) {
+          const opponentSecs = Math.floor(opponentSolveTimeMs / 1000);
+          limit = Math.min(limit, opponentSecs + 120);
+      }
+
       const startTime = new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset;
 
       interval = setInterval(() => {
@@ -794,7 +820,7 @@ const MainMenu: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeDuel, solveTime]);
+  }, [activeDuel, session, guestId]);
 
 
 
@@ -1137,7 +1163,7 @@ const MainMenu: React.FC = () => {
     }
   }, [fetchQuestions]);
 
-  const startBattle = useCallback((question?: Question) => {
+  const startBattle = useCallback((question?: Question, forceStartTime?: number) => {
     const q = question || (questions.length > 0 ? questions[Math.floor(Math.random() * questions.length)] : DEFAULT_QUESTION);
     if (!q) return;
     
@@ -1146,7 +1172,7 @@ const MainMenu: React.FC = () => {
     setWrongAttemptCount(0); // Reset
     
     // If it's a duel, use startedAt as the start time, otherwise now.
-    const startTime = activeDuel ? new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset : Date.now();
+    const startTime = forceStartTime || (activeDuel ? new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset : Date.now());
     setBattleStartTime(startTime);
     
     setSolveTime(null);
@@ -1162,12 +1188,6 @@ const MainMenu: React.FC = () => {
       return next;
     });
   }, [questions, maximizedWindow, activeDuel]);
-
-  useEffect(() => {
-    if (activeDuel?.status === "ACTIVE" && !activeQuestion) {
-      startBattle(activeDuel.question);
-    }
-  }, [activeDuel, activeQuestion, startBattle]);
 
   const runTests = useCallback(async () => {
     if (!activeQuestion) return;
@@ -1444,8 +1464,25 @@ const MainMenu: React.FC = () => {
     }
 
     if (id === "battle" && activeDuel && activeDuel.status === "WAITING") {
-      setShowCancelDuel(true);
-      return;
+      if (activeDuel.pin && activeDuel.pin.startsWith("QM-")) {
+        const currentDuel = activeDuel;
+        setActiveDuel(null);
+        setDuelPin("");
+        setShowCancelDuel(false);
+        setShowWaitingPopup(false);
+        setShowInviteSentPopup(false);
+        if (maximizedWindow === "battle") setMaximizedWindow(null);
+        if (currentDuel) {
+          fetch("/api/duels/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code })
+          }).catch(err => console.error("Failed to terminate duel:", err));
+        }
+      } else {
+        setShowCancelDuel(true);
+        return;
+      }
     }
 
     setOpenWindows(prev => {
@@ -1570,17 +1607,7 @@ const MainMenu: React.FC = () => {
         return;
       }
 
-      // Alt + Number to toggle windows
-      if (e.altKey && /^[1-9]$/.test(e.key)) {
-        e.preventDefault();
-        const num = parseInt(e.key);
-        const allIds: WindowId[] = ["editor", "battle", "tournaments", "friends", "problem", "profile", "settings", "admin"];
-        const id = allIds[num - 1];
-        if (id) {
-          toggleWindow(id);
-        }
-        return;
-      }
+
 
       // Determine which window we are targeting: prioritize activeWindow, then hovered, then last opened
       const targetWindow = (openWindows.includes(activeWindow) ? activeWindow : null) 
@@ -1694,6 +1721,14 @@ const MainMenu: React.FC = () => {
               setWindowGap(g);
               localStorage.setItem('windowGap', g);
             }}
+            windowBorderThickness={windowBorderThickness} setWindowBorderThickness={(t) => {
+              setWindowBorderThickness(t);
+              localStorage.setItem('windowBorderThickness', t);
+            }}
+            navStyle={navStyle} setNavStyle={(n) => {
+              setNavStyle(n);
+              localStorage.setItem('navStyle', n);
+            }}
             t={t}
           />
         );
@@ -1702,8 +1737,9 @@ const MainMenu: React.FC = () => {
         return (
           <BattleWindow 
             startBattle={startBattle} questions={questions}
-            startQuickMatch={startQuickMatch}
+            startQuickMatch={startQuickMatch} userStats={userStats}
             session={session} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest}
+            showSignInOptions={showSignInOptions} setShowSignInOptions={setShowSignInOptions}
             t={t} onDeleteQuestion={handleDeleteQuestion} onEditQuestion={onEditQuestion}
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
             setActiveDuel={setActiveDuel} setDuelPin={setDuelPin}
@@ -1772,6 +1808,10 @@ const MainMenu: React.FC = () => {
             handleQuitBattle={async () => {
               const currentDuel = activeDuel;
               const isDuelActive = activeDuel?.status === "ACTIVE";
+
+              if (currentDuel && isDuelActive && socketRef.current) {
+                socketRef.current.emit("opponent_surrendered", { duelId: currentDuel.id });
+              }
 
               // Optimistically clear all battle-related state IMMEDIATELY
               // to prevent pollDuel or effects from re-opening the window.
@@ -1852,7 +1892,16 @@ const MainMenu: React.FC = () => {
                  onInviteDuel={handleInviteDuel}
                  pendingInviteTargetId={pendingInviteTargetId}
                  onCancelInvite={cancelInviteDuel}
+                 addToEditor={(c) => {
+                     setCode(c);
+                     if (!openWindows.includes("editor")) setOpenWindows(prev => [...prev, "editor"]);
+                     setActiveWindow("editor");
+                 }}
                />;
+      case "tutorial":
+        return <TutorialWindow />;
+      case "terms": return <LegalWindow type="terms" />;
+      case "privacy": return <LegalWindow type="privacy" />;
       case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>Global</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
       case "friends": return (
         <FriendsWindow 
@@ -1928,6 +1977,9 @@ const MainMenu: React.FC = () => {
     <div className="main-header" style={{ 
       '--window-radius': windowRadius, 
       '--gap': windowGap,
+      '--window-border-thickness': windowBorderThickness,
+      '--nav-bg': navStyle,
+      '--nav-border': navStyle === 'var(--bg)' ? '0px solid transparent' : `var(--window-border-thickness, 1px) solid var(--line)`,
       '--header-margin': '0px',
       '--header-radius': '0px'
     } as React.CSSProperties}>
@@ -2057,12 +2109,7 @@ const MainMenu: React.FC = () => {
               />
               <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
             </Link>
-            {(userStats.currentStreak !== undefined && session) && (
-               <div title={`Current Win Streak: ${userStats.currentStreak}`} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: userStats.currentStreak > 0 ? '#ffb86c' : 'var(--text-muted)', filter: userStats.currentStreak > 0 ? 'drop-shadow(0 0 8px rgba(255, 184, 108, 0.4))' : 'none' }}>
-                  <Flame size={20} fill={userStats.currentStreak > 0 ? "#ffb86c" : "none"} />
-                  <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>{userStats.currentStreak}</span>
-               </div>
-            )}
+
           </div>
           <ul className="nav-links">
             {navLinks.map(link => {
@@ -2119,6 +2166,15 @@ const MainMenu: React.FC = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={14} /><span style={{ fontSize: '0.85rem' }}>{t("profileOverview")}</span></div>
                               <ChevronRight size={12} />
                             </button>
+                            
+                            <button onClick={() => { 
+                                if (!openWindows.includes("tutorial")) setOpenWindows(prev => [...prev, "tutorial"]);
+                                setActiveWindow("tutorial"); 
+                                setIsProfileMenuOpen(false); 
+                            }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'var(--accent)', background: 'rgba(122, 162, 247, 0.05)', cursor: 'pointer', textAlign: 'left', width: '100%', marginTop: '0.25rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={14} /><span style={{ fontSize: '0.85rem' }}>Tutorial</span></div>
+                              <ChevronRight size={12} />
+                            </button>
 
                             {session?.user?.isAdmin && (
                               <button onClick={() => { toggleWindow("admin"); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'var(--accent)', background: 'rgba(122, 162, 247, 0.05)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
@@ -2130,7 +2186,7 @@ const MainMenu: React.FC = () => {
                             )}
 
                             {isGuest && (
-                            <button onClick={() => signIn()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'inherit', background: 'rgba(255,255,255,0.02)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                            <button onClick={() => { if (!openWindows.includes("battle")) toggleWindow("battle"); setShowSignInOptions(true); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'inherit', background: 'rgba(255,255,255,0.02)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LogIn size={14} /><span style={{ fontSize: '0.85rem' }}>{t("signIn")}</span></div>
                             <ChevronRight size={12} />
                             </button>
@@ -2143,7 +2199,7 @@ const MainMenu: React.FC = () => {
                   )}
                 </AnimatePresence>
               </div>
-            ) : <button className="btn" onClick={() => signIn()} style={{ background: 'var(--text)', color: 'var(--bg)', border: 'none', fontWeight: 700, padding: '0.4rem 0.8rem', cursor: 'pointer', borderRadius: '0.4rem' }}>{t("signIn")}</button>}
+            ) : <button className="btn" onClick={() => { if (!openWindows.includes("battle")) toggleWindow("battle"); setShowSignInOptions(true); }} style={{ background: 'var(--text)', color: 'var(--bg)', border: 'none', fontWeight: 700, padding: '0.4rem 0.8rem', cursor: 'pointer', borderRadius: '0.4rem' }}>{t("signIn")}</button>}
           </div>
         </div>
       </nav>
@@ -2159,8 +2215,10 @@ const MainMenu: React.FC = () => {
             if (id === 'friends') icon = <Users size={16} />;
             if (id === 'problem') icon = <Target size={16} />;
             if (id === 'admin') icon = <Database size={16} />;
+            if (id === 'tutorial') icon = <BookOpen size={16} />;
+            if (id === 'terms') icon = <FileText size={16} />;
+            if (id === 'privacy') icon = <Shield size={16} />;
             if (id.startsWith('profile')) icon = <User size={16} />;
-            
             const displayId = id.startsWith('profile_') ? 'profile' : id;
             const isMax = id === maximizedWindow;
             const originalIdx = openWindows.indexOf(id);
@@ -2177,37 +2235,38 @@ const MainMenu: React.FC = () => {
                   layout={animationSpeed !== "none" && !isDragging}
                   initial={
                     animationSpeed === "none" ? false : 
+                    animationSpeed === "jello" ? { opacity: 0, scale: 0.5, rotate: -10 } :
+                    animationSpeed === "spin" ? { opacity: 0, scale: 0.1, rotate: -180 } :
+                    animationSpeed === "shrink" ? { opacity: 0, scale: 1.1 } :
+                    animationSpeed === "earthquake" ? { opacity: 0, x: -50 } :
+                    animationSpeed === "swapVertical" ? { opacity: 0, y: -100 } :
+                    animationSpeed === "six seven" ? { opacity: 0, y: 50 } :
                     { opacity: 0, scale: 0.95 }
                   }
                   animate={{ 
                     opacity: 1, 
-                    scale: isReordering ? (
-                      animationSpeed === "shrink" ? 0.5 :
-                      1
-                    ) : 1,
-                    rotate: isReordering ? (
-                      animationSpeed === "jello" ? 2 : 
-                      animationSpeed === "spin" ? 360 :
-                      animationSpeed === "earthquake" ? [-5, 5, -3, 3, -4, 4] :
-                      0
-                    ) : 0,
+                    scale: 1,
+                    rotate: 0,
+                    x: 0,
+                    y: 0,
                     clipPath: 'inset(0% 0% 0% 0%)',
                     zIndex: draggedWindow === id ? 50 : 1,
                     boxShadow: isReordering ? "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)" : "none",
-                    ...(isReordering && animationSpeed === "earthquake" ? { x: [-10, 10, -10, 10] } : {}),
-                    ...(isReordering && animationSpeed === "swapVertical" ? { y: (id.length % 2 === 0 ? -150 : 150) } : (!isReordering && animationSpeed === "six seven" ? { y: (idx % 2 === 0 ? [-10, 10, -10] : [10, -10, 10]) } : {}))
                   }}
                   exit={
                     animationSpeed === "none" ? { opacity: 0 } : 
+                    animationSpeed === "jello" ? { opacity: 0, scale: 0.5, rotate: 10 } :
+                    animationSpeed === "spin" ? { opacity: 0, scale: 0.1, rotate: 180 } :
+                    animationSpeed === "shrink" ? { opacity: 0, scale: 1.1 } :
+                    animationSpeed === "earthquake" ? { opacity: 0, x: 50 } :
+                    animationSpeed === "swapVertical" ? { opacity: 0, y: 100 } :
+                    animationSpeed === "six seven" ? { opacity: 0, y: -50 } :
                     { opacity: 0, scale: 0.95 }
                   }
                   transition={{ 
                     ...getTransition(),
-                    layout: (isReordering && animationSpeed === "six seven") ? { type: "spring", stiffness: 500, damping: 40, mass: 1 } : getTransition(),
-                    scale: { duration: animationSpeed === "none" ? 0 : 0.1 },
-                    opacity: { duration: animationSpeed === "none" ? 0 : 0.1 },
-                    ...(animationSpeed === "six seven" && !isReordering ? { y: { repeat: Infinity, duration: 2, ease: "easeInOut" } } : {}),
-                    ...(isReordering && animationSpeed === "earthquake" ? { rotate: { repeat: Infinity, duration: 0.2 }, x: { repeat: Infinity, duration: 0.2 } } : {})
+                    layout: getTransition(),
+                    ...(animationSpeed === "none" ? { scale: { duration: 0 }, opacity: { duration: 0 } } : {})
                   }}
                   className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''} ${activeWindow === id ? 'twm-window--active' : ''}`}
                   style={{ flex: isMax ? 1 : (windowFlexes[originalIdx] || 1) }}
@@ -2318,6 +2377,25 @@ const MainMenu: React.FC = () => {
           })}
         </AnimatePresence>
       </motion.main>
+      <footer style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '1rem',
+        padding: '0.25rem',
+        fontSize: '0.65rem',
+        color: 'var(--text-muted)'
+      }}>
+        <a href="https://github.com/DumitrescuDarius/CODEKNIGHTS" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+          <Github size={12} /> GitHub
+        </a>
+        <button onClick={() => toggleWindow("privacy")} style={{ background: 'none', border: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+          <Shield size={12} /> Privacy Policy
+        </button>
+        <button onClick={() => toggleWindow("terms")} style={{ background: 'none', border: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+          <FileText size={12} /> Terms & Conditions
+        </button>
+      </footer>
     </div>
   );
 };

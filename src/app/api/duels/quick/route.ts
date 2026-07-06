@@ -61,6 +61,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ...duel, serverTime: Date.now() });
   } catch (err: any) {
     console.error("Quick match error:", err);
-    return NextResponse.json({ error: "Quick match failed" }, { status: 500 });
+    return NextResponse.json({ error: "Quick match failed", details: err?.message || String(err) }, { status: 500 });
   }
 }

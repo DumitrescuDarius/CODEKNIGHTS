@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { User, ShieldCheck, Loader2, Settings, Sword } from "lucide-react";
+import { User, ShieldCheck, Loader2, Settings, Sword, Code } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
 import Link from "next/link";
 
@@ -14,9 +14,10 @@ interface ProfileWindowProps {
   isOnline?: boolean;
   pendingInviteTargetId?: string | null;
   onCancelInvite?: () => void;
+  addToEditor?: (code: string) => void;
 }
 
-export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session, userId, t, cachedProfile, onInviteDuel, isOnline, pendingInviteTargetId, onCancelInvite }) => {
+export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session, userId, t, cachedProfile, onInviteDuel, isOnline, pendingInviteTargetId, onCancelInvite, addToEditor }) => {
   const [profile, setProfile] = useState<any>(cachedProfile || null);
   const [isLoading, setIsLoading] = useState(!cachedProfile);
   const [daysRange, setDaysRange] = useState(180);
@@ -285,8 +286,16 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
                   <span style={{ color: '#f1fa8c', fontWeight: 700, fontSize: '1.1rem' }}>{rating}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Global Rank</span>
+                  <span style={{ color: '#bd93f9', fontWeight: 700, fontSize: '1.1rem' }}>#{profile.globalRank || '?'}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{t("battlesWon")}</span>
                   <span style={{ color: '#50fa7b', fontWeight: 700, fontSize: '1.1rem' }}>{profile.battlesWon || 0}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Joined</span>
+                  <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1.1rem' }}>{profile.createdAt ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'Unknown'}</span>
               </div>
             </div>
           </div>
@@ -315,21 +324,30 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
                 <input type="text" defaultValue={profile.image || ''} id="edit-image" style={{ background: 'var(--bg)', border: '1px solid var(--line)', color: 'var(--text)', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }} />
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button onClick={() => {
+                <button onClick={async () => {
                    const username = (document.getElementById('edit-username') as HTMLInputElement).value;
+                   if (username && username.length < 4) {
+                     alert("Username must be at least 4 characters.");
+                     return;
+                   }
                    const image = (document.getElementById('edit-image') as HTMLInputElement).value;
-                   fetch('/api/user/profile', {
-                      method: 'POST',
+                   try {
+                     const res = await fetch("/api/user/profile", {
+                      method: "POST",
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ username, image })
-                   }).then(res => {
-                      if (res.ok) {
-                         setIsEditingProfile(false);
-                         window.dispatchEvent(new Event("duel_update_required")); // triggers a re-fetch
-                      } else {
-                         res.text().then(text => alert("Failed to update profile: " + text));
-                      }
                    });
+                   if (res.ok) {
+                      setIsEditingProfile(false);
+                      window.dispatchEvent(new Event("duel_update_required")); // triggers a re-fetch
+                   } else {
+                      const text = await res.text();
+                      alert("Failed to update profile: " + text);
+                   }
+                   } catch (err) {
+                      console.error(err);
+                      alert("Error updating profile.");
+                   }
                 }} style={{ padding: '0.75rem 1.5rem', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
             </div>
 
@@ -565,17 +583,33 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
                   {expandedDuel === duel.id && (
                     <div style={{ marginTop: '1rem', borderTop: '1px dashed var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden' }}>
+                            <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>Your Code</div>
-                                <pre style={{ margin: 0, padding: '1rem', overflowX: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)', maxHeight: '200px' }}>
-                                    {isHost ? (duel.hostCode || 'No code submitted') : (duel.guestCode || 'No code submitted')}
-                                </pre>
+                                <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+                                  {isHost ? (duel.hostCode ? (
+                                      <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
+                                        <Code size={18} /> {t("addToEditor") || "Add to Editor"}
+                                      </button>
+                                  ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>) : (duel.guestCode ? (
+                                      <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>
+                                        <Code size={18} /> {t("addToEditor") || "Add to Editor"}
+                                      </button>
+                                  ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>)}
+                                </div>
                             </div>
-                            <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden' }}>
+                            <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{opponent?.username || opponent?.name || "Opponent"}&apos;s Code</div>
-                                <pre style={{ margin: 0, padding: '1rem', overflowX: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)', maxHeight: '200px' }}>
-                                    {isHost ? (duel.guestCode || 'No code submitted') : (duel.hostCode || 'No code submitted')}
-                                </pre>
+                                <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+                                  {isHost ? (duel.guestCode ? (
+                                      <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>
+                                        <Code size={18} /> {t("addToEditor") || "Add to Editor"}
+                                      </button>
+                                  ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>) : (duel.hostCode ? (
+                                      <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
+                                        <Code size={18} /> {t("addToEditor") || "Add to Editor"}
+                                      </button>
+                                  ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>)}
+                                </div>
                             </div>
                         </div>
                     </div>

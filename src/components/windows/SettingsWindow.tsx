@@ -25,13 +25,17 @@ interface SettingsWindowProps {
   setWindowRadius: (radius: string) => void;
   windowGap: string;
   setWindowGap: (gap: string) => void;
+  windowBorderThickness: string;
+  setWindowBorderThickness: (thickness: string) => void;
+  navStyle: string;
+  setNavStyle: (style: string) => void;
   t: (key: TranslationKey) => string;
 }
 
 export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
   themeIndex, setThemeIndex, fontFamily, setFontFamily, fontSize, setFontSize,
   terminalFontSize, setTerminalFontSize, vimMode, setVimMode, uiLang, setUiLang,
-  animationSpeed, setAnimationSpeed, windowRadius, setWindowRadius, windowGap, setWindowGap, t
+  animationSpeed, setAnimationSpeed, windowRadius, setWindowRadius, windowGap, setWindowGap, windowBorderThickness, setWindowBorderThickness, navStyle, setNavStyle, t
 }) => {
   return (
     <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto' }}>
@@ -74,14 +78,9 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
       <div className="settings-group">
         <span className="settings-label">{t("windowAnimations")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
-          {(['none', 'snappy', 'smooth', 'bouncy', 'elastic', 'dramatic', 'jello', 'swapVertical', 'six seven', 'earthquake', 'spin', 'shrink'] as const).map((speed) => {
+          {(['none', 'jello', 'swapVertical', 'six seven', 'earthquake', 'spin', 'shrink'] as const).map((speed) => {
             const labels = {
               none: t("animationNone"),
-              snappy: t("animationSnappy"),
-              smooth: t("animationSmooth"),
-              bouncy: t("animationBouncy"),
-              elastic: t("animationElastic"),
-              dramatic: t("animationDramatic"),
               jello: t("animationJello"),
               swapVertical: t("animationSwapVertical"),
               "six seven": t("animationSixSeven"),
@@ -139,11 +138,20 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                 transition: 'all 0.2s ease',
                 background: 'rgba(255,255,255,0.02)',
                 cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.8rem'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
+              title={r.label}
             >
-              {r.label}
+              <div style={{ 
+                width: '24px', 
+                height: '24px', 
+                borderTop: '3px solid currentColor',
+                borderLeft: '3px solid currentColor',
+                borderTopLeftRadius: r.value,
+                transform: 'translate(4px, 4px)'
+              }}></div>
             </button>
           ))}
         </div>
@@ -173,11 +181,80 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                 transition: 'all 0.2s ease',
                 background: 'rgba(255,255,255,0.02)',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: g.value
+              }}
+              title={g.label}
+            >
+              <div style={{ width: '12px', height: '12px', background: 'currentColor', borderRadius: '2px' }}></div>
+              <div style={{ width: '12px', height: '12px', background: 'currentColor', borderRadius: '2px' }}></div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2.7. Window Border */}
+      <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
+        <span className="settings-label">Window Border</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
+          {[
+            { label: 'Thin', value: '1px' },
+            { label: 'Standard', value: '2px' },
+            { label: 'Thick', value: '4px' }
+          ].map((b) => (
+            <button 
+              key={b.value} 
+              onClick={() => setWindowBorderThickness(b.value)} 
+              className={`btn`}
+              style={{ 
+                height: '44px',
+                borderRadius: '0.4rem',
+                border: `1px solid ${windowBorderThickness === b.value ? 'var(--accent)' : 'var(--line)'}`,
+                color: windowBorderThickness === b.value ? 'var(--accent)' : 'var(--text)',
+                boxShadow: windowBorderThickness === b.value ? `inset 0 0 0 2px var(--accent)` : 'none',
+                transition: 'all 0.2s ease',
+                background: 'rgba(255,255,255,0.02)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title={b.label}
+            >
+              <div style={{ width: '24px', height: '16px', border: `${b.value} solid currentColor`, borderRadius: '4px' }}></div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2.8. Navbar Style */}
+      <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
+        <span className="settings-label">Navbar Style</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
+          {[
+            { label: 'Glass', value: 'rgba(255, 255, 255, 0.02)' },
+            { label: 'Solid', value: 'var(--bg)' }
+          ].map((n) => (
+            <button 
+              key={n.value} 
+              onClick={() => setNavStyle(n.value)} 
+              className={`btn`}
+              style={{ 
+                height: '44px',
+                borderRadius: '0.4rem',
+                border: `1px solid ${navStyle === n.value ? 'var(--accent)' : 'var(--line)'}`,
+                color: navStyle === n.value ? 'var(--accent)' : 'var(--text)',
+                boxShadow: navStyle === n.value ? `inset 0 0 0 2px var(--accent)` : 'none',
+                transition: 'all 0.2s ease',
+                background: 'rgba(255,255,255,0.02)',
+                cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: '0.8rem'
               }}
             >
-              {g.label}
+              {n.label}
             </button>
           ))}
         </div>

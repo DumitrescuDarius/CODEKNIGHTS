@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const users = await prisma.user.findMany({
+    // 1. Try finding users with contains
+    let users = await prisma.user.findMany({
       where: {
         OR: [
           { username: { contains: query, mode: 'insensitive' } },
@@ -26,17 +27,52 @@ export async function GET(req: NextRequest) {
         },
       },
       select: {
-        id: true,
-        name: true,
-        username: true,
-        image: true,
-        battlesWon: true,
-        battlesTotal: true,
-        rating: true,
-        rank: true,
+        id: true, name: true, username: true, image: true,
+        battlesWon: true, battlesTotal: true, rating: true, rank: true,
       },
-      take: 10,
+      take: 20,
     });
+
+    // 2. If no users found, try finding similar by using the first 3 characters!
+    if (users.length === 0 && query.length >= 3) {
+      const prefix = query.substring(0, 3);
+      users = await prisma.user.findMany({
+        where: {
+          OR: [
+            { username: { startsWith: prefix, mode: 'insensitive' } },
+            { name: { startsWith: prefix, mode: 'insensitive' } },
+          ],
+          NOT: { id: (session?.user as any)?.id || "no-session" },
+        },
+        select: {
+          id: true, name: true, username: true, image: true,
+          battlesWon: true, battlesTotal: true, rating: true, rank: true,
+        },
+        take: 10,
+      });
+    }
+
+    // Sort to put exact matches first, then startsWith, then others
+    const queryLower = query.toLowerCase();
+    users.sort((a, b) => {
+      const aName = (a.username || a.name || "").toLowerCase();
+      const bName = (b.username || b.name || "").toLowerCase();
+      
+      const aExact = aName === queryLower;
+      const bExact = bName === queryLower;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+
+      const aStarts = aName.startsWith(queryLower);
+      const bStarts = bName.startsWith(queryLower);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+
+      return aName.localeCompare(bName);
+    });
+    
+    // limit to 10
+    users = users.slice(0, 10);
 
     const userId = (session?.user as any)?.id;
     if (!userId) {
