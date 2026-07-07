@@ -45,6 +45,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
   const [friends, setFriends] = useState<User[]>(cachedFriends || []);
   const [requests, setRequests] = useState<User[]>(cachedRequests || []);
   const [isLoading, setIsLoading] = useState(!cachedFriends || !cachedRequests);
+  const [unfriendConfirm, setUnfriendConfirm] = useState<User | null>(null);
 
   const fetchData = useCallback(async () => {
     if (cachedFriends && cachedRequests) return;
@@ -136,6 +137,25 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
       }
     } catch (err) {
       console.error("Error sending request:", err);
+    }
+  };
+
+  const handleUnfriend = async (targetId: string) => {
+    try {
+      const res = await fetch('/api/user/friends/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetId })
+      });
+      if (res.ok) {
+        setUnfriendConfirm(null);
+        fetchData();
+      } else {
+        alert("Failed to unfriend.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to unfriend.");
     }
   };
 
@@ -234,6 +254,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   ) : (
                     <button className="friend-btn friend-btn--primary" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => onInviteDuel && onInviteDuel(user.id, user.username || user.name || "Knight")}>DUEL!</button>
                   )}
+                  <button className="friend-btn friend-btn--danger" style={{ flex: 0.3 }} onClick={() => setUnfriendConfirm(user)} title="Unfriend">
+                    <UserX size={14} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -386,6 +409,19 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
             ))}
         </div>
       </div>
+
+      {unfriendConfirm && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg)', padding: '2rem', borderRadius: '0.4rem', border: '1px solid var(--accent)', maxWidth: '400px', textAlign: 'center' }}>
+            <h3 style={{ margin: '0 0 1rem 0' }}>Remove Friend</h3>
+            <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>Are you sure you want to remove {unfriendConfirm.username || unfriendConfirm.name} from your friends list?</p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button className="twm-btn" onClick={() => setUnfriendConfirm(null)}>Cancel</button>
+              <button className="twm-btn" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => handleUnfriend(unfriendConfirm.id)}>Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

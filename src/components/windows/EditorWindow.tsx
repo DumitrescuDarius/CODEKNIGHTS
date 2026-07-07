@@ -212,7 +212,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Ln {cursorPos.ln}, Col {cursorPos.col}</span>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{fontSize}px</span>
           </div>
-          {vimMode && <div ref={vimStatusBarRef} style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }} />}
+          {vimMode && <div className="vim-status-bar" ref={vimStatusBarRef} style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }} />}
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <button onClick={() => setShowTerminal(!showTerminal)} className="twm-btn" style={{ color: showTerminal ? 'var(--accent)' : 'inherit' }} title="Toggle Terminal">

@@ -35,34 +35,34 @@ function shouldUseDocker(): boolean {
   return dockerAvailableCache;
 }
 
-async function executeWithPiston(code: string, language: string, stdin: string = ""): Promise<string> {
-  const pistonMap: Record<string, { language: string, version: string }> = {
-    c: { language: "c", version: "10.2.0" },
-    cpp: { language: "c++", version: "10.2.0" },
-    python: { language: "python", version: "3.10.0" },
-    java: { language: "java", version: "15.0.2" }
-  };
-  const langConfig = pistonMap[language];
-  if (!langConfig) throw { stderr: "Unsupported language for Piston API" };
 
-  const res = await fetch("https://emkc.org/api/v2/piston/execute", {
+async function executeWithPiston(code: string, language: string, stdin: string = ""): Promise<string> {
+  const compilerMap: Record<string, string> = {
+    c: "gcc-13.2.0-c",
+    cpp: "gcc-13.2.0",
+    python: "cpython-3.12.7",
+    java: "openjdk-jdk-22+36"
+  };
+  const compiler = compilerMap[language];
+  if (!compiler) throw { stderr: "Unsupported language for execution API" };
+
+  const res = await fetch("https://wandbox.org/api/compile.json", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      language: langConfig.language,
-      version: langConfig.version,
-      files: [{ content: code }],
-      stdin: stdin,
-      compile_timeout: 10000,
-      run_timeout: 5000
+      compiler: compiler,
+      code: code,
+      stdin: stdin
     })
   });
 
   const data = await res.json();
-  if (!res.ok) throw { stderr: data.message || "Piston API execution failed" };
-  if (data.compile && data.compile.code !== 0) throw { stderr: data.compile.output };
-  if (data.run && data.run.code !== 0) throw { stderr: data.run.output || "Execution failed with non-zero exit code" };
-  return data.run ? data.run.output : "";
+  if (!res.ok) throw { stderr: "Execution API failed" };
+  if (data.status !== "0") {
+    throw { stderr: data.compiler_error || data.program_error || "Execution failed" };
+  }
+
+  return data.program_output || "";
 }
 
 

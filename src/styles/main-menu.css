@@ -844,3 +844,28 @@ body.resizing * {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
 }
+
+/* Vim mode command input box theme */
+.vim-status-bar {
+  display: flex;
+  align-items: center;
+}
+
+.vim-status-bar input {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  outline: none;
+  min-width: 150px;
+  margin-left: 0.5rem;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.vim-status-bar input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 5px rgba(0, 0, 0, 0.2);
+}
