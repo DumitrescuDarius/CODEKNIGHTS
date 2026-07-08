@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     let resp: Response;
     let selectedModel: string | null = null;
-    const googleFallbackModels = ['gemini-robotics-er-1.6-preview', 'gemini-2.5-computer-use-preview-10-2025'];
+    const googleFallbackModels = [googleModel, 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
     const listModels = async () => {
       const endpoint = `${googleEndpointBase}/models?key=${googleKey}`;

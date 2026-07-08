@@ -1,7 +1,7 @@
 export type Language = "c" | "cpp" | "python" | "java";
 export type SupportedLanguage = "en" | "ro" | "fr" | "de" | "hi" | "ru" | "hu" | "es" | "it" | "zh" | "ja" | "pt";
 export type WindowId = "editor" | "practice" | "tournaments" | "leaderboard" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin" | "agent" | "tutorial" | `profile_${string}`;
-export type AnimationSpeed = "none" | "jello" | "swapVertical" | "six seven" | "earthquake" | "spin" | "shrink";
+export type AnimationSpeed = "none";
 
 export interface Theme {
   name: string;

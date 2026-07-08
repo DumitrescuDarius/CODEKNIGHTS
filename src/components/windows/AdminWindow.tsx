@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, AlertCircle, Sword, Edit2, X } from "lucide-react";
+import { Plus, Trash2, AlertCircle, Sword, Edit2, X, Users } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
 import { Question } from "../../types";
 
@@ -22,6 +22,43 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
 }) => {
   const [testCasesRaw, setTestCasesRaw] = useState(JSON.stringify(newQuestion.testCases, null, 2));
   const [hiddenTestCasesRaw, setHiddenTestCasesRaw] = useState(JSON.stringify(newQuestion.hiddenTestCases, null, 2));
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await fetch("/api/admin/users");
+      if (res.ok) {
+        setUsers(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setLoadingUsers(false);
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setUsers(prev => prev.filter(u => u.id !== id));
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete user");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete user");
+    }
+  };
+
 
   // ONLY sync raw strings when we start editing a new ID
   useEffect(() => {
@@ -240,6 +277,42 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                         className="twm-btn" 
                         style={{ color: '#ff5555', padding: '0.5rem', background: 'rgba(255,255,255,0.03)' }}
                         title="Delete Question"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* User List / Management */}
+          <div className="settings-group" style={{ marginTop: '2rem' }}>
+            <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--accent)' }}>
+              <Users size={14} /> MANAGE USERS
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {loadingUsers ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>Loading users...</p>
+              ) : users.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>No users found.</p>
+              ) : (
+                users.map((u) => (
+                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{u.username || u.name || "Unknown User"}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontWeight: 600 }}>
+                        {u.email} {u.isAdmin ? <span style={{ color: '#ffb86c' }}>(ADMIN)</span> : ''}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        onClick={() => handleDeleteUser(u.id)}
+                        className="twm-btn" 
+                        style={{ color: '#ff5555', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', opacity: u.isAdmin ? 0.3 : 1, cursor: u.isAdmin ? 'not-allowed' : 'pointer' }}
+                        title="Delete User"
+                        disabled={u.isAdmin}
                       >
                         <Trash2 size={16} />
                       </button>

@@ -5,6 +5,7 @@ import { Theme, Font, SupportedLanguage, AnimationSpeed } from "../../types";
 import { THEMES } from "../../constants/themes";
 import { FONTS } from "../../constants/fonts";
 import { TranslationKey } from "../../constants/translations";
+import { Download, Upload } from "lucide-react";
 
 interface SettingsWindowProps {
   themeIndex: number;
@@ -37,8 +38,91 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
   terminalFontSize, setTerminalFontSize, vimMode, setVimMode, uiLang, setUiLang,
   animationSpeed, setAnimationSpeed, windowRadius, setWindowRadius, windowGap, setWindowGap, windowBorderThickness, setWindowBorderThickness, navStyle, setNavStyle, t
 }) => {
+  const handleExport = () => {
+    const settings = {
+      themeIndex, fontFamily, fontSize, terminalFontSize,
+      vimMode, uiLang, animationSpeed, windowRadius,
+      windowGap, windowBorderThickness, navStyle
+    };
+    const jsonStr = JSON.stringify(settings, null, 2);
+    const blob = new Blob([jsonStr], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'codeknights_settings.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsed = JSON.parse(text);
+        if (typeof parsed.themeIndex === 'number') setThemeIndex(parsed.themeIndex);
+        if (typeof parsed.fontFamily === 'string') setFontFamily(parsed.fontFamily);
+        if (typeof parsed.fontSize === 'number') setFontSize(parsed.fontSize);
+        if (typeof parsed.terminalFontSize === 'number') setTerminalFontSize(parsed.terminalFontSize);
+        if (typeof parsed.vimMode === 'boolean') setVimMode(parsed.vimMode);
+        if (typeof parsed.uiLang === 'string') setUiLang(parsed.uiLang);
+        if (typeof parsed.animationSpeed === 'string') setAnimationSpeed(parsed.animationSpeed);
+        if (typeof parsed.windowRadius === 'string') setWindowRadius(parsed.windowRadius);
+        if (typeof parsed.windowGap === 'string') setWindowGap(parsed.windowGap);
+        if (typeof parsed.windowBorderThickness === 'string') setWindowBorderThickness(parsed.windowBorderThickness);
+        if (typeof parsed.navStyle === 'string') setNavStyle(parsed.navStyle);
+      } catch (err) {
+        console.error("Failed to parse settings file", err);
+        alert("Failed to parse settings file. Make sure it's a valid JSON.");
+      }
+    };
+    reader.readAsText(file);
+    // clear input so same file can be selected again
+    e.target.value = '';
+  };
+
   return (
     <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto' }}>
+      {/* 0. Settings Management */}
+      <div className="settings-group" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <button 
+          onClick={handleExport}
+          className="btn"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            padding: '0.5rem 1rem', borderRadius: '0.4rem',
+            background: 'var(--accent)', color: '#000',
+            border: 'none', cursor: 'pointer', fontWeight: 600,
+            fontSize: '0.85rem'
+          }}
+          title="Download settings as a .txt file"
+        >
+          <Download size={16} /> Export Settings
+        </button>
+        
+        <label
+          className="btn"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            padding: '0.5rem 1rem', borderRadius: '0.4rem',
+            background: 'rgba(255,255,255,0.05)', color: 'var(--text)',
+            border: '1px solid var(--line)', cursor: 'pointer', fontWeight: 600,
+            fontSize: '0.85rem'
+          }}
+          title="Import settings from a .txt file"
+        >
+          <Upload size={16} /> Import Settings
+          <input 
+            type="file" 
+            accept=".txt,.json" 
+            style={{ display: 'none' }}
+            onChange={handleImport}
+          />
+        </label>
+      </div>
+
       {/* 1. Interface Language */}
       <div className="settings-group">
         <span className="settings-label">{t("language")}</span>
@@ -74,45 +158,29 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
         </div>
       </div>
 
-      {/* 2. Window Animations */}
+      {/* 3. Text Size */}
       <div className="settings-group">
-        <span className="settings-label">{t("windowAnimations")}</span>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
-          {(['none', 'jello', 'swapVertical', 'six seven', 'earthquake', 'spin', 'shrink'] as const).map((speed) => {
-            const labels = {
-              none: t("animationNone"),
-              jello: t("animationJello"),
-              swapVertical: t("animationSwapVertical"),
-              "six seven": t("animationSixSeven"),
-              earthquake: "Earthquake!",
-              spin: "Spin Cycle",
-              shrink: "Shrink"
-            };
-            return (
-              <button 
-                key={speed} 
-                onClick={() => setAnimationSpeed(speed)} 
-                className={`btn`}
-                style={{ 
-                  flex: 1,
-                  height: '44px',
-                  borderRadius: '0.4rem',
-                  border: `1px solid ${animationSpeed === speed ? 'var(--accent)' : 'var(--line)'}`,
-                  color: animationSpeed === speed ? 'var(--accent)' : 'var(--text)',
-                  boxShadow: animationSpeed === speed ? `inset 0 0 0 2px var(--accent)` : 'none',
-                  transition: 'all 0.2s ease',
-                  background: 'rgba(255,255,255,0.02)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: '0.8rem'
-                }}
-              >
-                {labels[speed]}
-              </button>
-            );
-          })}
+        <span className="settings-label">{t("textSize")}</span>
+        <div style={{ display: 'flex', gap: '2rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>EDITOR</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button onClick={() => setFontSize(Math.max(10, fontSize - 1))} className="btn btn-ghost">-</button>
+              <span style={{ fontSize: '0.85rem', minWidth: '3ch', textAlign: 'center' }}>{fontSize}px</span>
+              <button onClick={() => setFontSize(Math.min(30, fontSize + 1))} className="btn btn-ghost">+</button>
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>TERMINAL</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button onClick={() => setTerminalFontSize(Math.max(10, terminalFontSize - 1))} className="btn btn-ghost">-</button>
+              <span style={{ fontSize: '0.85rem', minWidth: '3ch', textAlign: 'center' }}>{terminalFontSize}px</span>
+              <button onClick={() => setTerminalFontSize(Math.min(30, terminalFontSize + 1))} className="btn btn-ghost">+</button>
+            </div>
+          </div>
         </div>
       </div>
+
 
       {/* 2.5. Window Angles (Radius) */}
       <div className="settings-group" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
@@ -259,31 +327,6 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
           ))}
         </div>
       </div>
-
-
-      {/* 3. Text Size */}
-      <div className="settings-group">
-        <span className="settings-label">{t("textSize")}</span>
-        <div style={{ display: 'flex', gap: '2rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>EDITOR</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setFontSize(Math.max(10, fontSize - 1))} className="btn btn-ghost">-</button>
-              <span style={{ fontSize: '0.85rem', minWidth: '3ch', textAlign: 'center' }}>{fontSize}px</span>
-              <button onClick={() => setFontSize(Math.min(30, fontSize + 1))} className="btn btn-ghost">+</button>
-            </div>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>TERMINAL</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setTerminalFontSize(Math.max(10, terminalFontSize - 1))} className="btn btn-ghost">-</button>
-              <span style={{ fontSize: '0.85rem', minWidth: '3ch', textAlign: 'center' }}>{terminalFontSize}px</span>
-              <button onClick={() => setTerminalFontSize(Math.min(30, terminalFontSize + 1))} className="btn btn-ghost">+</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* 3. Keybindings */}
       <div className="settings-group">
         <span className="settings-label">{t("keybindings")}</span>

@@ -41,6 +41,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  themeIndex    Int       @default(0)
   isAdmin       Boolean   @default(false)
   battlesWon    Int       @default(0)
   battlesTotal  Int       @default(0)

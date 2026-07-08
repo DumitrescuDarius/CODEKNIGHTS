@@ -129,7 +129,10 @@ const DEFAULT_QUESTION: Question = {
 };
 
 const MainMenu: React.FC = () => {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
+  const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
   const [lang, setLang] = useState<Language>("cpp");
   const [code, setCode] = useState(LANG_CONFIG["cpp"].defaultCode);
   const [openWindows, setOpenWindows] = useState<WindowId[]>(["editor"]);
@@ -294,6 +297,57 @@ const MainMenu: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeDuel, setActiveDuel] = useState<Duel | null>(null);
   const activeDuelRef = useRef<Duel | null>(null);
+
+  const handleSetThemeIndex = (idx: number) => {
+    setThemeIndex(idx);
+    if (session?.user && !isGuest) {
+      fetch('/api/user/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ themeIndex: idx })
+      }).catch(console.error);
+    }
+  };
+
+  useEffect(() => {
+    if (session?.user && !isGuest) {
+      const dbTheme = (session.user as any).themeIndex;
+      if (dbTheme !== undefined && dbTheme !== null) {
+        setThemeIndex(dbTheme);
+        localStorage.setItem("ck-theme-idx", dbTheme.toString());
+      }
+      
+      const dbUsername = (session.user as any).username;
+      if (!dbUsername) {
+        setShowUsernamePrompt(true);
+      } else {
+        setShowUsernamePrompt(false);
+      }
+    }
+  }, [session, isGuest]);
+
+  const handleSaveUsername = async () => {
+    if (!newUsername.trim()) {
+      setUsernameError("Username cannot be empty");
+      return;
+    }
+    try {
+      const res = await fetch('/api/user/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newUsername.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShowUsernamePrompt(false);
+        updateSession(); // refresh session to get new username
+      } else {
+        setUsernameError(data.error || "Failed to update username");
+      }
+    } catch (e) {
+      setUsernameError("An error occurred");
+    }
+  };
   
   useEffect(() => {
     activeDuelRef.current = activeDuel;
@@ -383,14 +437,7 @@ const MainMenu: React.FC = () => {
   }, [animationSpeed, session]);
 
   const getTransition = (): Transition => {
-    if (animationSpeed === "none") return { type: "tween", duration: 0 };
-    if (animationSpeed === "jello") return { type: "spring", stiffness: 500, damping: 8, mass: 1 };
-    if (animationSpeed === "earthquake") return { type: "spring", stiffness: 1000, damping: 5, mass: 1 };
-    if (animationSpeed === "spin") return { type: "spring", stiffness: 200, damping: 20, mass: 1 };
-    if (animationSpeed === "shrink") return { type: "spring", stiffness: 400, damping: 25, mass: 1 };
-    if (animationSpeed === "swapVertical") return { type: "spring", stiffness: 450, damping: 30, mass: 1 };
-    if (animationSpeed === "six seven") return { type: "spring", stiffness: 150, damping: 5, mass: 1 };
-    return { type: "spring", stiffness: 350, damping: 25, mass: 1 };
+    return { type: "tween", duration: 0 };
   };
 
   const t = useCallback((key: TranslationKey): string => {
@@ -453,7 +500,6 @@ const MainMenu: React.FC = () => {
   const navLinks = useMemo(() => {
     const links = [
       { label: t("battle"), id: "battle" as WindowId, icon: <Sword size={16} /> },
-      { label: t("agent"), id: "agent" as WindowId, icon: <Wand2 size={16} /> },
       { label: t("friends"), id: "friends" as WindowId, icon: <Users size={16} /> },
     ];
     
@@ -820,11 +866,11 @@ const MainMenu: React.FC = () => {
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
-    if (activeDuel?.status === "ACTIVE") {
-      // Fallback polling in case of missed WebSocket events
+    if (activeDuel?.status === "ACTIVE" || activeDuel?.status === "WAITING") {
+      // Fallback polling in case of missed WebSocket events or serverless environments
       interval = setInterval(() => {
         pollDuel();
-      }, 5000);
+      }, 3000); // Polling every 3 seconds
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -1793,7 +1839,7 @@ const MainMenu: React.FC = () => {
       case "settings":
         return (
           <SettingsWindow 
-            themeIndex={themeIndex} setThemeIndex={setThemeIndex}
+            themeIndex={themeIndex} setThemeIndex={handleSetThemeIndex}
             fontFamily={fontFamily} setFontFamily={setFontFamily}
             fontSize={fontSize} setFontSize={setFontSize}
             terminalFontSize={terminalFontSize} setTerminalFontSize={setTerminalFontSize}
@@ -2264,6 +2310,7 @@ const MainMenu: React.FC = () => {
             })}
           </ul>
           <div className="nav-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><Wand2 size={20} /></button>
             <button onClick={() => toggleWindow("settings")} style={{ background: 'transparent', border: 'none', color: '#f1fa8c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
             {(session || isGuest) ? (
               <div style={{ position: 'relative' }}>
@@ -2322,7 +2369,20 @@ const MainMenu: React.FC = () => {
                             </button>
                             )}
 
-                            <button onClick={() => isGuest ? setIsGuest(false) : signOut()} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: '#ff5555', background: 'rgba(255, 85, 85, 0.05)', cursor: 'pointer', textAlign: 'left' }}>
+                            <button onClick={() => {
+                              if (isGuest) {
+                                fetch('/api/auth/guest/delete', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ guestName })
+                                }).catch(console.error).finally(() => {
+                                  setIsGuest(false);
+                                  localStorage.removeItem(`guestName_${guestName}`); // optionally cleanup local storage
+                                });
+                              } else {
+                                signOut();
+                              }
+                            }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: '#ff5555', background: 'rgba(255, 85, 85, 0.05)', cursor: 'pointer', textAlign: 'left' }}>
                             <LogOut size={14} /><span style={{ fontSize: '0.85rem' }}>{isGuest ? t("exitGuest") : t("signOut")}</span>
                             </button>                      </motion.div>
                     </>
@@ -2363,16 +2423,7 @@ const MainMenu: React.FC = () => {
                 <motion.section 
                   key={id}
                   layout={animationSpeed !== "none" && !isDragging}
-                  initial={
-                    animationSpeed === "none" ? false : 
-                    animationSpeed === "jello" ? { opacity: 0, scale: 0.5, rotate: -10 } :
-                    animationSpeed === "spin" ? { opacity: 0, scale: 0.1, rotate: -180 } :
-                    animationSpeed === "shrink" ? { opacity: 0, scale: 1.1 } :
-                    animationSpeed === "earthquake" ? { opacity: 0, x: -50 } :
-                    animationSpeed === "swapVertical" ? { opacity: 0, y: -100 } :
-                    animationSpeed === "six seven" ? { opacity: 0, y: 50 } :
-                    { opacity: 0, scale: 0.95 }
-                  }
+                  initial={false}
                   animate={{ 
                     opacity: 1, 
                     scale: 1,
@@ -2383,16 +2434,7 @@ const MainMenu: React.FC = () => {
                     zIndex: draggedWindow === id ? 50 : 1,
                     boxShadow: isReordering ? "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)" : "none",
                   }}
-                  exit={
-                    animationSpeed === "none" ? { opacity: 0 } : 
-                    animationSpeed === "jello" ? { opacity: 0, scale: 0.5, rotate: 10 } :
-                    animationSpeed === "spin" ? { opacity: 0, scale: 0.1, rotate: 180 } :
-                    animationSpeed === "shrink" ? { opacity: 0, scale: 1.1 } :
-                    animationSpeed === "earthquake" ? { opacity: 0, x: 50 } :
-                    animationSpeed === "swapVertical" ? { opacity: 0, y: 100 } :
-                    animationSpeed === "six seven" ? { opacity: 0, y: -50 } :
-                    { opacity: 0, scale: 0.95 }
-                  }
+                  exit={{ opacity: 0 }}
                   transition={{ 
                     ...getTransition(),
                     layout: getTransition(),
@@ -2507,6 +2549,69 @@ const MainMenu: React.FC = () => {
           })}
         </AnimatePresence>
       </motion.main>
+      
+      {/* Username Prompt Modal */}
+      <AnimatePresence>
+        {showUsernamePrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 9999
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              style={{
+                background: 'var(--bg)', border: '1px solid var(--line)',
+                padding: '2rem', borderRadius: '0.8rem', width: '90%', maxWidth: '400px',
+                display: 'flex', flexDirection: 'column', gap: '1rem',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+              }}
+            >
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text)', margin: 0 }}>Welcome to CodeKnights!</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>Please choose a username for your account. This is how other players will see you.</p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <input 
+                  type="text" 
+                  value={newUsername} 
+                  onChange={(e) => setNewUsername(e.target.value)} 
+                  placeholder="Enter username..."
+                  style={{
+                    padding: '0.75rem', borderRadius: '0.4rem', border: '1px solid var(--line)',
+                    background: 'rgba(255,255,255,0.05)', color: 'var(--text)', fontSize: '1rem',
+                    outline: 'none', transition: 'border-color 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--line)'}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveUsername(); }}
+                />
+                {usernameError && <span style={{ color: '#ff5555', fontSize: '0.8rem' }}>{usernameError}</span>}
+              </div>
+
+              <button 
+                onClick={handleSaveUsername}
+                className="btn"
+                style={{
+                  background: 'var(--accent)', color: '#000', padding: '0.75rem',
+                  borderRadius: '0.4rem', border: 'none', fontWeight: 700, fontSize: '1rem',
+                  cursor: 'pointer', marginTop: '0.5rem'
+                }}
+              >
+                Save Username
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <footer style={{
         display: 'flex',
         justifyContent: 'center',
