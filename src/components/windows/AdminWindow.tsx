@@ -258,7 +258,10 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                 questions.map((q) => (
                   <div key={q.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{q.title}</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                        <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{q.problemId || "?"}</span>
+                        {q.title}
+                      </div>
                       <div style={{ fontSize: '0.7rem', color: q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555', marginTop: '0.2rem', fontWeight: 600 }}>
                         {q.difficulty === 'Easy' ? 'TARGET PRACTICE' : q.difficulty === 'Medium' ? 'TRIAL DUEL' : 'ROYAL CHALLENGE'}
                       </div>

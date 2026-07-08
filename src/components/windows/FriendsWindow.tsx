@@ -76,6 +76,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
   const searchUsers = async (query: string, signal: AbortSignal) => {
     if (query.length < 2) {
       setSearchResults([]);
+      setIsLoading(false);
       return;
     }
 
@@ -98,6 +99,11 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
   useEffect(() => {
     const controller = new AbortController();
     if (activeTab === 'find') {
+      if (searchQuery.length >= 2) {
+        setIsLoading(true);
+      } else {
+        setIsLoading(false);
+      }
       debouncedSearch(searchQuery, controller.signal);
     } else {
       debouncedSearch.cancel();

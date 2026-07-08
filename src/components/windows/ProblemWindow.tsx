@@ -7,7 +7,6 @@ import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQ
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
-import { motion, AnimatePresence } from "framer-motion";
 
 type CodeAnalysis = {
   timeComplexity?: string;
@@ -177,10 +176,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     const opponentLastActive = isCurrentUserHost ? activeDuel.guestLastActive : activeDuel.hostLastActive;
 
     return (
-      <motion.div
-        initial={{ opacity: 0, y: -10, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
+      <div
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -237,7 +233,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         >
           {opponentName}
         </span>
-      </motion.div>
+      </div>
     );
   };
 
@@ -451,7 +447,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
       <div style={{ padding: '2rem', height: '100%', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{activeQuestion?.title}</h2>
+            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>
+              {activeQuestion?.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>}
+              {activeQuestion?.title}
+            </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               {activeDuel?.status === "ACTIVE" ? (
@@ -511,43 +510,38 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                 <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{penaltyBreakdown.time + penaltyBreakdown.wa}</div>
               </div>
               
-              <AnimatePresence>
-                {isPenaltyOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      zIndex: 100,
-                      background: 'var(--bg)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '0.5rem',
-                      marginTop: '0.5rem',
-                      padding: '1.25rem',
-                      fontSize: '0.85rem',
-                      color: 'var(--text-muted)',
-                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time:</span><span style={{color: 'var(--text)'}}>{solveTime || "--:--"}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Battle Bad Submissions:</span><span style={{color: 'var(--text)'}}>{wrongAttemptCount}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Lifetime Bad Submissions:</span><span style={{color: 'var(--text)'}}>{analysis?.failedSubmissionsCount || 0}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time Penalty:</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.time}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Wrong Answers ({wrongAttemptCount} × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.wa}</span></div>
+              {isPenaltyOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    zIndex: 100,
+                    background: 'var(--bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '0.5rem',
+                    marginTop: '0.5rem',
+                    padding: '1.25rem',
+                    fontSize: '0.85rem',
+                    color: 'var(--text-muted)',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time:</span><span style={{color: 'var(--text)'}}>{solveTime || "--:--"}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Battle Bad Submissions:</span><span style={{color: 'var(--text)'}}>{wrongAttemptCount}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Lifetime Bad Submissions:</span><span style={{color: 'var(--text)'}}>{analysis?.failedSubmissionsCount || 0}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time Penalty:</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.time}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Wrong Answers ({wrongAttemptCount} × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.wa}</span></div>
+                </div>
+              )}
+            </div>
 
-                    </motion.div>                )}
-                </AnimatePresence>
-                </div>
-
-                <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("langUsed")}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{(LANG_CONFIG as any)[lang]?.label || lang}</div>
-                </div>
-                </div>
+            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("langUsed")}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{(LANG_CONFIG as any)[lang]?.label || lang}</div>
+            </div>
+        </div>
 
         <button 
           onClick={retryProblem}
@@ -621,6 +615,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               letterSpacing: '-0.02em',
               textShadow: '0 2px 10px rgba(122, 162, 247, 0.2)'
             }}>
+              {activeQuestion.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>}
               {activeQuestion.title}
             </h2>
           </div>
@@ -635,9 +630,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           </div>
 
           {activeQuestion.restrictions && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+            <div 
               style={{ 
                 padding: '1.25rem', 
                 background: 'linear-gradient(to right, rgba(255,85,85,0.05), rgba(255,85,85,0.01))', 
@@ -656,18 +649,15 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
                 {renderFormattedText(activeQuestion.restrictions)}
               </div>
-            </motion.div>
+            </div>
           )}
 
           <div className="settings-group" style={{ marginTop: '1rem' }}>
             <span className="settings-label" style={{ fontSize: '1.1rem', color: 'var(--text)', marginBottom: '1.5rem', display: 'inline-block' }}>{t("examples")}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {currentTestCases.map((tc: any, i: number) => (
-                <motion.div 
+                <div 
                   key={i} 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
                   style={{ 
                     background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', 
                     border: '1px solid rgba(255,255,255,0.05)', 
@@ -724,7 +714,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                       <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: '#50fa7b', fontFamily: '"Fira Code", monospace' }}>{tc.output}</pre>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
