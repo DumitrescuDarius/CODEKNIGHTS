@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
     const googleKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-    const googleModel = process.env.GOOGLE_MODEL || "gemini-3.5-flash";
+    const googleModel = process.env.GOOGLE_MODEL || "gemini-2.0-flash";
     const providerOverride = process.env.AI_PROVIDER?.toLowerCase();
 
     if (!openrouterKey && !openaiKey && !googleKey) {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     let resp: Response;
     let selectedModel: string | null = null;
-    const googleFallbackModels = [googleModel, 'gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
+    const googleFallbackModels = [googleModel, 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
     const listModels = async () => {
       const endpoint = `${googleEndpointBase}/models?key=${googleKey}`;
