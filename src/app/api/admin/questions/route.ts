@@ -17,7 +17,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const allQuestions = await prisma.question.findMany({ select: { problemId: true } });
+    const ids = allQuestions.map(q => q.problemId).filter(id => id !== null).sort((a: any, b: any) => a - b);
+    let smallest = 1;
+    for (const pid of ids) {
+      if (pid === smallest) smallest++;
+      else if (pid! > smallest) break;
+    }
+
     const data: any = {
+      problemId: smallest,
       title,
       description,
       restrictions,

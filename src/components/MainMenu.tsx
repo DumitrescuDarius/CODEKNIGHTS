@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, BrainCircuit } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -22,6 +22,7 @@ import { BattleWindow } from "./windows/BattleWindow";
 import { ProblemWindow } from "./windows/ProblemWindow";
 import { ProfileWindow } from "./windows/ProfileWindow";
 import { AdminWindow } from "./windows/AdminWindow";
+import { NotesWindow } from "./windows/NotesWindow";
 import { TournamentWindow } from "./windows/TournamentWindow";
 import { LegalWindow } from "./windows/LegalWindow";
 import { FriendsWindow } from "./windows/FriendsWindow";
@@ -500,6 +501,7 @@ const MainMenu: React.FC = () => {
   const navLinks = useMemo(() => {
     const links = [
       { label: t("battle"), id: "battle" as WindowId, icon: <Sword size={16} /> },
+      { label: "Notes", id: "notes" as WindowId, icon: <StickyNote size={16} /> },
       { label: t("friends"), id: "friends" as WindowId, icon: <Users size={16} /> },
     ];
     
@@ -535,6 +537,9 @@ const MainMenu: React.FC = () => {
         const data = await res.json();
         if (data) {
           setFullProfile(data);
+          if (typeof window !== 'undefined' && data.notesData) {
+            (window as any).ckNotesCache = data.notesData;
+          }
           setUserStats({
             battlesWon: data.battlesWon || 0,
             battlesTotal: data.battlesTotal || 0,
@@ -1915,6 +1920,10 @@ const MainMenu: React.FC = () => {
             questions={questions} onDeleteQuestion={handleDeleteQuestion}
           />
         );
+      case "notes":
+        return (
+          <NotesWindow t={t} />
+        );
       case "problem":
         const currentUserId = session?.user ? (session.user as any).id : "guest";
         console.log("[MainMenu] ProblemWindow timeLeft:", timeLeft);
@@ -2098,9 +2107,10 @@ const MainMenu: React.FC = () => {
       const el = workspaceRef.current;
       if (!el) return;
       const count = Math.max(1, renderedWindows.length);
+      const gaps = count - 1;
       // Set CSS variable used by styles to compute minimum window width.
-      // This makes each window shrink proportionally so they stay within viewport.
-      el.style.setProperty('--twm-window-min-width', `min(22rem, calc(100% / ${count}))`);
+      // This makes each window shrink proportionally so they stay within viewport, accounting for gaps.
+      el.style.setProperty('--twm-window-min-width', `min(22rem, calc((100% - var(--gap, 0px) * ${gaps}) / ${count}))`);
     } catch (err) {
       // silent
     }
@@ -2310,7 +2320,7 @@ const MainMenu: React.FC = () => {
             })}
           </ul>
           <div className="nav-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><Wand2 size={20} /></button>
+            <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><BrainCircuit size={20} /></button>
             <button onClick={() => toggleWindow("settings")} style={{ background: 'transparent', border: 'none', color: '#f1fa8c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
             {(session || isGuest) ? (
               <div style={{ position: 'relative' }}>
@@ -2408,6 +2418,7 @@ const MainMenu: React.FC = () => {
             if (id === 'tutorial') icon = <BookOpen size={16} />;
             if (id === 'terms') icon = <FileText size={16} />;
             if (id === 'privacy') icon = <Shield size={16} />;
+            if (id === 'agent') icon = <BrainCircuit size={16} />;
             if (id.startsWith('profile')) icon = <User size={16} />;
             const displayId = id.startsWith('profile_') ? 'profile' : id;
             const isMax = id === maximizedWindow;
@@ -2452,7 +2463,7 @@ const MainMenu: React.FC = () => {
                     if (!ignoreHoverRef.current) setHoveredWindow(prev => prev === id ? null : prev);
                   }}
                 >
-                  <div className="twm-window-header" draggable={!isMax} onDragStart={() => setDraggedWindow(id)} onDragEnd={() => setDraggedWindow(null)} style={{ cursor: isMax ? 'default' : 'grab' }}>
+                  <div className="twm-window-header" draggable={!isMax} onDragStart={(e) => { setDraggedWindow(id); e.dataTransfer.setData("application/window-id", id); }} onDragEnd={() => setDraggedWindow(null)} style={{ cursor: isMax ? 'default' : 'grab' }}>
                     <motion.div 
                       layout={animationSpeed !== "none" && !isDragging}
                       transition={getTransition()}
@@ -2460,7 +2471,7 @@ const MainMenu: React.FC = () => {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <span className="twm-window-title" style={{ pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ color: 'var(--accent)' }}>{icon}</span> {displayId}
+                          <span style={{ color: 'var(--accent)' }}>{icon}</span> {renderedWindows.length >= 4 ? null : displayId}
                         </span>
                         {id === 'editor' && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>
@@ -2480,6 +2491,9 @@ const MainMenu: React.FC = () => {
                               {isTesting ? "..." : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? "SUBMITTED" : "SUBMIT")}
                             </button>
                           </div>
+                        )}
+                        {id === 'notes' && (
+                          <div id="notes-window-header-portal" style={{ display: 'flex', alignItems: 'center', height: '100%', paddingLeft: '1rem', borderLeft: '1px solid var(--line)' }} onMouseDown={(e) => e.stopPropagation()} />
                         )}
                       </div>
                       <div className="twm-window-actions">

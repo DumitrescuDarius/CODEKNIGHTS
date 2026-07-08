@@ -5,20 +5,18 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     console.log("[api/agent] Body parsed");
-    const prompt = body.prompt || "";
+    const messages = body.messages || []; // Array of { role: 'user' | 'assistant', content: string }
     const language = body.language || "";
 
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
     const googleKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-    const googleModel = process.env.GOOGLE_MODEL || "gemini-1.5-flash";
+    const googleModel = process.env.GOOGLE_MODEL || "gemini-3.5-flash";
     const providerOverride = process.env.AI_PROVIDER?.toLowerCase();
 
     if (!openrouterKey && !openaiKey && !googleKey) {
       return NextResponse.json({ error: "No AI API key configured" }, { status: 500 });
     }
-
-    const userMessage = `You are an assistant that helps solve programming problems. Please provide a concise working solution in the requested language (${language}) and include a brief explanation of your approach. Problem:\n${prompt}`;
 
     const useGoogle = providerOverride === 'google' ? true : (!providerOverride && !!googleKey);
     const useOpenAI = providerOverride === 'openai' ? true : (!providerOverride && !googleKey && !!openaiKey);
@@ -31,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     let resp: Response;
     let selectedModel: string | null = null;
-    const googleFallbackModels = [googleModel, 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    const googleFallbackModels = [googleModel, 'gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
 
     const listModels = async () => {
       const endpoint = `${googleEndpointBase}/models?key=${googleKey}`;
@@ -45,14 +43,27 @@ export async function POST(req: NextRequest) {
     };
 
     const callGoogleWithModel = async (model: string) => {
-      // Endpoint format: .../v1beta/models/<modelName>:generateContent
       const endpoint = `${googleEndpointBase}/models/${model}:generateContent?key=${googleKey}`;
-      const body = JSON.stringify({ 
-        contents: [{ parts: [{ text: userMessage }] }],
+      
+      const contents = messages.map((m: any) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+      // ensure first message is user
+      if (contents.length > 0 && contents[0].role !== 'user') {
+        contents.unshift({ role: 'user', parts: [{ text: "Hello" }] });
+      }
+
+      if (contents.length > 0 && contents[0].role === 'user') {
+        contents[0].parts[0].text = `You are an assistant that helps solve programming problems. Provide concise working solutions in the requested language (${language}) and include brief explanations.\n\nProblem:\n${contents[0].parts[0].text}`;
+      }
+
+      const requestBody = JSON.stringify({ 
+        contents,
         generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
       });
       try {
-        const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+        const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: requestBody });
         const responseText = await r.text();
         let data;
         try {
@@ -86,12 +97,19 @@ export async function POST(req: NextRequest) {
         }
       }
       if (!resp!) {
-         return NextResponse.json({ error: 'All Google models failed', debug: 'Check server logs for detailed error' }, { status: 500 });
+         return NextResponse.json({ error: 'All Google models failed', debug: result?.responseText || 'Check server logs for detailed error' }, { status: 500 });
       }
     } else {
-        // Fallback to OpenAI/OpenRouter (simplified for brevity, you can keep original fallback logic)
         const url = useOpenAI ? "https://api.openai.com/v1/chat/completions" : "https://api.openrouter.ai/v1/chat/completions";
-        const requestBody = JSON.stringify({ model: "gpt-4o-mini", messages: [ { role: "system", content: "You are a helpful programming assistant." }, { role: "user", content: userMessage } ], max_tokens: 1500, temperature: 0.2, });
+        const requestBody = JSON.stringify({ 
+          model: "gpt-4o-mini", 
+          messages: [ 
+            { role: "system", content: `You are a programming assistant helping with ${language}.` }, 
+            ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+          ], 
+          max_tokens: 1500, 
+          temperature: 0.2, 
+        });
         resp = await fetch(url, {
           method: "POST",
           headers: { "Authorization": `Bearer ${authKey}`, "Content-Type": "application/json" },

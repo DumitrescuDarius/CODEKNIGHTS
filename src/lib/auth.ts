@@ -5,7 +5,19 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "./prisma";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: {
+    ...PrismaAdapter(prisma),
+    createUser: async (data) => {
+      const seed = data.email || Math.random().toString();
+      const identiconUrl = `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(seed)}&rowColor=random`;
+      return prisma.user.create({
+        data: {
+          ...data,
+          image: identiconUrl,
+        },
+      }) as any;
+    },
+  },
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID || "",

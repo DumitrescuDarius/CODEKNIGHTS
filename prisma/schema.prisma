@@ -48,6 +48,7 @@ model User {
   rating        Int       @default(1000)
   rank          String    @default("Novice")
   dailyWins     Json      @default("{}") // Stores {"YYYY-MM-DD": count}
+  notesData     Json      @default("{\"nodes\":[],\"edges\":[]}")
   
   // Friend Request relations
   sentRequests     FriendRequest[] @relation("SentRequests")
@@ -74,6 +75,7 @@ model FriendRequest {
 }
 
 model Question {
+  problemId   Int?     @unique
   id          String   @id @default(cuid())
   title       String   @unique
   description String

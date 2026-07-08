@@ -1,5 +1,5 @@
 const { createServer } = require("http");
-const { parse } = require("url");
+
 const next = require("next");
 const { Server } = require("socket.io");
 
@@ -13,14 +13,17 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
     try {
-      const parsedUrl = parse(req.url, true);
+      const protocol = req.headers['x-forwarded-proto'] || 'http';
+      const parsedUrl = new URL(req.url, `${protocol}://${req.headers.host || hostname}`);
       
       if (parsedUrl.pathname === '/api/socket_online') {
          res.setHeader('Content-Type', 'application/json');
          res.end(JSON.stringify(Array.from(global.onlineUsers || [])));
          return;
       }
-      handle(req, res, parsedUrl);
+      
+      const query = Object.fromEntries(parsedUrl.searchParams.entries());
+      handle(req, res, { ...parsedUrl, pathname: parsedUrl.pathname, query });
     } catch (err) {
       console.error("Error occurred handling", req.url, err);
       res.statusCode = 500;
