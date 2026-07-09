@@ -8,12 +8,14 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user) {
+  const { searchParams } = new URL(req.url);
+  const requestedUserId = searchParams.get("userId");
+
+  if (!requestedUserId && (!session || !session.user)) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId") || (session.user as any).id;
+  const userId = requestedUserId || (session?.user as any)?.id;
 
   try {
     const user = await prisma.user.findUnique({

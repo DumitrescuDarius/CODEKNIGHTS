@@ -1017,11 +1017,12 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                       fontSize: '0.8rem',
                       fontWeight: 'bold',
                       outline: 'none',
-                      width: '120px'
+                      flex: 1,
+                      minWidth: 0
                     }}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '0.3rem', marginLeft: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.3rem', marginLeft: '0.5rem', flexShrink: 0 }}>
                   <button 
                     className="twm-btn" 
                     style={{ 
@@ -1090,7 +1091,10 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                     }} 
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#ff555520'; e.currentTarget.style.color = '#ff5555'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-                    onClick={() => handleDeleteNode(node.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNode(node.id);
+                    }}
                     title="Delete note"
                   >
                     <X size={16} />

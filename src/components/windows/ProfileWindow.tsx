@@ -107,7 +107,13 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
 
         if (targetId) {
           fetch(`/api/user/profile?userId=${targetId}`)
-            .then(res => res.json())
+            .then(async res => {
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || res.statusText);
+                }
+                return res.json();
+            })
             .then(data => {
                 setProfile(data);
                 setIsLoading(false);
