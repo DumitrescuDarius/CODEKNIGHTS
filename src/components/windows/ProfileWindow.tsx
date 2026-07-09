@@ -577,7 +577,7 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
           {/* Activity Grid */}
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>Activity Graph</h3>
           
           <div ref={graphRef} style={{ display: 'flex', gap: '2.5rem', width: '100%', overflowX: 'auto', paddingBottom: '0.5rem', scrollBehavior: 'smooth' }}>
@@ -608,7 +608,7 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
           </div>
 
           {/* Rating Chart */}
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>Rating History</h3>
           {ratingHistory.length > 1 ? (
             <div style={{ width: '100%', overflowX: 'auto', padding: '1rem 0' }}>
