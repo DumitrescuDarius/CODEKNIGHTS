@@ -47,8 +47,8 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
   const [isLoading, setIsLoading] = useState(!cachedFriends || !cachedRequests);
   const [unfriendConfirm, setUnfriendConfirm] = useState<User | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (cachedFriends && cachedRequests) return;
+  const fetchData = useCallback(async (force = false) => {
+    if (cachedFriends && cachedRequests && !force) return;
     setIsLoading(true);
     try {
       const [friendsRes, requestsRes] = await Promise.all([
@@ -57,6 +57,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
       ]);
       if (friendsRes.ok) setFriends(await friendsRes.json());
       if (requestsRes.ok) setRequests(await requestsRes.json());
+      if (force) window.dispatchEvent(new Event("friends_update_required"));
     } catch (err) {
       console.error("Fetch data error:", err);
     } finally {
@@ -120,32 +121,32 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
       setFriends(prev => [...prev, requestItem]);
     }
     setSearchResults(prev => prev.map(u => (u as any).requestId === requestId ? { ...u, status: action === 'ACCEPT' ? 'FRIENDS' : 'NONE', requestId: undefined } as any : u));
-
     try {
-      fetch('/api/user/request/action', {
+      await fetch('/api/user/request/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestId, action })
-      }).then(() => fetchData());
+      });
+      fetchData(true);
     } catch (err) {
       console.error("Error processing request:", err);
-      fetchData(); // Rollback on error
+      fetchData(true);
     }
   };
 
   const handleSendRequest = async (targetUserId: string) => {
     // Optimistic Update
     setSearchResults(prev => prev.map(u => u.id === targetUserId ? { ...u, status: "SENT" } as any : u));
-
     try {
-      fetch('/api/user/request', {
+      await fetch('/api/user/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId })
-      }).then(() => fetchData());
+      });
+      fetchData(true);
     } catch (err) {
       console.error("Error sending request:", err);
-      fetchData(); // Rollback on error
+      fetchData(true);
     }
   };
 
@@ -154,20 +155,16 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
     setUnfriendConfirm(null);
     setFriends(prev => prev.filter(f => f.id !== targetId));
     setSearchResults(prev => prev.map(u => u.id === targetId ? { ...u, status: "NONE" } as any : u));
-
     try {
-      fetch('/api/user/friends/remove', {
+      await fetch('/api/user/friends/remove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetId })
-      }).then((res) => {
-        if (!res.ok) alert("Failed to unfriend.");
-        fetchData(); // Sync or rollback
       });
+      fetchData(true);
     } catch (err) {
       console.error(err);
-      alert("Failed to unfriend.");
-      fetchData(); // Rollback on error
+      fetchData(true);
     }
   };
 
@@ -226,9 +223,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     {user.image ? (
                       <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     ) : (
-                      <div className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)' }}>
-                        <UserIcon size={18} style={{ color: 'var(--text-muted)' }} />
-                      </div>
+                      <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username || user.name || "Knight")}&rowColor=random`} alt="Avatar" className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     )}
                     <div className="friend-status-dot" />
                   </div>
@@ -286,9 +281,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     {user.image ? (
                       <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     ) : (
-                      <div className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)' }}>
-                        <UserIcon size={18} style={{ color: 'var(--text-muted)' }} />
-                      </div>
+                      <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username || user.name || "Knight")}&rowColor=random`} alt="Avatar" className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     )}
                   </div>
                   <div className="friend-meta">
@@ -354,9 +347,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     {user.image ? (
                       <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     ) : (
-                      <div className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)' }}>
-                        <UserIcon size={18} style={{ color: 'var(--text-muted)' }} />
-                      </div>
+                      <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username || user.name || "Knight")}&rowColor=random`} alt="Avatar" className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     )}
                   </div>
                   <div className="friend-meta">

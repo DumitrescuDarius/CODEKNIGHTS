@@ -504,7 +504,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
         if (n.id === resizingNode) {
           return {
             ...n,
-            width: Math.max(100, resizeStart.w + (e.clientX - resizeStart.x) / zoom),
+            width: Math.max(200, resizeStart.w + (e.clientX - resizeStart.x) / zoom),
             height: Math.max(100, resizeStart.h + (e.clientY - resizeStart.y) / zoom)
           };
         }
@@ -997,11 +997,12 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  cursor: 'move'
+                  cursor: 'move',
+                  overflow: 'hidden'
                 }}
                 onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, height: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, height: '100%', minWidth: 0 }}>
                   <Move size={12} color="var(--text-muted)" style={{ pointerEvents: 'none' }} />
                   <input
                     id={`note-title-${node.id}`}
@@ -1028,6 +1029,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                     style={{ 
                       width: '24px', 
                       height: '24px', 
+                      padding: 0,
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center', 
@@ -1081,6 +1083,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                     style={{ 
                       width: '24px', 
                       height: '24px', 
+                      padding: 0,
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center', 

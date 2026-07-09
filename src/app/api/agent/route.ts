@@ -11,21 +11,23 @@ export async function POST(req: NextRequest) {
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
     const googleKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
     const googleModel = process.env.GOOGLE_MODEL || "gemini-2.0-flash";
     const providerOverride = process.env.AI_PROVIDER?.toLowerCase();
 
-    if (!openrouterKey && !openaiKey && !googleKey) {
+    if (!openrouterKey && !openaiKey && !googleKey && !groqKey) {
       return NextResponse.json({ error: "No AI API key configured" }, { status: 500 });
     }
 
     const useGoogle = providerOverride === 'google' ? true : (!providerOverride && !!googleKey);
     const useOpenAI = providerOverride === 'openai' ? true : (!providerOverride && !googleKey && !!openaiKey);
-    const useOpenRouter = providerOverride === 'openrouter' ? true : (!providerOverride && !googleKey && !openaiKey && !!openrouterKey);
+    const useGroq = providerOverride === 'groq' ? true : (!providerOverride && !googleKey && !openaiKey && !!groqKey);
+    const useOpenRouter = providerOverride === 'openrouter' ? true : (!providerOverride && !googleKey && !openaiKey && !groqKey && !!openrouterKey);
 
     const googleEndpointBase = process.env.GOOGLE_ENDPOINT || `https://generativelanguage.googleapis.com/v1beta`;
     
-    const authKey = useGoogle ? googleKey : useOpenAI ? openaiKey : openrouterKey;
-    let providerName = useGoogle ? 'Google' : useOpenAI ? 'OpenAI' : 'OpenRouter';
+    const authKey = useGoogle ? googleKey : useOpenAI ? openaiKey : useGroq ? groqKey : openrouterKey;
+    let providerName = useGoogle ? 'Google' : useOpenAI ? 'OpenAI' : useGroq ? 'Groq' : 'OpenRouter';
 
     let resp: Response;
     let selectedModel: string | null = null;
@@ -112,12 +114,40 @@ export async function POST(req: NextRequest) {
         }
       }
       if (!resp!) {
-         return NextResponse.json({ error: 'All Google models failed', debug: result?.responseText || 'Check server logs for detailed error' }, { status: 500 });
+         let friendlyError = 'All Google models failed';
+         let statusCode = 500;
+         let includeDebug = true;
+         
+         if (result?.responseText?.includes('RESOURCE_EXHAUSTED') || result?.responseText?.includes('Quota exceeded') || result?.resp?.status === 429) {
+             if (result?.responseText?.includes('GenerateRequestsPerDay')) {
+                 friendlyError = 'Google AI Daily Quota Exceeded! You have reached the maximum number of requests allowed for today on the Free Tier.';
+             } else {
+                 friendlyError = 'Google AI Rate Limit Exceeded. Please wait 15-30 seconds before trying again.';
+             }
+             statusCode = 429;
+             includeDebug = false; // Do not dump massive Google JSON if it's just a quota error
+         } else if (result?.responseText?.includes('NOT_FOUND')) {
+             friendlyError = 'The requested AI model was not found or is disabled for your API key.';
+             includeDebug = false;
+         }
+         
+         return NextResponse.json({ error: friendlyError, debug: includeDebug ? (result?.responseText || 'Check server logs for detailed error') : undefined }, { status: statusCode });
       }
     } else {
-        const url = useOpenAI ? "https://api.openai.com/v1/chat/completions" : "https://api.openrouter.ai/v1/chat/completions";
+        let url = "https://api.openai.com/v1/chat/completions";
+        let defaultModel = "gpt-4o-mini";
+        
+        if (useOpenRouter) {
+            url = "https://api.openrouter.ai/v1/chat/completions";
+        } else if (useGroq) {
+            url = "https://api.groq.com/openai/v1/chat/completions";
+            defaultModel = "llama-3.1-8b-instant";
+        }
+
+        selectedModel = defaultModel;
+
         const requestBody = JSON.stringify({ 
-          model: "gpt-4o-mini", 
+          model: defaultModel, 
           messages: [ 
             { role: "system", content: `You are a programming assistant helping with ${language}.` }, 
             ...messages.map((m: any) => ({ role: m.role, content: m.content }))
@@ -130,7 +160,12 @@ export async function POST(req: NextRequest) {
           headers: { "Authorization": `Bearer ${authKey}`, "Content-Type": "application/json" },
           body: requestBody,
         });
-        (resp as any)._parsed = await resp.json();
+        
+        const parsed = await resp.json();
+        if (!resp.ok) {
+           return NextResponse.json({ error: parsed.error?.message || 'AI Provider Error', debug: JSON.stringify(parsed) }, { status: resp.status });
+        }
+        (resp as any)._parsed = parsed;
     }
 
     const data = (resp as any)._parsed;

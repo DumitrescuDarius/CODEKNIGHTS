@@ -84,9 +84,9 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
     if (graphRef.current) {
       setTimeout(() => {
         if (graphRef.current) {
-          graphRef.current.scrollLeft = graphRef.current.scrollWidth;
+          graphRef.current.scrollLeft = graphRef.current.scrollWidth + 1000;
         }
-      }, 10);
+      }, 100);
     }
   }, [daysRange, profile]);
 
@@ -575,12 +575,12 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2rem' }}>
           {/* Activity Grid */}
           <div style={{ minWidth: 0 }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>Activity Graph</h3>
           
-          <div ref={graphRef} style={{ display: 'flex', gap: '2.5rem', width: '100%', overflowX: 'auto', paddingBottom: '0.5rem', scrollBehavior: 'smooth' }}>
+          <div ref={graphRef} style={{ display: 'flex', gap: '2.5rem', width: '100%', overflowX: 'auto', paddingBottom: '0.5rem' }}>
             {getLastMonths().map(month => (
               <div key={month.label} style={{ display: 'flex', flexDirection: 'column', minWidth: 'max-content' }}>
                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{month.label}</span>

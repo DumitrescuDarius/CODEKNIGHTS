@@ -579,6 +579,11 @@ const MainMenu: React.FC = () => {
     }
   }, [session]);
 
+  useEffect(() => {
+    window.addEventListener("friends_update_required", fetchFriendsData);
+    return () => window.removeEventListener("friends_update_required", fetchFriendsData);
+  }, [fetchFriendsData]);
+
   const createDuel = useCallback(async (demoMode: boolean = false) => {
     try {
       const res = await fetch("/api/duels", { 

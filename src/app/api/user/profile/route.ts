@@ -9,42 +9,67 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
 
   const { searchParams } = new URL(req.url);
-  const requestedUserId = searchParams.get("userId");
+  let requestedUserId = searchParams.get("userId");
+  
+  if (requestedUserId === "undefined" || requestedUserId === "null") {
+      requestedUserId = null;
+  }
 
   if (!requestedUserId && (!session || !session.user)) {
-    return new NextResponse("Unauthorized", { status: 401 });
+    // Guest requesting their own profile
+    return NextResponse.json({
+        id: "guest",
+        username: "Guest Knight",
+        rating: 1000,
+        battlesWon: 0,
+        battlesTotal: 0,
+        rank: "Novice",
+        pastDuels: [],
+        failedSubmissionsCount: 0,
+        currentStreak: 0,
+        isOnline: true,
+        globalRank: 9999
+    });
   }
 
   const userId = requestedUserId || (session?.user as any)?.id;
 
   try {
-    const user = await prisma.user.findUnique({
+    const userPromise = prisma.user.findUnique({
       where: { id: userId },
       include: {
         hostDuels: {
           where: { status: "FINISHED" },
-          include: { guest: true, question: true },
+          include: { 
+            guest: { select: { id: true, username: true, name: true, image: true, rating: true } }, 
+            question: { select: { id: true, title: true, difficulty: true } }
+          },
           orderBy: { createdAt: "desc" },
-          take: 100
+          take: 30
         },
         guestDuels: {
           where: { status: "FINISHED" },
-          include: { host: true, question: true },
+          include: { 
+            host: { select: { id: true, username: true, name: true, image: true, rating: true } }, 
+            question: { select: { id: true, title: true, difficulty: true } }
+          },
           orderBy: { createdAt: "desc" },
-          take: 100
+          take: 30
         }
       }
     });
+
+    const failedSubmissionsPromise = prisma.submission.count({
+      where: { userId: userId, status: "FAILED" }
+    });
+
+    const [user, failedSubmissionsCount] = await Promise.all([userPromise, failedSubmissionsPromise]);
 
     if (!user) {
         return new NextResponse("User not found", { status: 404 });
     }
 
-    const failedSubmissionsCount = await prisma.submission.count({
-      where: { userId: userId, status: "FAILED" }
-    });
-    
-    const pastDuels = [...user.hostDuels, ...user.guestDuels].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 200);
+    const pastDuels = [...user.hostDuels, ...user.guestDuels].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 60);
     
     let currentStreak = 0;
     for (const duel of pastDuels) {
