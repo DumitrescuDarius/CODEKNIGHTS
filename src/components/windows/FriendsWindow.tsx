@@ -72,7 +72,30 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    
+    const handleAiRequest = (e: any) => {
+      if (e.detail === "friends") {
+        const content = friends.length > 0 
+          ? friends.map(f => `- ${f.username || f.name} (Rank: ${f.rank || 'Unknown'}, ELO: ${f.rating || 1000})`).join("\n") 
+          : "You have no friends currently.";
+        
+        const requestsContent = requests.length > 0 
+          ? "\n\nPending Requests:\n" + requests.map(f => `- ${f.username || f.name}`).join("\n")
+          : "";
+          
+        window.dispatchEvent(new CustomEvent('add_ai_context', {
+          detail: {
+            id: "friends-list",
+            title: "Friends List",
+            content: "Current Friends:\n" + content + requestsContent
+          }
+        }));
+      }
+    };
+    
+    window.addEventListener("request_ai_context", handleAiRequest);
+    return () => window.removeEventListener("request_ai_context", handleAiRequest);
+  }, [fetchData, friends, requests]);
 
   const searchUsers = async (query: string, signal: AbortSignal) => {
     if (query.length < 2) {

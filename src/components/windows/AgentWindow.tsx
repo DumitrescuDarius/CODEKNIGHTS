@@ -452,7 +452,11 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
           e.currentTarget.style.background = 'rgba(0,0,0,0.2)';
           const windowId = e.dataTransfer.getData("application/window-id");
           if (!windowId) return;
-          setContextTags(prev => prev.includes(windowId) ? prev : [...prev, windowId]);
+          if (["editor", "battle"].includes(windowId)) {
+            setContextTags(prev => prev.includes(windowId) ? prev : [...prev, windowId]);
+          } else {
+            window.dispatchEvent(new CustomEvent('request_ai_context', { detail: windowId }));
+          }
         }}
       >
         {(contextTags.length > 0 || customContexts.length > 0) && (

@@ -1,6 +1,6 @@
 export type Language = "c" | "cpp" | "python" | "java";
 export type SupportedLanguage = "en" | "ro" | "fr" | "de" | "hi" | "ru" | "hu" | "es" | "it" | "zh" | "ja" | "pt";
-export type WindowId = "editor" | "practice" | "tournaments" | "leaderboard" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin" | "agent" | "tutorial" | "notes" | `profile_${string}`;
+export type WindowId = "editor" | "practice" | "tournaments" | "leaderboard" | "settings" | "battle" | "friends" | "profile" | "problem" | "admin" | "agent" | "tutorial" | "notes" | "feedback" | `profile_${string}`;
 export type AnimationSpeed = "none";
 
 export interface Theme {

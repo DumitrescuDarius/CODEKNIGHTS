@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, BrainCircuit } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, BrainCircuit, MessageSquare } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -28,6 +28,7 @@ import { LegalWindow } from "./windows/LegalWindow";
 import { FriendsWindow } from "./windows/FriendsWindow";
 import { AgentWindow } from "./windows/AgentWindow";
 import { TutorialWindow } from "./windows/TutorialWindow";
+import FeedbackWindow from "./windows/FeedbackWindow";
 import { Transition } from "framer-motion";
 
 declare global {
@@ -730,7 +731,7 @@ const MainMenu: React.FC = () => {
     const currentActiveDuel = activeDuelRef.current;
     if (!currentActiveDuel || currentActiveDuel.status === "FINISHED") return;
     try {
-      const res = await fetch(`/api/duels/poll?pin=${currentActiveDuel.pin}`, { cache: 'no-store' });
+      const res = await fetch(`/api/duels/poll?pin=${currentActiveDuel.pin}&t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         
@@ -2099,6 +2100,8 @@ const MainMenu: React.FC = () => {
           onCancelInvite={cancelInviteDuel}
         />
       );
+      case "feedback":
+        return <FeedbackWindow session={session} />;
       default: 
         if (id.startsWith("profile_")) {
           const targetId = id.replace("profile_", "");
@@ -2449,6 +2452,7 @@ const MainMenu: React.FC = () => {
             if (id === 'terms') icon = <FileText size={16} />;
             if (id === 'privacy') icon = <Shield size={16} />;
             if (id === 'agent') icon = <BrainCircuit size={16} />;
+            if (id === 'feedback') icon = <MessageSquare size={16} />;
             if (id.startsWith('profile')) icon = <User size={16} />;
             const displayId = id.startsWith('profile_') ? 'profile' : id;
             const isMax = id === maximizedWindow;
@@ -2673,6 +2677,9 @@ const MainMenu: React.FC = () => {
         </button>
         <button onClick={() => toggleWindow("terms")} style={{ background: 'none', border: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
           <FileText size={12} /> Terms & Conditions
+        </button>
+        <button onClick={() => toggleWindow("feedback")} style={{ background: 'none', border: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+          <MessageSquare size={12} /> Send Feedback
         </button>
       </footer>
     </div>

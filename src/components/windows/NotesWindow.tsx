@@ -168,8 +168,34 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodes]);
+    
+    const handleAiRequest = (e: any) => {
+      if (e.detail === "notes") {
+        let combinedContent = "";
+        if (nodes.length === 0) {
+          combinedContent = "No notes available in this workspace.";
+        } else {
+          nodes.forEach(n => {
+            combinedContent += `\n\n--- Note: ${n.title || "Untitled"} ---\n${n.content || "(Empty note)"}`;
+          });
+        }
+        
+        window.dispatchEvent(new CustomEvent('add_ai_context', {
+          detail: {
+            id: "notes-workspace",
+            title: "Notes Workspace",
+            content: "Current Notes Workspace Data:" + combinedContent
+          }
+        }));
+      }
+    };
+    window.addEventListener("request_ai_context", handleAiRequest);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("request_ai_context", handleAiRequest);
+    };
+  }, [selectedNodes, nodes]);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -1024,66 +1050,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '0.3rem', marginLeft: '0.5rem', flexShrink: 0 }}>
-                  <button 
-                    className="twm-btn" 
-                    style={{ 
-                      width: '24px', 
-                      height: '24px', 
-                      padding: 0,
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      color: 'var(--text-muted)', 
-                      borderRadius: '4px',
-                      background: 'transparent',
-                      transition: 'background 0.2s, color 0.2s'
-                    }} 
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#8be9fd20'; e.currentTarget.style.color = '#8be9fd'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      
-                      // 1) Force the AI window to open so the component mounts
-                      window.dispatchEvent(new CustomEvent('open_agent_window'));
 
-                      // 2) Wait a split second for React to mount AgentWindow and attach its event listener, then send the context
-                      setTimeout(() => {
-                        const visited = new Set<string>();
-                        const queue = [node.id];
-                        let combinedContent = "";
-                        
-                        while (queue.length > 0) {
-                          const currentId = queue.shift()!;
-                          if (visited.has(currentId)) continue;
-                          visited.add(currentId);
-                          
-                          const currentNode = nodes.find(n => n.id === currentId);
-                          if (currentNode) {
-                            if (currentId !== node.id) {
-                              combinedContent += `\n\n--- Linked Note: ${currentNode.title || "Untitled"} ---\n`;
-                            }
-                            combinedContent += currentNode.content || "(Empty note)";
-                          }
-                          
-                          edges.forEach(edge => {
-                            if (edge.source === currentId && !visited.has(edge.target)) queue.push(edge.target);
-                            if (edge.target === currentId && !visited.has(edge.source)) queue.push(edge.source);
-                          });
-                        }
-
-                        window.dispatchEvent(new CustomEvent('add_ai_context', { 
-                          detail: { 
-                            id: `note-${node.id}`, 
-                            title: (node.title || "Note") + (visited.size > 1 ? ` (+${visited.size - 1} linked)` : ""), 
-                            content: combinedContent 
-                          } 
-                        }));
-                      }, 100);
-                    }}
-                    title="Add to AI Context"
-                  >
-                    <BrainCircuit size={14} />
-                  </button>
                   <button 
                     className="twm-btn" 
                     style={{ 

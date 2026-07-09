@@ -137,12 +137,30 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
     };
 
     window.addEventListener("duel_update_required", handleUpdate);
-    // Also listen for general focus events or visibility changes just in case
-    window.addEventListener("focus", handleUpdate);
+    
+    const handleAiRequest = (e: any) => {
+      if (e.detail === "profile" && profile) {
+        const content = `Username: ${profile.username || profile.name || "Unknown"}
+Rank: ${profile.rank || "Novice"}
+Rating: ${profile.rating || 1000}
+Global Rank: #${profile.globalRank || '?'}
+Battles Won: ${profile.battlesWon || 0}
+Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Unknown'}`;
+        
+        window.dispatchEvent(new CustomEvent('add_ai_context', {
+          detail: {
+            id: `profile-${profile.id || userId || session?.user?.id}`,
+            title: `Profile: ${profile.username || profile.name || "User"}`,
+            content: "Profile Data:\n" + content
+          }
+        }));
+      }
+    };
+    window.addEventListener("request_ai_context", handleAiRequest);
 
     return () => {
         window.removeEventListener("duel_update_required", handleUpdate);
-        window.removeEventListener("focus", handleUpdate);
+        window.removeEventListener("request_ai_context", handleAiRequest);
     };
   }, [userId, session, cachedProfile]);
 
@@ -405,45 +423,14 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button 
-            className="twm-btn"
-            style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, fontSize: '0.9rem' }}
-            onClick={(e) => {
-              e.stopPropagation();
-              window.dispatchEvent(new CustomEvent('open_agent_window'));
-              setTimeout(() => {
-                const content = `Username: ${profile.username || profile.name || "Unknown"}
-Rank: ${rank}
-Rating: ${rating}
-Global Rank: #${profile.globalRank || '?'}
-Battles Won: ${profile.battlesWon || 0}
-Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'Unknown'}
-Admin: ${isAdmin ? 'Yes' : 'No'}`;
-                  
-                window.dispatchEvent(new CustomEvent('add_ai_context', {
-                  detail: {
-                    id: `profile-${profile.id || userId || session?.user?.id}`,
-                    title: `Profile: ${profile.username || profile.name || "User"}`,
-                    content: "Profile Data:\n" + content
-                  }
-                }));
-              }, 100);
-            }}
-            title="Add Profile to AI Context"
-          >
-            <BrainCircuit size={16} /> AI Context
-          </button>
-
-          {(!userId || userId === session?.user?.id) && (
-             <button onClick={() => setIsEditingProfile(!isEditingProfile)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}
-                     onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                     onMouseLeave={(e) => { e.currentTarget.style.background = isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'; }}>
-               <Settings size={16} />
-               <span>{isEditingProfile ? "Cancel" : t("configureProfile")}</span>
-             </button>
-          )}
-        </div>
+        {(!userId || userId === session?.user?.id) && (
+           <button onClick={() => setIsEditingProfile(!isEditingProfile)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}
+                   onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                   onMouseLeave={(e) => { e.currentTarget.style.background = isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'; }}>
+             <Settings size={16} />
+             <span>{isEditingProfile ? "Cancel" : t("configureProfile")}</span>
+           </button>
+        )}
 
       </div>
 

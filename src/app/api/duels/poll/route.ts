@@ -58,7 +58,10 @@ export async function GET(req: NextRequest) {
        (safeDuel.question as any).hiddenTestCases = null;
     }
 
-    return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
+    return NextResponse.json(
+      { ...safeDuel, serverTime: Date.now() },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   } catch (err) {
     console.error("Poll error:", err);
     return NextResponse.json({ error: "Failed to fetch duel" }, { status: 500 });

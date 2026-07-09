@@ -132,7 +132,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   onOpenUserProfile
 }) => {
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
-  const isDuelFinished = activeDuel?.status === "FINISHED";
+  const isDuelFinished = activeDuel?.status === "FINISHED" || (activeDuel != null && timeLeft === 0);
   const isHost = activeDuel?.hostId === userId;
   const isGuest = activeDuel?.guestId === userId;
   const userFinalized = isHost ? activeDuel?.hostFinalized : (isGuest ? activeDuel?.guestFinalized : false);
@@ -244,8 +244,25 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
   useEffect(() => {
     const interval = setInterval(() => setLiveTime(prev => prev + 1), 1000);
-    return () => clearInterval(interval);
-  }, []);
+    
+    const handleAiRequest = (e: any) => {
+      if (e.detail === "problem" && activeQuestion) {
+        window.dispatchEvent(new CustomEvent('add_ai_context', {
+          detail: {
+            id: `problem-${activeQuestion.id}`,
+            title: `Problem: ${activeQuestion.title}`,
+            content: `Problem Title: ${activeQuestion.title}\n\nDescription:\n${activeQuestion.description}\n\nRestrictions:\n${activeQuestion.restrictions || 'None'}\n\nConstraints:\n${activeQuestion.constraints || 'None'}`
+          }
+        }));
+      }
+    };
+    
+    window.addEventListener("request_ai_context", handleAiRequest);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("request_ai_context", handleAiRequest);
+    };
+  }, [activeQuestion]);
 
   useEffect(() => {
     if (timeLeft === 0 && !submitted && activeDuel?.status === "ACTIVE") {
@@ -362,7 +379,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
     const hostWin = !hostSurrendered && (guestSurrendered || (activeDuel.hostSolveTime !== null && (activeDuel.guestSolveTime === null || hostPenalty < guestPenalty || (hostPenalty === guestPenalty && activeDuel.hostSolveTime < activeDuel.guestSolveTime))));
     const guestWin = !guestSurrendered && (hostSurrendered || (activeDuel.guestSolveTime !== null && (activeDuel.hostSolveTime === null || guestPenalty < hostPenalty || (hostPenalty === guestPenalty && activeDuel.guestSolveTime < activeDuel.hostSolveTime))));
-    const draw = !hostWin && !guestWin && activeDuel.hostSolveTime !== null && activeDuel.guestSolveTime !== null && hostPenalty === guestPenalty && activeDuel.hostSolveTime === activeDuel.guestSolveTime;
+    const draw = !hostWin && !guestWin;
 
     return (
       <div style={{ padding: '2rem', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -599,50 +616,25 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div style={{ 
             display: 'flex', 
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
+            flexDirection: 'column',
             gap: '0.5rem',
             paddingBottom: '1.25rem',
             borderBottom: '1px solid rgba(255,255,255,0.05)'
           }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {renderOpponentProgress()}
-              <h2 style={{ 
-                fontSize: '1.8rem', 
-                fontWeight: 900, 
-                margin: 0, 
-                background: 'linear-gradient(135deg, var(--accent) 0%, #fff 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                letterSpacing: '-0.02em',
-                textShadow: '0 2px 10px rgba(122, 162, 247, 0.2)'
-              }}>
-                {activeQuestion.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>}
-                {activeQuestion.title}
-              </h2>
-            </div>
-            
-            <button 
-              className="twm-btn"
-              style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                window.dispatchEvent(new CustomEvent('open_agent_window'));
-                setTimeout(() => {
-                  window.dispatchEvent(new CustomEvent('add_ai_context', {
-                    detail: {
-                      id: `problem-${activeQuestion.id}`,
-                      title: `Problem: ${activeQuestion.title}`,
-                      content: `Problem Title: ${activeQuestion.title}\n\nDescription:\n${activeQuestion.description}\n\nRestrictions:\n${activeQuestion.restrictions || 'None'}\n\nConstraints:\n${activeQuestion.constraints || 'None'}`
-                    }
-                  }));
-                }, 100);
-              }}
-              title="Add Problem to AI Context"
-            >
-              <BrainCircuit size={14} /> AI Context
-            </button>
+            {renderOpponentProgress()}
+            <h2 style={{ 
+              fontSize: '1.8rem', 
+              fontWeight: 900, 
+              margin: 0, 
+              background: 'linear-gradient(135deg, var(--accent) 0%, #fff 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '-0.02em',
+              textShadow: '0 2px 10px rgba(122, 162, 247, 0.2)'
+            }}>
+              {activeQuestion.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>}
+              {activeQuestion.title}
+            </h2>
           </div>
           
           <div style={{ 
