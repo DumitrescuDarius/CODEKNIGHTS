@@ -19,8 +19,8 @@ export async function GET(req: NextRequest) {
     let users = await prisma.user.findMany({
       where: {
         OR: [
-          { username: { contains: query, mode: 'insensitive' } },
-          { name: { contains: query, mode: 'insensitive' } },
+          { username: { startsWith: query, mode: 'insensitive' } },
+          { name: { startsWith: query, mode: 'insensitive' } },
         ],
         NOT: {
           id: (session?.user as any)?.id || "no-session",

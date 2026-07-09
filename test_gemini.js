@@ -1,15 +1,5 @@
-require('dotenv').config({path: '.env'});
-async function test() {
-  const key = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-  
-  const requestBody = JSON.stringify({ 
-    contents: [{ role: 'user', parts: [{ text: "Hello" }] }],
-    systemInstruction: { parts: [{ text: "You are an assistant." }] },
-  });
-  
-  const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: requestBody });
-  const text = await r.text();
-  console.log("Response:", text);
-}
-test();
+fetch("http://localhost:3000/api/agent", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ messages: [{ role: "user", content: "Hello" }], language: "cpp" })
+}).then(r => r.json()).then(console.log).catch(console.error);

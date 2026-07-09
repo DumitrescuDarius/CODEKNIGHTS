@@ -94,7 +94,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
     }
   };
 
-  const debouncedSearch = useCallback(debounce((query: string, signal: AbortSignal) => searchUsers(query, signal), 300), []);
+  const debouncedSearch = useCallback(debounce((query: string, signal: AbortSignal) => searchUsers(query, signal), 100), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -113,55 +113,61 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
   }, [searchQuery, debouncedSearch, activeTab]);
 
   const handleRequestAction = async (requestId: string, action: 'ACCEPT' | 'REJECT') => {
+    // Optimistic Update
+    const requestItem = requests.find((r: any) => r.requestId === requestId);
+    setRequests(prev => prev.filter((r: any) => r.requestId !== requestId));
+    if (action === 'ACCEPT' && requestItem) {
+      setFriends(prev => [...prev, requestItem]);
+    }
+    setSearchResults(prev => prev.map(u => (u as any).requestId === requestId ? { ...u, status: action === 'ACCEPT' ? 'FRIENDS' : 'NONE', requestId: undefined } as any : u));
+
     try {
-      const res = await fetch('/api/user/request/action', {
+      fetch('/api/user/request/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestId, action })
-      });
-      if (res.ok) {
-        fetchData(); // Refresh lists
-        // Update local search results state if any match requestId
-        setSearchResults(prev => prev.map(u => (u as any).requestId === requestId ? { ...u, status: action === 'ACCEPT' ? 'FRIENDS' : 'NONE', requestId: undefined } as any : u));
-      }
+      }).then(() => fetchData());
     } catch (err) {
       console.error("Error processing request:", err);
+      fetchData(); // Rollback on error
     }
   };
 
   const handleSendRequest = async (targetUserId: string) => {
+    // Optimistic Update
+    setSearchResults(prev => prev.map(u => u.id === targetUserId ? { ...u, status: "SENT" } as any : u));
+
     try {
-      const res = await fetch('/api/user/request', {
+      fetch('/api/user/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId })
-      });
-      if (res.ok) {
-        fetchData(); // Refresh lists
-        // Update local search results state
-        setSearchResults(prev => prev.map(u => u.id === targetUserId ? { ...u, status: "SENT" } as any : u));
-      }
+      }).then(() => fetchData());
     } catch (err) {
       console.error("Error sending request:", err);
+      fetchData(); // Rollback on error
     }
   };
 
   const handleUnfriend = async (targetId: string) => {
+    // Optimistic Update
+    setUnfriendConfirm(null);
+    setFriends(prev => prev.filter(f => f.id !== targetId));
+    setSearchResults(prev => prev.map(u => u.id === targetId ? { ...u, status: "NONE" } as any : u));
+
     try {
-      const res = await fetch('/api/user/friends/remove', {
+      fetch('/api/user/friends/remove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetId })
+      }).then((res) => {
+        if (!res.ok) alert("Failed to unfriend.");
+        fetchData(); // Sync or rollback
       });
-      if (res.ok) {
-        setUnfriendConfirm(null);
-        fetchData();
-      } else {
-        alert("Failed to unfriend.");
-      }
     } catch (err) {
       console.error(err);
       alert("Failed to unfriend.");
+      fetchData(); // Rollback on error
     }
   };
 
@@ -200,7 +206,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("searchPlaceholder")} className="friends-search-input" />
             {isLoading && (
               <div style={{ position: 'absolute', right: '1rem', top: '50%', marginTop: '-8px', height: '16px', width: '16px' }}>
-                <Loader2 size={16} className="animate-spin" style={{ color: 'var(--accent)' }} />
+                <Loader2 size={16} style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
               </div>
             )}
           </div>
@@ -260,7 +266,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   ) : (
                     <button className="friend-btn friend-btn--primary" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => onInviteDuel && onInviteDuel(user.id, user.username || user.name || "Knight")}>DUEL!</button>
                   )}
-                  <button className="friend-btn friend-btn--danger" style={{ flex: 0.3 }} onClick={() => setUnfriendConfirm(user)} title="Unfriend">
+                  <button className="friend-btn friend-btn--danger" onClick={() => setUnfriendConfirm(user)} title="Unfriend">
                     <UserX size={14} />
                   </button>
                 </div>
@@ -401,10 +407,10 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                       Pending
                     </button>
                   ) : user.status === "RECEIVED" ? (
-                    <div style={{ display: 'flex', gap: '0.25rem', flex: 1 }}>
-                      <button className="friend-btn friend-btn--success" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')}><Check size={14}/></button>
-                      <button className="friend-btn friend-btn--danger" onClick={() => handleRequestAction(user.requestId, 'REJECT')}><UserX size={14}/></button>
-                    </div>
+                    <>
+                      <button className="friend-btn friend-btn--success" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')} title="Accept"><Check size={14}/></button>
+                      <button className="friend-btn friend-btn--danger" onClick={() => handleRequestAction(user.requestId, 'REJECT')} title="Reject"><UserX size={14}/></button>
+                    </>
                   ) : (
                     <button onClick={() => handleSendRequest(user.id)} className="friend-btn friend-btn--primary">
                       <UserPlus size={12}/> {t("follow")}

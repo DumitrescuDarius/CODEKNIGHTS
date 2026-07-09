@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, X, Move, Link, Sidebar as SidebarIcon, FileText, LayoutDashboard } from "lucide-react";
+import { Plus, Trash2, X, Move, Link, Sidebar as SidebarIcon, FileText, LayoutDashboard, BrainCircuit } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { TranslationKey } from "../../constants/translations";
@@ -198,6 +198,27 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
 
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [showSidebar, setShowSidebar] = useState(true);
+
+  const isSidebarLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedWidth = localStorage.getItem('notes-sidebar-width');
+      if (savedWidth !== null) setSidebarWidth(parseInt(savedWidth, 10));
+      
+      const savedShow = localStorage.getItem('notes-sidebar-show');
+      if (savedShow !== null) setShowSidebar(savedShow === 'true');
+
+      setTimeout(() => { isSidebarLoadedRef.current = true; }, 50);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isSidebarLoadedRef.current && typeof window !== 'undefined') {
+      localStorage.setItem('notes-sidebar-width', sidebarWidth.toString());
+      localStorage.setItem('notes-sidebar-show', showSidebar.toString());
+    }
+  }, [sidebarWidth, showSidebar]);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [sidebarResizeStart, setSidebarResizeStart] = useState({ w: 0, x: 0 });
 
@@ -1001,6 +1022,59 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '0.3rem', marginLeft: '0.5rem' }}>
+                  <button 
+                    className="twm-btn" 
+                    style={{ 
+                      width: '24px', 
+                      height: '24px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      color: 'var(--text-muted)', 
+                      borderRadius: '4px',
+                      background: 'transparent',
+                      transition: 'background 0.2s, color 0.2s'
+                    }} 
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#8be9fd20'; e.currentTarget.style.color = '#8be9fd'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+
+                      const visited = new Set<string>();
+                      const queue = [node.id];
+                      let combinedContent = "";
+                      
+                      while (queue.length > 0) {
+                        const currentId = queue.shift()!;
+                        if (visited.has(currentId)) continue;
+                        visited.add(currentId);
+                        
+                        const currentNode = nodes.find(n => n.id === currentId);
+                        if (currentNode) {
+                          if (currentId !== node.id) {
+                            combinedContent += `\n\n--- Linked Note: ${currentNode.title || "Untitled"} ---\n`;
+                          }
+                          combinedContent += currentNode.content || "(Empty note)";
+                        }
+                        
+                        edges.forEach(edge => {
+                          if (edge.source === currentId && !visited.has(edge.target)) queue.push(edge.target);
+                          if (edge.target === currentId && !visited.has(edge.source)) queue.push(edge.source);
+                        });
+                      }
+
+                      window.dispatchEvent(new CustomEvent('add_ai_context', { 
+                        detail: { 
+                          id: `note-${node.id}`, 
+                          title: (node.title || "Note") + (visited.size > 1 ? ` (+${visited.size - 1} linked)` : ""), 
+                          content: combinedContent 
+                        } 
+                      }));
+                    }}
+                    title="Add to AI Context"
+                  >
+                    <BrainCircuit size={14} />
+                  </button>
                   <button 
                     className="twm-btn" 
                     style={{ 

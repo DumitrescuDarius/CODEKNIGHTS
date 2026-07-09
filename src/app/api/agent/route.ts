@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     let resp: Response;
     let selectedModel: string | null = null;
-    const googleFallbackModels = [googleModel, 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    const googleFallbackModels = [googleModel, 'gemini-1.5-pro-latest', 'gemini-1.5-flash-latest', 'gemini-pro'];
 
     const listModels = async () => {
       const endpoint = `${googleEndpointBase}/models?key=${googleKey}`;
@@ -45,10 +45,25 @@ export async function POST(req: NextRequest) {
     const callGoogleWithModel = async (model: string) => {
       const endpoint = `${googleEndpointBase}/models/${model}:generateContent?key=${googleKey}`;
       
-      const contents = messages.map((m: any) => ({
+      let contents = messages.map((m: any) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
+        parts: [{ text: m.content || "" }]
       }));
+
+      // Sanitize contents for Gemini (must strictly alternate user/model, no empty texts)
+      const sanitizedContents: any[] = [];
+      let lastRole = null;
+      for (const m of contents) {
+        if (!m.parts[0].text || m.parts[0].text.trim() === '') continue;
+        if (m.role === lastRole) {
+          sanitizedContents[sanitizedContents.length - 1].parts[0].text += '\n\n' + m.parts[0].text;
+        } else {
+          sanitizedContents.push(m);
+          lastRole = m.role;
+        }
+      }
+      contents = sanitizedContents;
+
       // ensure first message is user
       if (contents.length > 0 && contents[0].role !== 'user') {
         contents.unshift({ role: 'user', parts: [{ text: "Hello" }] });

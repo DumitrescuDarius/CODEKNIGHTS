@@ -274,8 +274,8 @@ const MainMenu: React.FC = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [userStats, setUserStats] = useState<UserStats>({ battlesWon: 0, battlesTotal: 0 });
   const [fullProfile, setFullProfile] = useState<any>(null);
-  const [cachedFriends, setCachedFriends] = useState<User[] | null>(null);
-  const [cachedRequests, setCachedRequests] = useState<User[] | null>(null);
+  const [cachedFriends, setCachedFriends] = useState<any[] | null>(null);
+  const [cachedRequests, setCachedRequests] = useState<any[] | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [incomingInvite, setIncomingInvite] = useState<{hostName: string, pin: string} | null>(null);
   const [showQuitConfirmation, setShowQuitConfirmation] = useState(false);
@@ -917,7 +917,7 @@ const MainMenu: React.FC = () => {
       
       const currentUserId = session?.user ? (session.user as any).id : guestId;
       const isHostLocal = activeDuel.hostId === currentUserId;
-      const opponentFinalized = isHostLocal ? activeDuel.guestFinalized : activeDuel.hostFinalized;
+      const opponentFinalized = isHostLocal ? (activeDuel as any).guestFinalized : (activeDuel as any).hostFinalized;
       const opponentSolveTimeMs = isHostLocal ? activeDuel.guestSolveTime : activeDuel.hostSolveTime;
       
       if (opponentFinalized && opponentSolveTimeMs) {
@@ -1875,7 +1875,7 @@ const MainMenu: React.FC = () => {
         return (
           <BattleWindow 
             startBattle={startBattle} questions={questions}
-            startQuickMatch={startQuickMatch} userStats={userStats}
+            startQuickMatch={startQuickMatch}
             session={session} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest}
             showSignInOptions={showSignInOptions} setShowSignInOptions={setShowSignInOptions}
             t={t} onDeleteQuestion={handleDeleteQuestion} onEditQuestion={onEditQuestion}
@@ -2320,7 +2320,9 @@ const MainMenu: React.FC = () => {
             })}
           </ul>
           <div className="nav-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><BrainCircuit size={20} /></button>
+            {(session && !isGuest) && (
+              <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><BrainCircuit size={20} /></button>
+            )}
             <button onClick={() => toggleWindow("settings")} style={{ background: 'transparent', border: 'none', color: '#f1fa8c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
             {(session || isGuest) ? (
               <div style={{ position: 'relative' }}>
@@ -2329,9 +2331,11 @@ const MainMenu: React.FC = () => {
                   style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.4rem', borderRadius: '0.3rem' }}
                   className="btn-ghost"
                 >
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{isGuest ? guestName : (session?.user?.username || session?.user?.name)}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{isGuest ? (guestName || "Guest") : (session?.user?.username || session?.user?.name)}</span>
                   {session?.user?.image ? (
-                    <Image src={session.user.image} alt="Profile" width={24} height={24} unoptimized style={{ borderRadius: '50%', border: '1px solid var(--line)' }} />
+                    <img src={session.user.image} alt="Profile" width={24} height={24} style={{ borderRadius: '50%', border: '1px solid var(--line)' }} />
+                  ) : isGuest ? (
+                    <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(guestName || "Guest Knight")}&rowColor=random`} alt="Guest Profile" width={24} height={24} style={{ borderRadius: '50%', border: '1px solid var(--line)' }} />
                   ) : (
                     <User size={20} />
                   )}

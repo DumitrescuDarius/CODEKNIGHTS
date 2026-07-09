@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { User, ShieldCheck, Loader2, Settings, Sword, Code } from "lucide-react";
+import { createPortal } from "react-dom";
+import { BarChart2, BookOpen, Clock, Code, Settings, Trophy, User as UserIcon, Users, FileText, Check, User, ShieldCheck, Loader2, Sword } from "lucide-react";
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '@/lib/cropImage';
 import { TranslationKey } from "../../constants/translations";
 import Link from "next/link";
 
@@ -24,6 +27,57 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [expandedDuel, setExpandedDuel] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [finalImage, setFinalImage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      
+      // Clean up the old object URL to prevent memory leaks
+      if (imageSrc && imageSrc.startsWith('blob:')) {
+        URL.revokeObjectURL(imageSrc);
+      }
+      
+      // Use createObjectURL instead of FileReader for instantaneous loading
+      const imageUrl = URL.createObjectURL(file);
+      setImageSrc(imageUrl);
+      setIsCropping(true);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setRotation(0);
+      
+      // IMPORTANT: Reset input value so same file can be chosen again
+      e.target.value = '';
+    }
+  };
+
+  const handleCropSave = async () => {
+    try {
+      if (!imageSrc) {
+        alert("Image source is missing!");
+        return;
+      }
+      if (!croppedAreaPixels) {
+        alert("Crop area is not ready yet! Please move the image slightly to register the crop.");
+        return;
+      }
+      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
+      setFinalImage(croppedImage);
+      setIsCropping(false);
+      setImageSrc(null);
+    } catch (e: any) {
+      console.error(e);
+      alert('Error saving crop: ' + (e.message || String(e)));
+    }
+  };
   const graphRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -223,6 +277,41 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
   return (
     <div style={{ padding: '2rem', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
+      {isCropping && imageSrc && typeof document !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 999999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ position: 'relative', width: '90%', maxWidth: '500px', height: '60vh', background: '#222', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
+              {/* @ts-ignore - React 19 type incompatibility with react-easy-crop */}
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                rotation={rotation}
+                aspect={1}
+                onCropChange={setCrop}
+                onRotationChange={setRotation}
+                onCropComplete={(ca, cap) => setCroppedAreaPixels(cap)}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div style={{ width: '90%', maxWidth: '500px', marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '60px' }}>Zoom</span>
+                 <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent)' }} />
+                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '30px', textAlign: 'right' }}>{zoom.toFixed(1)}x</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '60px' }}>Rotation</span>
+                 <input type="range" min={0} max={360} step={1} value={rotation} onChange={(e) => setRotation(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent)' }} />
+                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '30px', textAlign: 'right' }}>{rotation}°</span>
+              </div>
+            </div>
+            <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+               <button className="twm-btn" style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.1)' }} onClick={() => setIsCropping(false)}>Cancel</button>
+               <button className="twm-btn" style={{ background: 'var(--accent)', color: '#000', padding: '0.75rem 1.5rem', fontWeight: 600 }} onClick={handleCropSave}>Save Crop</button>
+            </div>
+        </div>,
+        document.body
+      )}
       {/* Profile Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
@@ -320,26 +409,45 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
                 <input type="text" defaultValue={profile.username || profile.name} id="edit-username" style={{ background: 'var(--bg)', border: '1px solid var(--line)', color: 'var(--text)', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Profile Image URL</label>
-                <input type="text" defaultValue={profile.image || ''} id="edit-image" style={{ background: 'var(--bg)', border: '1px solid var(--line)', color: 'var(--text)', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }} />
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Profile Image</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--bg)', border: '1px solid var(--line)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem' }}>
+                    {finalImage || profile.image ? (
+                        <img src={finalImage || profile.image} alt="Profile" style={{ width: 36, height: 36, borderRadius: '0.3rem', objectFit: 'cover' }} />
+                    ) : (
+                        <div style={{ width: 36, height: 36, borderRadius: '0.3rem', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <UserIcon size={16} style={{ color: 'var(--text-muted)' }} />
+                        </div>
+                    )}
+                    <label style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Choose new photo...</span>
+                        <div style={{ padding: '0.25rem 0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--line)', borderRadius: '0.3rem', fontSize: '0.8rem', fontWeight: 600 }}>Browse</div>
+                        <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                    </label>
+                </div>
             </div>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button onClick={async () => {
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
+                <button disabled={isSaving || saveSuccess} onClick={async () => {
+                   if (isSaving || saveSuccess) return;
                    const username = (document.getElementById('edit-username') as HTMLInputElement).value;
                    if (username && username.length < 4) {
                      alert("Username must be at least 4 characters.");
                      return;
                    }
-                   const image = (document.getElementById('edit-image') as HTMLInputElement).value;
+                   const image = finalImage || profile.image;
                    try {
+                     setIsSaving(true);
                      const res = await fetch("/api/user/profile", {
                       method: "POST",
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ username, image })
                    });
                    if (res.ok) {
-                      setIsEditingProfile(false);
+                      setSaveSuccess(true);
                       window.dispatchEvent(new Event("duel_update_required")); // triggers a re-fetch
+                      setTimeout(() => {
+                         setSaveSuccess(false);
+                         setIsEditingProfile(false);
+                      }, 1500);
                    } else {
                       const text = await res.text();
                       alert("Failed to update profile: " + text);
@@ -347,8 +455,14 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
                    } catch (err) {
                       console.error(err);
                       alert("Error updating profile.");
+                   } finally {
+                      setIsSaving(false);
                    }
-                }} style={{ padding: '0.75rem 1.5rem', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
+                }} style={{ padding: '0.75rem 1.5rem', background: saveSuccess ? '#50fa7b' : 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: isSaving ? 'wait' : 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {isSaving && <Loader2 size={16} className="spin" />}
+                  {saveSuccess && <Check size={16} />}
+                  {saveSuccess ? "Saved Successfully!" : isSaving ? "Saving..." : "Save Changes"}
+                </button>
             </div>
 
             <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '1rem 0' }} />
@@ -492,7 +606,7 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
             <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>Rating History</h3>
           {ratingHistory.length > 1 ? (
             <div style={{ width: '100%', overflowX: 'auto', padding: '1rem 0' }}>
-                <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ minWidth: '400px', overflow: 'visible' }}>
+                <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ minWidth: '400px', overflow: 'visible', display: 'block' }}>
                     {/* Y-axis Labels & Horizontal Grid lines */}
                     {[0, 0.5, 1].map(ratio => {
                         const yPos = padding.top + chartHeight * ratio;

@@ -17,9 +17,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const friendRequest = await prisma.friendRequest.findFirst({
+    const deleted = await prisma.friendRequest.deleteMany({
       where: {
-        status: "ACCEPTED",
         OR: [
           { senderId: userId, receiverId: targetId },
           { senderId: targetId, receiverId: userId }
@@ -27,13 +26,9 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    if (!friendRequest) {
+    if (deleted.count === 0) {
         return NextResponse.json({ error: "Not friends" }, { status: 400 });
     }
-
-    await prisma.friendRequest.delete({
-        where: { id: friendRequest.id }
-    });
 
     return NextResponse.json({ success: true });
   } catch (err) {

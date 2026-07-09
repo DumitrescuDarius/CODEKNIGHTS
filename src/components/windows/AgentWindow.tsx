@@ -148,6 +148,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
 
   const [prompt, setPrompt] = useState<string>("");
   const [contextTags, setContextTags] = useState<string[]>([]);
+  const [customContexts, setCustomContexts] = useState<{id: string, title: string, content: string}[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
@@ -160,6 +161,19 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    const handleAddContext = (e: any) => {
+      if (e.detail && e.detail.id && e.detail.content) {
+        setCustomContexts(prev => {
+          if (prev.find(c => c.id === e.detail.id)) return prev;
+          return [...prev, { id: e.detail.id, title: e.detail.title || "Note", content: e.detail.content }];
+        });
+      }
+    };
+    window.addEventListener('add_ai_context', handleAddContext);
+    return () => window.removeEventListener('add_ai_context', handleAddContext);
+  }, []);
 
   useEffect(() => {
     try {
@@ -237,13 +251,17 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
     if (!prompt.trim() && contextTags.length === 0) return;
     
     let fullPrompt = prompt;
-    if (contextTags.length > 0) {
+    if (contextTags.length > 0 || customContexts.length > 0) {
       let contextStrs = [];
       if (contextTags.includes("editor")) contextStrs.push(`[Context: Editor Code]\n\`\`\`${lang}\n${code}\n\`\`\``);
       if (contextTags.includes("problem")) contextStrs.push(`[Context: Current Problem]\nPlease help me understand and solve the current problem.`);
       if (contextTags.includes("notes")) contextStrs.push(`[Context: My Notes]\nPlease help me organize my thoughts and notes.`);
       if (contextTags.includes("battle")) contextStrs.push(`[Context: Battle]\nPlease give me tips for winning this battle.`);
       
+      customContexts.forEach(c => {
+        contextStrs.push(`[Context: ${c.title}]\n${c.content}`);
+      });
+
       fullPrompt = (prompt.trim() ? prompt + "\n\n" : "") + contextStrs.join("\n\n");
     }
 
@@ -254,6 +272,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
     setMessages(newMessages);
     setPrompt("");
     setContextTags([]);
+    setCustomContexts([]);
     setIsLoading(true);
     try {
       const res = await fetch("/api/agent", {
@@ -267,9 +286,10 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
         const ans = typeof data.answer === 'string' ? data.answer : JSON.stringify(data.answer, null, 2);
         setMessages(prev => [...prev.map(m => ({...m, isNew: false})), { role: 'assistant', content: ans, isNew: true }]);
       } else {
-        const err = data?.error ?? data;
-        const errStr = typeof err === 'string' ? err : JSON.stringify(err, null, 2);
-        setMessages(prev => [...prev.map(m => ({...m, isNew: false})), { role: 'assistant', content: `Error: ${errStr}` }]);
+        const errMsg = data?.error || JSON.stringify(data);
+        const debugInfo = data?.debug ? `\n\nDebug Info: ${data.debug}` : '';
+        const errStr = typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg, null, 2);
+        setMessages(prev => [...prev.map(m => ({...m, isNew: false})), { role: 'assistant', content: `Error: ${errStr}${debugInfo}` }]);
       }
     } catch (err) {
       setMessages(prev => [...prev.map(m => ({...m, isNew: false})), { role: 'assistant', content: err instanceof Error ? err.message : String(err) }]);
@@ -306,7 +326,6 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
             <h3 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <History size={16} color="var(--accent)" /> Past Chats
             </h3>
-            <button onClick={() => setShowHistory(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={16} /></button>
           </div>
           <div style={{ padding: '0.75rem' }}>
             <button 
@@ -436,7 +455,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
           setContextTags(prev => prev.includes(windowId) ? prev : [...prev, windowId]);
         }}
       >
-        {contextTags.length > 0 && (
+        {(contextTags.length > 0 || customContexts.length > 0) && (
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.8rem', flexWrap: 'wrap' }}>
             {contextTags.map(tag => (
               <div key={tag} style={{ 
@@ -447,6 +466,21 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
                 <span style={{ color: 'var(--accent)', textTransform: 'capitalize' }}>{tag}</span>
                 <button 
                   onClick={() => setContextTags(prev => prev.filter(t => t !== tag))}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, display: 'flex' }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            {customContexts.map(c => (
+              <div key={c.id} style={{ 
+                display: 'flex', alignItems: 'center', gap: '0.4rem', 
+                background: 'rgba(255,255,255,0.1)', padding: '0.3rem 0.6rem', 
+                borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)' 
+              }}>
+                <span style={{ color: 'var(--accent)', textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px', whiteSpace: 'nowrap' }}>{c.title}</span>
+                <button 
+                  onClick={() => setCustomContexts(prev => prev.filter(t => t.id !== c.id))}
                   style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, display: 'flex' }}
                 >
                   <X size={12} />
