@@ -387,7 +387,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
       </button>
 
       {/* Chat History */}
-      <div ref={chatContainerRef} style={{ flex: 1, padding: '3.5rem 1.5rem 1.5rem 1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', scrollBehavior: 'smooth' }}>
+      <div ref={chatContainerRef} style={{ flex: 1, padding: '3.5rem 1.5rem 1.5rem 1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {messages.length === 0 && !isLoading && (
           <div style={{ margin: 'auto', color: 'var(--text-muted)', textAlign: 'center', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, UserPlus, UserCheck, Loader2, Users, Trophy, UserX, Check, User as UserIcon } from "lucide-react";
+import { Search, UserPlus, UserCheck, Loader2, Users, Trophy, UserX, Check, User as UserIcon, BrainCircuit } from "lucide-react";
 // framer-motion removed: use plain elements instead
 import { User } from "../../types";
 import { TranslationKey } from "../../constants/translations";

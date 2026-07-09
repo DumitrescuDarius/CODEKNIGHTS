@@ -1042,37 +1042,43 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                     onClick={(e) => {
                       e.stopPropagation();
-
-                      const visited = new Set<string>();
-                      const queue = [node.id];
-                      let combinedContent = "";
                       
-                      while (queue.length > 0) {
-                        const currentId = queue.shift()!;
-                        if (visited.has(currentId)) continue;
-                        visited.add(currentId);
-                        
-                        const currentNode = nodes.find(n => n.id === currentId);
-                        if (currentNode) {
-                          if (currentId !== node.id) {
-                            combinedContent += `\n\n--- Linked Note: ${currentNode.title || "Untitled"} ---\n`;
-                          }
-                          combinedContent += currentNode.content || "(Empty note)";
-                        }
-                        
-                        edges.forEach(edge => {
-                          if (edge.source === currentId && !visited.has(edge.target)) queue.push(edge.target);
-                          if (edge.target === currentId && !visited.has(edge.source)) queue.push(edge.source);
-                        });
-                      }
+                      // 1) Force the AI window to open so the component mounts
+                      window.dispatchEvent(new CustomEvent('open_agent_window'));
 
-                      window.dispatchEvent(new CustomEvent('add_ai_context', { 
-                        detail: { 
-                          id: `note-${node.id}`, 
-                          title: (node.title || "Note") + (visited.size > 1 ? ` (+${visited.size - 1} linked)` : ""), 
-                          content: combinedContent 
-                        } 
-                      }));
+                      // 2) Wait a split second for React to mount AgentWindow and attach its event listener, then send the context
+                      setTimeout(() => {
+                        const visited = new Set<string>();
+                        const queue = [node.id];
+                        let combinedContent = "";
+                        
+                        while (queue.length > 0) {
+                          const currentId = queue.shift()!;
+                          if (visited.has(currentId)) continue;
+                          visited.add(currentId);
+                          
+                          const currentNode = nodes.find(n => n.id === currentId);
+                          if (currentNode) {
+                            if (currentId !== node.id) {
+                              combinedContent += `\n\n--- Linked Note: ${currentNode.title || "Untitled"} ---\n`;
+                            }
+                            combinedContent += currentNode.content || "(Empty note)";
+                          }
+                          
+                          edges.forEach(edge => {
+                            if (edge.source === currentId && !visited.has(edge.target)) queue.push(edge.target);
+                            if (edge.target === currentId && !visited.has(edge.source)) queue.push(edge.source);
+                          });
+                        }
+
+                        window.dispatchEvent(new CustomEvent('add_ai_context', { 
+                          detail: { 
+                            id: `note-${node.id}`, 
+                            title: (node.title || "Note") + (visited.size > 1 ? ` (+${visited.size - 1} linked)` : ""), 
+                            content: combinedContent 
+                          } 
+                        }));
+                      }, 100);
                     }}
                     title="Add to AI Context"
                   >
@@ -1106,52 +1112,23 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
               </div>
               
               {/* Node Content */}
-              {editingNodeId === node.id ? (
-                <textarea
-                  autoFocus
-                  onBlur={() => setEditingNodeId(null)}
-                  value={node.content}
-                  onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, content: e.target.value } : n))}
-                  style={{
-                    flex: 1,
-                    background: 'transparent',
-                    border: 'none',
-                    padding: '0.5rem',
-                    color: 'var(--text)',
-                    fontSize: '0.8rem',
-                    resize: 'none',
-                    outline: 'none',
-                    cursor: 'text'
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()} // Allow text selection without dragging
-                  placeholder="Take a note..."
-                />
-              ) : (
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingNodeId(node.id);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem',
-                    color: 'var(--text)',
-                    fontSize: '0.8rem',
-                    overflowY: 'auto',
-                    cursor: 'pointer',
-                    userSelect: 'text'
-                  }}
-                >
-                  {node.content ? (
-                    <div className="markdown-body" style={{ fontSize: 'inherit' }}>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{node.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <span style={{ opacity: 0.5 }}>Click to edit...</span>
-                  )}
-                </div>
-              )}
+              <textarea
+                value={node.content}
+                onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, content: e.target.value } : n))}
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '0.5rem',
+                  color: 'var(--text)',
+                  fontSize: '0.8rem',
+                  resize: 'none',
+                  outline: 'none',
+                  cursor: 'text'
+                }}
+                onMouseDown={(e) => e.stopPropagation()} // Allow text selection without dragging
+                placeholder="Take a note..."
+              />
               
               {/* Resize Handle */}
               <div

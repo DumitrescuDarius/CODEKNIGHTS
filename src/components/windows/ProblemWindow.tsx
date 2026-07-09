@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye } from "lucide-react";
+import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye, BrainCircuit } from "lucide-react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
@@ -599,25 +599,50 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div style={{ 
             display: 'flex', 
-            flexDirection: 'column',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
             gap: '0.5rem',
             paddingBottom: '1.25rem',
             borderBottom: '1px solid rgba(255,255,255,0.05)'
           }}>
-            {renderOpponentProgress()}
-            <h2 style={{ 
-              fontSize: '1.8rem', 
-              fontWeight: 900, 
-              margin: 0, 
-              background: 'linear-gradient(135deg, var(--accent) 0%, #fff 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              letterSpacing: '-0.02em',
-              textShadow: '0 2px 10px rgba(122, 162, 247, 0.2)'
-            }}>
-              {activeQuestion.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>}
-              {activeQuestion.title}
-            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {renderOpponentProgress()}
+              <h2 style={{ 
+                fontSize: '1.8rem', 
+                fontWeight: 900, 
+                margin: 0, 
+                background: 'linear-gradient(135deg, var(--accent) 0%, #fff 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '-0.02em',
+                textShadow: '0 2px 10px rgba(122, 162, 247, 0.2)'
+              }}>
+                {activeQuestion.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>}
+                {activeQuestion.title}
+              </h2>
+            </div>
+            
+            <button 
+              className="twm-btn"
+              style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                window.dispatchEvent(new CustomEvent('open_agent_window'));
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('add_ai_context', {
+                    detail: {
+                      id: `problem-${activeQuestion.id}`,
+                      title: `Problem: ${activeQuestion.title}`,
+                      content: `Problem Title: ${activeQuestion.title}\n\nDescription:\n${activeQuestion.description}\n\nRestrictions:\n${activeQuestion.restrictions || 'None'}\n\nConstraints:\n${activeQuestion.constraints || 'None'}`
+                    }
+                  }));
+                }, 100);
+              }}
+              title="Add Problem to AI Context"
+            >
+              <BrainCircuit size={14} /> AI Context
+            </button>
           </div>
           
           <div style={{ 

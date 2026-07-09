@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useEffect, useMemo } from "react";
-import Editor, { useMonaco } from "@monaco-editor/react";
+import Editor, { useMonaco, loader } from "@monaco-editor/react";
+import * as monaco from "monaco-editor";
 import { Terminal as TerminalIcon, X } from "lucide-react";
 import { Language } from "../../types";
+
+loader.config({ monaco });
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
 

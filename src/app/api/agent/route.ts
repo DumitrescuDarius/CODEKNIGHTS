@@ -71,8 +71,17 @@ export async function POST(req: NextRequest) {
         contents.unshift({ role: 'user', parts: [{ text: "Hello" }] });
       }
 
+      const SCHEMA_CONTEXT = `You are the built-in AI assistant for CodeKnights, a competitive programming web app. 
+Here is the layout and schema of the website to help users navigate if they ask:
+- Editor Window: The central code editor.
+- Problem Window: Displays the current coding challenge and test cases.
+- Friends Window: View friends list, pending requests, and duel invites.
+- Profile Window: Shows stats, Elo rating history, activity graph, and profile editing.
+- Notes Window: An infinite canvas for Markdown sticky notes.
+- Agent Window: This chat window! You are here to assist with coding and app navigation.`;
+
       if (contents.length > 0 && contents[0].role === 'user') {
-        contents[0].parts[0].text = `You are an assistant that helps solve programming problems. Provide concise working solutions in the requested language (${language}) and include brief explanations.\n\nProblem:\n${contents[0].parts[0].text}`;
+        contents[0].parts[0].text = `${SCHEMA_CONTEXT}\n\nPlease help solve programming problems in ${language}. Provide concise working solutions and brief explanations.\n\nUser Message:\n${contents[0].parts[0].text}`;
       }
 
       const requestBody = JSON.stringify({ 
@@ -146,10 +155,19 @@ export async function POST(req: NextRequest) {
 
         selectedModel = defaultModel;
 
+        const SCHEMA_CONTEXT = `You are the built-in AI assistant for CodeKnights, a competitive programming web app. 
+Here is the layout and schema of the website to help users navigate if they ask:
+- Editor Window: The central code editor.
+- Problem Window: Displays the current coding challenge and test cases.
+- Friends Window: View friends list, pending requests, and duel invites.
+- Profile Window: Shows stats, Elo rating history, activity graph, and profile editing.
+- Notes Window: An infinite canvas for Markdown sticky notes.
+- Agent Window: This chat window! You are here to assist with coding and app navigation.`;
+
         const requestBody = JSON.stringify({ 
           model: defaultModel, 
           messages: [ 
-            { role: "system", content: `You are a programming assistant helping with ${language}.` }, 
+            { role: "system", content: `${SCHEMA_CONTEXT}\n\nYou are helping with ${language}. Provide concise answers.` }, 
             ...messages.map((m: any) => ({ role: m.role, content: m.content }))
           ], 
           max_tokens: 1500, 

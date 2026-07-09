@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { BarChart2, BookOpen, Clock, Code, Settings, Trophy, User as UserIcon, Users, FileText, Check, User, ShieldCheck, Loader2, Sword } from "lucide-react";
+import { BarChart2, BookOpen, Clock, Code, Settings, Trophy, User as UserIcon, Users, FileText, Check, User, ShieldCheck, Loader2, Sword, BrainCircuit } from "lucide-react";
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 import { TranslationKey } from "../../constants/translations";
@@ -277,7 +277,16 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
        }
        monthsMap.get(key)!.days.push(d);
     }
-    return Array.from(monthsMap.values());
+    const months = Array.from(monthsMap.values());
+    
+    // Pad the end of each month's grid so it has full columns of 7, preventing CSS Grid row collapse
+    months.forEach(month => {
+      while (month.days.length % 7 !== 0) {
+        month.days.push(null);
+      }
+    });
+
+    return months;
   };
 
   return (
@@ -396,14 +405,45 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
           </div>
         </div>
 
-        {(!userId || userId === session?.user?.id) && (
-           <button onClick={() => setIsEditingProfile(!isEditingProfile)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}
-                   onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                   onMouseLeave={(e) => { e.currentTarget.style.background = isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'; }}>
-             <Settings size={16} />
-             <span>{isEditingProfile ? "Cancel" : t("configureProfile")}</span>
-           </button>
-        )}
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button 
+            className="twm-btn"
+            style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, fontSize: '0.9rem' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('open_agent_window'));
+              setTimeout(() => {
+                const content = `Username: ${profile.username || profile.name || "Unknown"}
+Rank: ${rank}
+Rating: ${rating}
+Global Rank: #${profile.globalRank || '?'}
+Battles Won: ${profile.battlesWon || 0}
+Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'Unknown'}
+Admin: ${isAdmin ? 'Yes' : 'No'}`;
+                  
+                window.dispatchEvent(new CustomEvent('add_ai_context', {
+                  detail: {
+                    id: `profile-${profile.id || userId || session?.user?.id}`,
+                    title: `Profile: ${profile.username || profile.name || "User"}`,
+                    content: "Profile Data:\n" + content
+                  }
+                }));
+              }, 100);
+            }}
+            title="Add Profile to AI Context"
+          >
+            <BrainCircuit size={16} /> AI Context
+          </button>
+
+          {(!userId || userId === session?.user?.id) && (
+             <button onClick={() => setIsEditingProfile(!isEditingProfile)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}
+                     onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                     onMouseLeave={(e) => { e.currentTarget.style.background = isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'; }}>
+               <Settings size={16} />
+               <span>{isEditingProfile ? "Cancel" : t("configureProfile")}</span>
+             </button>
+          )}
+        </div>
 
       </div>
 
@@ -584,7 +624,7 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
             {getLastMonths().map(month => (
               <div key={month.label} style={{ display: 'flex', flexDirection: 'column', minWidth: 'max-content' }}>
                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{month.label}</span>
-                 <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 1fr)', gridAutoFlow: 'column', gap: '4px' }}>
+                 <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px', gridAutoFlow: 'column', gap: '4px', justifyContent: 'start', width: 'max-content' }}>
                     {month.days.map((d, i) => {
                        if (!d) return <div key={`empty-${i}`} style={{ width: '12px', height: '12px' }} />;
                        const dateStr = d.toLocaleDateString('en-CA');

@@ -584,6 +584,26 @@ const MainMenu: React.FC = () => {
     return () => window.removeEventListener("friends_update_required", fetchFriendsData);
   }, [fetchFriendsData]);
 
+  useEffect(() => {
+    const handleOpenAgent = () => {
+      setOpenWindows(prev => {
+        if (!prev.includes("agent")) {
+          if (prev.length >= 4) {
+            setShowLimitWarning(true);
+            return prev;
+          }
+          setWindowFlexes(f => [...f, 1]);
+          setTimeout(() => setActiveWindow("agent"), 0);
+          return [...prev, "agent"];
+        }
+        setTimeout(() => setActiveWindow("agent"), 0);
+        return prev;
+      });
+    };
+    window.addEventListener("open_agent_window", handleOpenAgent);
+    return () => window.removeEventListener("open_agent_window", handleOpenAgent);
+  }, [setShowLimitWarning]);
+
   const createDuel = useCallback(async (demoMode: boolean = false) => {
     try {
       const res = await fetch("/api/duels", { 
@@ -993,7 +1013,7 @@ const MainMenu: React.FC = () => {
     if (savedFlexes.length === finalWindows.length) setWindowFlexes(savedFlexes);
     else setWindowFlexes(finalWindows.map(() => 1));
     
-    setTimeout(() => setIsLoaded(true), 800);
+    setTimeout(() => setIsLoaded(true), 2500);
   }, []);
 
   // PERSISTENCE EFFECT
@@ -1315,6 +1335,7 @@ const MainMenu: React.FC = () => {
       setWindowFlexes(next.map(w => w === "editor" ? 1.5 : 1));
       return next;
     });
+    setActiveWindow("editor");
   }, [questions, maximizedWindow, activeDuel]);
 
   const runTests = useCallback(async () => {
@@ -2186,13 +2207,13 @@ const MainMenu: React.FC = () => {
                       onClick={() => {
                         joinDuel(incomingInvite.pin);
                         setOpenWindows(prev => {
-                           if (!prev.includes("battle")) {
-                               setWindowFlexes(f => [...f, 1]);
-                               return [...prev, "battle"];
-                           }
-                           return prev;
+                           const next = prev.filter(w => w !== "battle");
+                           if (!next.includes("problem")) next.push("problem");
+                           if (!next.includes("editor")) next.unshift("editor");
+                           setWindowFlexes(next.map(w => w === "editor" ? 1.5 : 1));
+                           return next;
                         });
-                        setActiveWindow("battle");
+                        setActiveWindow("editor");
                         setIncomingInvite(null);
                       }} 
                       style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '0.2rem', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem' }}
