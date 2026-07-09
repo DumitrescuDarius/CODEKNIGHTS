@@ -135,7 +135,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>{t("admin")}</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Privileged tools for arena management and development.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>{t("adminDesc")}</p>
         </div>
 
         {error && (
@@ -150,7 +150,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
           <div className="settings-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem' }}>
               <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, fontSize: '0.8rem', color: 'var(--accent)' }}>
-                {newQuestion.id ? <Edit2 size={14} /> : <Plus size={14} />} {newQuestion.id ? "EDIT CHALLENGE" : "CREATE NEW CHALLENGE"}
+                {newQuestion.id ? <Edit2 size={14} /> : <Plus size={14} />} {newQuestion.id ? t("editChallenge") : t("createChallenge")}
               </span>
               {newQuestion.id && (
                 <button onClick={cancelEditing} className="twm-btn" style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(255,255,255,0.05)' }}>
@@ -160,7 +160,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Title</label>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("titleLabel")}</label>
                 <input 
                   type="text" 
                   value={newQuestion.title} 
@@ -196,7 +196,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Difficulty</label>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("difficultyLabel")}</label>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                   {[
                     { label: "Target Practice", value: "Easy" },
@@ -253,7 +253,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {questions.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>No questions found in the database.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noQuestionsFound")}</p>
               ) : (
                 questions.map((q) => (
                   <div key={q.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>
@@ -297,9 +297,9 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {loadingUsers ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>Loading users...</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("loadingUsers")}</p>
               ) : users.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>No users found.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noUsersFound")}</p>
               ) : (
                 users.map((u) => (
                   <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>

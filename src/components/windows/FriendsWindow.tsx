@@ -236,7 +236,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
             {activeTab === 'friends' && friends.length === 0 && (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 2rem' }}>
                 <Users size={36} style={{ marginBottom: '1rem', opacity: 0.4, color: 'var(--accent)' }} />
-                <p style={{ fontWeight: 500, fontSize: '0.85rem' }}>No friends added yet.</p>
+                <p style={{ fontWeight: 500, fontSize: '0.85rem' }}>{t("noFriendsAdded")}</p>
               </div>
             )}
             {activeTab === 'friends' && friends.map(user => (
@@ -266,23 +266,23 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     <span className="friend-stat-val">
                       {Math.round(((user.battlesWon || 0) / (user.battlesTotal || 1)) * 100)}%
                     </span>
-                    <span className="friend-stat-lbl">Win Rate</span>
+                    <span className="friend-stat-lbl">{t("winRate")}</span>
                   </div>
                   <div className="friend-stat-item">
                     <span className="friend-stat-val">{user.battlesWon || 0}</span>
-                    <span className="friend-stat-lbl">Wins</span>
+                    <span className="friend-stat-lbl">{t("battlesWon")}</span>
                   </div>
                   <div className="friend-stat-item">
                     <span className="friend-stat-val">{user.battlesTotal || 0}</span>
-                    <span className="friend-stat-lbl">Battles</span>
+                    <span className="friend-stat-lbl">{t("battlesFought")}</span>
                   </div>
                 </div>
                 <div className="friend-card-actions">
                   <button className="friend-btn friend-btn--primary" onClick={() => openProfile(user.id)}>{t("view")}</button>
                   {pendingInviteTargetId === user.id ? (
-                    <button className="friend-btn friend-btn--primary" style={{ background: 'transparent', color: '#ff5555', border: '1px solid #ff5555' }} onClick={() => onCancelInvite && onCancelInvite()}>CANCEL</button>
+                    <button className="friend-btn friend-btn--primary" style={{ background: 'transparent', color: '#ff5555', border: '1px solid #ff5555' }} onClick={() => onCancelInvite && onCancelInvite()}>{t("cancelInvite") || t("cancel")}</button>
                   ) : (
-                    <button className="friend-btn friend-btn--primary" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => onInviteDuel && onInviteDuel(user.id, user.username || user.name || "Knight")}>DUEL!</button>
+                    <button className="friend-btn friend-btn--primary" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => onInviteDuel && onInviteDuel(user.id, user.username || user.name || "Knight")}>{t("duelBtn") || t("duel")}</button>
                   )}
                   <button className="friend-btn friend-btn--danger" onClick={() => setUnfriendConfirm(user)} title="Unfriend">
                     <UserX size={14} />
@@ -294,7 +294,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
             {activeTab === 'requests' && requests.length === 0 && (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 2rem' }}>
                 <UserCheck size={36} style={{ marginBottom: '1rem', opacity: 0.4, color: 'var(--accent)' }} />
-                <p style={{ fontWeight: 500, fontSize: '0.85rem' }}>No pending friend requests.</p>
+                <p style={{ fontWeight: 500, fontSize: '0.85rem' }}>{t("noPendingRequests")}</p>
               </div>
             )}
             {activeTab === 'requests' && requests.map((user: any) => (
@@ -333,15 +333,15 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     <span className="friend-stat-val">
                       {Math.round(((user.battlesWon || 0) / (user.battlesTotal || 1)) * 100)}%
                     </span>
-                    <span className="friend-stat-lbl">Win Rate</span>
+                    <span className="friend-stat-lbl">{t("winRate")}</span>
                   </div>
                   <div className="friend-stat-item">
                     <span className="friend-stat-val">{user.battlesWon || 0}</span>
-                    <span className="friend-stat-lbl">Wins</span>
+                    <span className="friend-stat-lbl">{t("battlesWon")}</span>
                   </div>
                   <div className="friend-stat-item">
                     <span className="friend-stat-val">{user.battlesTotal || 0}</span>
-                    <span className="friend-stat-lbl">Battles</span>
+                    <span className="friend-stat-lbl">{t("battlesFought")}</span>
                   </div>
                 </div>
                 <div className="friend-card-actions">
@@ -354,13 +354,13 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
             {activeTab === 'find' && searchQuery.length >= 2 && searchResults.length === 0 && (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 2rem' }}>
                 <Search size={36} style={{ marginBottom: '1rem', opacity: 0.4 }} />
-                <p style={{ fontWeight: 500, fontSize: '0.85rem' }}>No users found matching your search.</p>
+                <p style={{ fontWeight: 500, fontSize: '0.85rem' }}>{t("noUsersFoundSearch")}</p>
               </div>
             )}
             {activeTab === 'find' && searchQuery.length < 2 && (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 2rem' }}>
                 <Search size={36} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                <p style={{ fontWeight: 500, fontSize: '0.85rem' }}>Type at least 2 characters to search for users.</p>
+                <p style={{ fontWeight: 500, fontSize: '0.85rem' }}>{t("typeToSearch")}</p>
               </div>
             )}
             {activeTab === 'find' && searchQuery.length >= 2 && searchResults.map((user: any) => (
@@ -399,15 +399,15 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     <span className="friend-stat-val">
                       {Math.round(((user.battlesWon || 0) / (user.battlesTotal || 1)) * 100)}%
                     </span>
-                    <span className="friend-stat-lbl">Win Rate</span>
+                    <span className="friend-stat-lbl">{t("winRate")}</span>
                   </div>
                   <div className="friend-stat-item">
                     <span className="friend-stat-val">{user.battlesWon || 0}</span>
-                    <span className="friend-stat-lbl">Wins</span>
+                    <span className="friend-stat-lbl">{t("battlesWon")}</span>
                   </div>
                   <div className="friend-stat-item">
                     <span className="friend-stat-val">{user.battlesTotal || 0}</span>
-                    <span className="friend-stat-lbl">Battles</span>
+                    <span className="friend-stat-lbl">{t("battlesFought")}</span>
                   </div>
                 </div>
                 <div className="friend-card-actions">
@@ -439,11 +439,11 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
       {unfriendConfirm && (
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'var(--bg)', padding: '2rem', borderRadius: '0.4rem', border: '1px solid var(--accent)', maxWidth: '400px', textAlign: 'center' }}>
-            <h3 style={{ margin: '0 0 1rem 0' }}>Remove Friend</h3>
+            <h3 style={{ margin: '0 0 1rem 0' }}>{t("removeFriendTitle") || t("removeFriend")}</h3>
             <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>Are you sure you want to remove {unfriendConfirm.username || unfriendConfirm.name} from your friends list?</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button className="twm-btn" onClick={() => setUnfriendConfirm(null)}>Cancel</button>
-              <button className="twm-btn" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => handleUnfriend(unfriendConfirm.id)}>Remove</button>
+              <button className="twm-btn" onClick={() => setUnfriendConfirm(null)}>{t("cancel")}</button>
+              <button className="twm-btn" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => handleUnfriend(unfriendConfirm.id)}>{t("removeBtn") || t("remove")}</button>
             </div>
           </div>
         </div>

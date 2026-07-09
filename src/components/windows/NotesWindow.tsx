@@ -321,7 +321,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
           const oldEdges = Array.isArray(data?.edges) ? data.edges : [];
           const defaultWorkspace = {
             id: Date.now().toString(),
-            name: "Main Workspace",
+            name: t("mainWorkspace"),
             nodes: oldNodes,
             edges: oldEdges,
             updatedAt: Date.now()
@@ -425,7 +425,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
   const handleCreateWorkspace = () => {
     const newWs: Workspace = {
       id: Date.now().toString(),
-      name: "New Workspace",
+      name: t("newWorkspace"),
       nodes: [],
       edges: [],
       updatedAt: Date.now()
@@ -444,7 +444,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
     if (nextWorkspaces.length === 0) {
       const newWs: Workspace = {
         id: Date.now().toString(),
-        name: "Main Workspace",
+        name: t("mainWorkspace"),
         nodes: [],
         edges: [],
         updatedAt: Date.now()
@@ -696,7 +696,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
     return (
       <div className="window-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: '1rem', color: 'var(--text-muted)' }}>
         <div style={{ width: '30px', height: '30px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <div style={{ fontSize: '0.9rem' }}>Loading workspaces...</div>
+        <div style={{ fontSize: '0.9rem' }}>{t("loadingWorkspaces")}</div>
         <style>{`
           @keyframes spin { 100% { transform: rotate(360deg); } }
         `}</style>
@@ -722,15 +722,15 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', height: '100%' }}>
           <button 
             onClick={(e) => { e.stopPropagation(); handleCreateWorkspace(); }} 
-            title="New Workspace"
+            title={t("newWorkspace")}
             style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}
           >
-            <Plus size={10} strokeWidth={3} /> NEW
+            <Plus size={10} strokeWidth={3} /> {t("newBtn")} 
           </button>
           <button 
             className="twm-btn"
             onClick={(e) => { e.stopPropagation(); setShowSidebar(!showSidebar); }} 
-            title={showSidebar ? "Hide Workspaces" : "Show Workspaces"}
+            title={showSidebar ? t("hideWorkspaces") : t("showWorkspaces")}
             style={{ padding: '0.1rem 0.3rem' }}
           >
             <SidebarIcon size={12} />
@@ -804,7 +804,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.color = '#ff5555'; e.currentTarget.style.background = isActive ? 'rgba(0,0,0,0.1)' : 'rgba(255,85,85,0.1)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.color = isActive ? 'rgba(0,0,0,0.4)' : 'transparent'; e.currentTarget.style.background = 'transparent'; }}
-                    title="Delete workspace"
+                    title={t("deleteWorkspace")}
                   >
                     <Trash2 size={13} />
                   </button>
@@ -875,7 +875,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
             onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.5)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.4)'; }}
           >
-            <Plus size={16} strokeWidth={3} /> New Note
+            <Plus size={16} strokeWidth={3} /> {t("newNote")}
           </button>
         </div>
 
@@ -1036,7 +1036,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                     value={node.title || ""}
                     onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, title: e.target.value } : n))}
                     onMouseDown={(e) => e.stopPropagation()}
-                    placeholder="Title..."
+                    placeholder={t("titlePlaceholder")}
                     style={{
                       background: 'transparent',
                       border: 'none',
@@ -1071,7 +1071,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                       e.stopPropagation();
                       handleDeleteNode(node.id);
                     }}
-                    title="Delete note"
+                    title={t("deleteNote")}
                   >
                     <X size={16} />
                   </button>
@@ -1094,7 +1094,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                   cursor: 'text'
                 }}
                 onMouseDown={(e) => e.stopPropagation()} // Allow text selection without dragging
-                placeholder="Take a note..."
+                placeholder={t("takeNotePlaceholder")}
               />
               
               {/* Resize Handle */}

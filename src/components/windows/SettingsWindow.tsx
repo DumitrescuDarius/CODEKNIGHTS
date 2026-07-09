@@ -99,7 +99,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
           }}
           title="Download settings as a .txt file"
         >
-          <Download size={16} /> Export Settings
+          <Download size={16} /> {t("exportSettings")}
         </button>
         
         <label
@@ -113,7 +113,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
           }}
           title="Import settings from a .txt file"
         >
-          <Upload size={16} /> Import Settings
+          <Upload size={16} /> {t("importSettings")}
           <input 
             type="file" 
             accept=".txt,.json" 
@@ -163,7 +163,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
         <span className="settings-label">{t("textSize")}</span>
         <div style={{ display: 'flex', gap: '2rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>EDITOR</label>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t("editorLabel")}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button onClick={() => setFontSize(Math.max(10, fontSize - 1))} className="btn btn-ghost">-</button>
               <span style={{ fontSize: '0.85rem', minWidth: '3ch', textAlign: 'center' }}>{fontSize}px</span>
@@ -171,7 +171,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>TERMINAL</label>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t("terminalLabel")}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button onClick={() => setTerminalFontSize(Math.max(10, terminalFontSize - 1))} className="btn btn-ghost">-</button>
               <span style={{ fontSize: '0.85rem', minWidth: '3ch', textAlign: 'center' }}>{terminalFontSize}px</span>
@@ -184,14 +184,14 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
 
       {/* 2.5. Window Angles (Radius) */}
       <div className="settings-group" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-        <span className="settings-label">Window Angles</span>
+        <span className="settings-label">{t("windowAngles")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
           {[
-            { label: 'Sharp', value: '0px' },
-            { label: 'Slight', value: '0.2rem' },
-            { label: 'Standard', value: '0.4rem' },
-            { label: 'Rounded', value: '0.8rem' },
-            { label: 'Roundest', value: '1.5rem' }
+            { label: t("sharp"), value: '0px' },
+            { label: t("slight"), value: '0.2rem' },
+            { label: t("standard"), value: '0.4rem' },
+            { label: t("rounded"), value: '0.8rem' },
+            { label: t("roundest"), value: '1.5rem' }
           ].map((r) => (
             <button 
               key={r.value} 
@@ -227,14 +227,14 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
 
       {/* 2.6. Window Gaps */}
       <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
-        <span className="settings-label">Window Gap</span>
+        <span className="settings-label">{t("windowGap")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
           {[
-            { label: 'None', value: '0px' },
-            { label: 'Tight', value: '0.25rem' },
-            { label: 'Standard', value: '0.75rem' },
-            { label: 'Loose', value: '1.5rem' },
-            { label: 'Spacious', value: '2.5rem' }
+            { label: t("none"), value: '0px' },
+            { label: t("tight"), value: '0.25rem' },
+            { label: t("standard"), value: '0.75rem' },
+            { label: t("loose"), value: '1.5rem' },
+            { label: t("spacious"), value: '2.5rem' }
           ].map((g) => (
             <button 
               key={g.value} 
@@ -265,12 +265,12 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
 
       {/* 2.7. Window Border */}
       <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
-        <span className="settings-label">Window Border</span>
+        <span className="settings-label">{t("windowBorder")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
           {[
-            { label: 'Thin', value: '1px' },
-            { label: 'Standard', value: '2px' },
-            { label: 'Thick', value: '4px' }
+            { label: t("thin"), value: '1px' },
+            { label: t("standard"), value: '2px' },
+            { label: t("thick"), value: '4px' }
           ].map((b) => (
             <button 
               key={b.value} 
@@ -299,11 +299,11 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
 
       {/* 2.8. Navbar Style */}
       <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
-        <span className="settings-label">Navbar Style</span>
+        <span className="settings-label">{t("navbarStyle")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
           {[
-            { label: 'Glass', value: 'rgba(255, 255, 255, 0.02)' },
-            { label: 'Solid', value: 'var(--bg)' }
+            { label: t("glass"), value: 'rgba(255, 255, 255, 0.02)' },
+            { label: t("solid"), value: 'var(--bg)' }
           ].map((n) => (
             <button 
               key={n.value} 
@@ -348,9 +348,9 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
               fontSize: '0.85rem'
             }}
           >
-            {vimMode ? "Vim Mode: ON" : "Vim Mode: OFF"}
+            {vimMode ? t("vimModeOn") : t("vimModeOff")}
           </button>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Enable Vim emulations.</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t("vimModeDesc")}</p>
         </div>
       </div>
 

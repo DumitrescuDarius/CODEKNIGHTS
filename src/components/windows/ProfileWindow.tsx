@@ -170,10 +170,10 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
       <style>{`
         @keyframes spin { 100% { transform: rotate(360deg); } }
       `}</style>
-      <div style={{ fontWeight: 600, letterSpacing: '0.1em' }}>LOADING PROFILE...</div>
+      <div style={{ fontWeight: 600, letterSpacing: '0.1em' }}>{t("loadingProfile")}</div>
     </div>
   );
-  if (!profile) return <div style={{ padding: '1rem' }}>Profile not found.</div>;
+  if (!profile) return <div style={{ padding: '1rem' }}>{t("profileNotFound")}</div>;
 
   const isAdmin = !!profile.isAdmin;
   const rank = profile.rank || "Novice";
@@ -328,19 +328,19 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
             </div>
             <div style={{ width: '90%', maxWidth: '500px', marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '60px' }}>Zoom</span>
+                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '60px' }}>{t("zoom")}</span>
                  <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent)' }} />
                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '30px', textAlign: 'right' }}>{zoom.toFixed(1)}x</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '60px' }}>Rotation</span>
+                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '60px' }}>{t("rotation")}</span>
                  <input type="range" min={0} max={360} step={1} value={rotation} onChange={(e) => setRotation(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent)' }} />
                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '30px', textAlign: 'right' }}>{rotation}°</span>
               </div>
             </div>
             <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
                <button className="twm-btn" style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.1)' }} onClick={() => setIsCropping(false)}>Cancel</button>
-               <button className="twm-btn" style={{ background: 'var(--accent)', color: '#000', padding: '0.75rem 1.5rem', fontWeight: 600 }} onClick={handleCropSave}>Save Crop</button>
+               <button className="twm-btn" style={{ background: 'var(--accent)', color: '#000', padding: '0.75rem 1.5rem', fontWeight: 600 }} onClick={handleCropSave}>{t("saveCrop")}</button>
             </div>
         </div>,
         document.body

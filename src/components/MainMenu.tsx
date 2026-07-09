@@ -502,7 +502,7 @@ const MainMenu: React.FC = () => {
   const navLinks = useMemo(() => {
     const links = [
       { label: t("battle"), id: "battle" as WindowId, icon: <Sword size={16} /> },
-      { label: "Notes", id: "notes" as WindowId, icon: <StickyNote size={16} /> },
+      { label: t("notesTitle"), id: "notes" as WindowId, icon: <StickyNote size={16} /> },
       { label: t("friends"), id: "friends" as WindowId, icon: <Users size={16} /> },
     ];
     
@@ -2067,11 +2067,13 @@ const MainMenu: React.FC = () => {
                      setActiveWindow("editor");
                  }}
                />;
+      case "tournaments":
+        return <TournamentWindow questions={questions} t={t} isAdmin={!!(session?.user as any)?.isAdmin} />;
       case "tutorial":
-        return <TutorialWindow />;
+        return <TutorialWindow t={t} />;
       case "terms": return <LegalWindow type="terms" />;
       case "privacy": return <LegalWindow type="privacy" />;
-      case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>Global</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
+      case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>{t("global")}</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
       case "friends": return (
         <FriendsWindow 
           t={t} 
@@ -2101,7 +2103,7 @@ const MainMenu: React.FC = () => {
         />
       );
       case "feedback":
-        return <FeedbackWindow session={session} />;
+        return <FeedbackWindow session={session} t={t} />;
       default: 
         if (id.startsWith("profile_")) {
           const targetId = id.replace("profile_", "");
@@ -2392,7 +2394,7 @@ const MainMenu: React.FC = () => {
                                 setActiveWindow("tutorial"); 
                                 setIsProfileMenuOpen(false); 
                             }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'var(--accent)', background: 'rgba(122, 162, 247, 0.05)', cursor: 'pointer', textAlign: 'left', width: '100%', marginTop: '0.25rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={14} /><span style={{ fontSize: '0.85rem' }}>Tutorial</span></div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={14} /><span style={{ fontSize: '0.85rem' }}>{t("tutorial")}</span></div>
                               <ChevronRight size={12} />
                             </button>
 

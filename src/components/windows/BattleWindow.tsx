@@ -507,7 +507,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
         <div style={{ marginBottom: '3.5rem', textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
             <Sword size={32} color="var(--accent)" />
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0, letterSpacing: '-0.02em' }}>BATTLE<span style={{ color: 'var(--accent)' }}>ARENA</span></h2>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>{t("battle")}<span style={{ color: 'var(--accent)' }}>{t("arena")}</span></h2>
           </div>
           <div style={{ height: '2px', width: '60px', background: 'var(--accent)', margin: '0.5rem auto 1.5rem' }} />
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>

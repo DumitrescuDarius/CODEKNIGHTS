@@ -196,11 +196,11 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
           </div>
           <div className="terminal-split">
             <div className="terminal-section">
-              <div className="terminal-label">Stdin</div>
+              <div className="terminal-label">{t("stdin")}</div>
               <textarea className="terminal-input" style={{ fontSize: `${terminalFontSize}px`, fontFamily: fontFamily }} placeholder="Input..." value={stdin} onChange={(e) => setStdin(e.target.value)} />
             </div>
             <div className="terminal-section">
-              <div className="terminal-label">Stdout</div>
+              <div className="terminal-label">{t("stdout")}</div>
               <div className="terminal-output" style={{ fontSize: `${terminalFontSize}px`, fontFamily: fontFamily, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ flex: 1, overflowY: 'auto' }}>{terminalOutput}</div>
               </div>
@@ -231,7 +231,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
               </div>
             )}
           </div>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>UTF-8</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t("utf8")}</span>
         </div>
       </div>
     </div>

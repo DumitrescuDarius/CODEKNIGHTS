@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import { Send, CheckCircle, AlertTriangle, MessageSquareHeart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { TranslationKey } from '../../constants/translations';
+
 interface FeedbackWindowProps {
+  t: (k: TranslationKey) => string;
   session?: any;
 }
 
-const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session }) => {
+const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session, t }) => {
   const [feedback, setFeedback] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -64,11 +67,11 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session }) => {
         <div style={{ background: 'var(--accent)', color: '#000', padding: '0.5rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <MessageSquareHeart size={20} />
         </div>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text)' }}>Send Feedback</h2>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text)' }}>{t("sendFeedbackTitle") || t("sendFeedback")}</h2>
       </div>
       
       <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.95rem', lineHeight: 1.5, zIndex: 1 }}>
-        Have a suggestion, found a bug, or just want to say hi? Let us know! Your thoughts go straight to our development team.
+        {t("feedbackDesc")}
       </p>
 
       <AnimatePresence mode="wait">
@@ -80,7 +83,7 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session }) => {
             style={{ padding: '1rem', background: 'rgba(80, 250, 123, 0.1)', border: '1px solid rgba(80, 250, 123, 0.3)', color: '#50fa7b', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', zIndex: 1, boxShadow: '0 4px 12px rgba(80, 250, 123, 0.05)' }}
           >
             <CheckCircle size={18} />
-            <span style={{ fontWeight: 600 }}>Feedback sent successfully! Thank you.</span>
+            <span style={{ fontWeight: 600 }}>{t("feedbackSuccess")}</span>
           </motion.div>
         )}
 
@@ -113,7 +116,7 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session }) => {
           onChange={(e) => setFeedback(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="Type your feedback here... Be as detailed as you want!"
+          placeholder={t("feedbackPlaceholder")}
           style={{
             flex: 1,
             background: 'var(--bg)',
@@ -162,7 +165,7 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session }) => {
         ) : (
           <Send size={18} />
         )}
-        {status === "loading" ? "SENDING..." : "SEND FEEDBACK"}
+        {status === "loading" ? t("sending") : t("sendFeedbackBtn")}
       </motion.button>
     </div>
   );

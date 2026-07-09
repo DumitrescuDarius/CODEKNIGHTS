@@ -126,14 +126,14 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
                       <span style={{ fontWeight: 800, color: m.player1 ? 'var(--text)' : 'var(--text-muted)', letterSpacing: '0.05em' }}>
                         {m.player1?.toUpperCase() || "PENDING..."}
                       </span>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--accent)', opacity: 0.5, fontWeight: 900 }}>RANK_A</span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--accent)', opacity: 0.5, fontWeight: 900 }}>{t("rankA")}</span>
                     </div>
                     <div style={{ height: '1px', background: 'var(--line)', width: '100%' }} />
                     <div style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 800, color: m.player2 ? 'var(--text)' : 'var(--text-muted)', letterSpacing: '0.05em' }}>
                         {m.player2?.toUpperCase() || "BYE_SECURED"}
                       </span>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--accent)', opacity: 0.5, fontWeight: 900 }}>RANK_B</span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--accent)', opacity: 0.5, fontWeight: 900 }}>{t("rankB")}</span>
                     </div>
                   </div>
                 </div>
@@ -167,8 +167,8 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
       {viewingTournament ? renderBracket(viewingTournament) : (
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div style={{ marginBottom: '4rem', textAlign: 'left' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', color: 'var(--text)', letterSpacing: '-0.02em' }}>
-              TOURNA<span style={{ color: 'var(--accent)' }}>MENTS</span>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', color: 'var(--text)', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
+              {t("tourna")}<span style={{ color: 'var(--accent)' }}>{t("ments")}</span>
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ height: '2px', width: '40px', background: 'var(--accent)' }} />
@@ -188,16 +188,16 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
               position: 'relative',
               overflow: 'hidden'
             }}>
-              <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.5rem 1rem', background: 'var(--accent)', color: '#000', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.2em' }}>ADMIN_ACCESS</div>
+              <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.5rem 1rem', background: 'var(--accent)', color: '#000', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.2em' }}>{t("adminAccess")}</div>
               
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.2em', marginBottom: '2.5rem' }}>
-                <Zap size={16} /> INITIALIZE NEW TOURNAMENT
+                <Zap size={16} /> {t("initTourney")}
               </span>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>IDENTIFIER_TITLE</label>
+                    <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>{t("identifierTitle")}</label>
                     <input 
                       type="text" 
                       value={title} 
@@ -209,7 +209,7 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>ADD_PARTICIPANT</label>
+                    <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>{t("addParticipant")}</label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <input 
                         type="text" 
@@ -219,7 +219,7 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
                         style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.2rem', color: 'inherit', outline: 'none', fontSize: '0.9rem', fontFamily: 'inherit' }}
                         placeholder="USERNAME..."
                       />
-                      <button onClick={addParticipant} className="btn" style={{ background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '0 1.5rem', borderRadius: '0.2rem', border: 'none' }}>INVITE</button>
+                      <button onClick={addParticipant} className="btn" style={{ background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '0 1.5rem', borderRadius: '0.2rem', border: 'none' }}>{t("inviteBtn") || t("invite")}</button>
                     </div>
                   </div>
                 </div>
@@ -227,7 +227,7 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
                 <div>
                   <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '1rem', letterSpacing: '0.1em' }}>REGISTERED_AGENTS ({participants.length})</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    {participants.length === 0 && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', opacity: 0.5 }}>NO AGENTS REGISTERED...</span>}
+                    {participants.length === 0 && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', opacity: 0.5 }}>{t("noAgentsRegistered")}</span>}
                     {participants.map(p => (
                       <div key={p} style={{ 
                         display: 'flex', 
@@ -282,7 +282,7 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
               {tournaments.length === 0 ? (
                 <div style={{ gridColumn: '1 / -1', padding: '4rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--line)', borderRadius: '0.4rem' }}>
                   <Trophy size={48} style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', opacity: 0.1 }} />
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.1em' }}>NO ACTIVE SEQUENCES DETECTED.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.1em' }}>{t("noActiveSequences")}</p>
                 </div>
               ) : (
                 tournaments.map(c => (
@@ -312,12 +312,12 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.2rem' }}>
                       <div>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 900, letterSpacing: '0.1em', marginBottom: '0.25rem' }}>AGENTS</div>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 900, letterSpacing: '0.1em', marginBottom: '0.25rem' }}>{t("agentsTitle")}</div>
                         <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{c.participants.length.toString().padStart(2, '0')}</div>
                       </div>
                       <div style={{ width: '1px', height: '20px', background: 'var(--line)' }} />
                       <div>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 900, letterSpacing: '0.1em', marginBottom: '0.25rem' }}>PHASE</div>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 900, letterSpacing: '0.1em', marginBottom: '0.25rem' }}>{t("phaseTitle")}</div>
                         <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>01</div>
                       </div>
                     </div>

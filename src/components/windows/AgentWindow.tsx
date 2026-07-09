@@ -393,7 +393,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <BrainCircuit size={32} color="var(--text-muted)" />
             </div>
-            <p style={{ margin: 0 }}>How can I help you with your code today?</p>
+            <p style={{ margin: 0 }}>{t("agentGreeting")}</p>
           </div>
         )}
         
@@ -568,7 +568,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
           </div>
         </div>
         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.75rem', opacity: 0.7 }}>
-          Press Enter to send, Shift + Enter for new line
+          {t("agentKeyboardHint")}
         </div>
       </div>
     </div>

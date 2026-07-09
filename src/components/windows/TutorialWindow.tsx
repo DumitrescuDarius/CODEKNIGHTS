@@ -2,13 +2,14 @@
 
 import React from "react";
 import { BookOpen, CheckCircle } from "lucide-react";
+import { TranslationKey } from "../../constants/translations";
 
-export const TutorialWindow: React.FC = () => {
+export const TutorialWindow: React.FC<{ t: (k: TranslationKey) => string }> = ({ t }) => {
   return (
     <div style={{ padding: '2rem', height: '100%', overflow: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <BookOpen size={32} color="var(--accent)" />
-        <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>HOW TO PLAY</h2>
+        <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>{t("howToPlay")}</h2>
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -48,9 +49,9 @@ export const TutorialWindow: React.FC = () => {
             In a battle, the player with the <strong>lowest penalty score</strong> wins! Your penalty is calculated as follows:
           </p>
           <ul style={{ color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <li><strong>Time</strong>: +1 penalty point per second elapsed.</li>
-            <li><strong>Wrong Attempts</strong>: +50 penalty points for every failed submission.</li>
-            <li><strong>Sub-optimal Complexity</strong>: +100 penalty points if your algorithm's time complexity is worse than the ideal solution.</li>
+            <li><strong>Time</strong>: {t("penaltyTime")}</li>
+            <li><strong>Wrong Attempts</strong>: {t("penaltyWrong")}</li>
+            <li><strong>Sub-optimal Complexity</strong>: {t("penaltyComplexity")}</li>
           </ul>
         </div>
 
@@ -61,12 +62,12 @@ export const TutorialWindow: React.FC = () => {
             If you lose, you will lose a similar amount. As you accumulate points, you will progress through the ranks:
           </p>
           <ul style={{ color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <li><strong>Bronze</strong>: &lt; 1100 points</li>
-            <li><strong>Silver</strong>: 1100+ points</li>
-            <li><strong>Gold</strong>: 1300+ points</li>
-            <li><strong>Diamond</strong>: 1600+ points</li>
-            <li><strong>Master</strong>: 2000+ points</li>
-            <li><strong>Grandmaster</strong>: 2500+ points</li>
+            <li><strong>{t("bronze")}</strong>: &lt; 1100 points</li>
+            <li><strong>{t("silver")}</strong>: 1100+ points</li>
+            <li><strong>{t("gold")}</strong>: 1300+ points</li>
+            <li><strong>{t("diamond")}</strong>: 1600+ points</li>
+            <li><strong>{t("master")}</strong>: 2000+ points</li>
+            <li><strong>{t("grandmaster")}</strong>: 2500+ points</li>
           </ul>
         </div>
 
