@@ -2456,7 +2456,8 @@ const MainMenu: React.FC = () => {
             if (id === 'agent') icon = <BrainCircuit size={16} />;
             if (id === 'feedback') icon = <MessageSquare size={16} />;
             if (id.startsWith('profile')) icon = <User size={16} />;
-            const displayId = id.startsWith('profile_') ? 'profile' : id;
+            const rawId = id.startsWith('profile_') ? 'profile' : id;
+            const displayId = navItem?.label || (rawId === 'editor' ? t("editorLabel") : rawId === 'admin' ? t("admin") : rawId === 'agent' ? t("agentsTitle") : rawId === 'problem' ? t("problemLabel") : rawId === 'tutorial' ? t("tutorial") : rawId === 'profile' ? t("profileOverview") : rawId === 'tournaments' ? t("tourna")+t("ments") : rawId);
             const isMax = id === maximizedWindow;
             const originalIdx = openWindows.indexOf(id);
             const rwIdx = renderedWindows.indexOf(id);
@@ -2533,7 +2534,7 @@ const MainMenu: React.FC = () => {
                         )}
                       </div>
                       <div className="twm-window-actions">
-                        <button type="button" className="twm-btn" onClick={() => toggleMaximize(id)} title={isMax ? "Restore" : "Maximize"}>
+                        <button type="button" className="twm-btn" onClick={() => toggleMaximize(id)} title={isMax ? t("restore" as any) : t("maximize" as any)}>
                           {isMax ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                         </button>
                         <button
@@ -2541,7 +2542,7 @@ const MainMenu: React.FC = () => {
                           className="twm-btn"
                           disabled={!canMoveLeft}
                           onClick={() => moveWindow(id, "left")}
-                          title="Move left"
+                          title={t("moveLeft" as any)}
                         >
                           <ArrowLeft size={14} />
                         </button>
@@ -2550,7 +2551,7 @@ const MainMenu: React.FC = () => {
                           className="twm-btn"
                           disabled={!canMoveRight}
                           onClick={() => moveWindow(id, "right")}
-                          title="Move right"
+                          title={t("moveRight" as any)}
                         >
                           <ArrowRight size={14} />
                         </button>

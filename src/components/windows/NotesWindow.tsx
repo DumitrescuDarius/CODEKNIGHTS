@@ -321,7 +321,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
           const oldEdges = Array.isArray(data?.edges) ? data.edges : [];
           const defaultWorkspace = {
             id: Date.now().toString(),
-            name: t("mainWorkspace"),
+            name: "",
             nodes: oldNodes,
             edges: oldEdges,
             updatedAt: Date.now()
@@ -425,7 +425,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
   const handleCreateWorkspace = () => {
     const newWs: Workspace = {
       id: Date.now().toString(),
-      name: t("newWorkspace"),
+      name: "",
       nodes: [],
       edges: [],
       updatedAt: Date.now()
@@ -444,7 +444,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
     if (nextWorkspaces.length === 0) {
       const newWs: Workspace = {
         id: Date.now().toString(),
-        name: t("mainWorkspace"),
+        name: "",
         nodes: [],
         edges: [],
         updatedAt: Date.now()
@@ -763,7 +763,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
           position: 'relative' 
         }}>
         <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          {workspaces.map(ws => {
+          {workspaces.map((ws, idx) => {
             const isActive = activeWorkspaceId === ws.id;
             return (
               <div 
@@ -789,7 +789,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, overflow: 'hidden' }}>
                   <LayoutDashboard size={14} color={isActive ? '#000' : 'var(--text-muted)'} style={{ flexShrink: 0, transition: 'color 0.2s' }} />
                   <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.9rem', fontWeight: isActive ? 600 : 500 }}>
-                    {ws.name}
+                    {ws.name || (idx === 0 ? t("mainWorkspace") : t("newWorkspace"))}
                   </div>
                 </div>
                 {workspaces.length > 1 && (
