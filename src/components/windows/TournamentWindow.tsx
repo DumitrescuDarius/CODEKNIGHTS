@@ -168,7 +168,7 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div style={{ marginBottom: '4rem', textAlign: 'left' }}>
             <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', color: 'var(--text)', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
-              {t("tourna")}<span style={{ color: 'var(--accent)' }}>{t("ments")}</span>
+              {t("tourna" as any)}<span style={{ color: 'var(--accent)' }}>{t("ments" as any)}</span>
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ height: '2px', width: '40px', background: 'var(--accent)' }} />
@@ -219,7 +219,7 @@ export const TournamentWindow: React.FC<TournamentWindowProps> = React.memo(({ q
                         style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.2rem', color: 'inherit', outline: 'none', fontSize: '0.9rem', fontFamily: 'inherit' }}
                         placeholder="USERNAME..."
                       />
-                      <button onClick={addParticipant} className="btn" style={{ background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '0 1.5rem', borderRadius: '0.2rem', border: 'none' }}>{t("inviteBtn") || t("invite")}</button>
+                      <button onClick={addParticipant} className="btn" style={{ background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '0 1.5rem', borderRadius: '0.2rem', border: 'none' }}>{t("inviteBtn" as any) || t("invite")}</button>
                     </div>
                   </div>
                 </div>

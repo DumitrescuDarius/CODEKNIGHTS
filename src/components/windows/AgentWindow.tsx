@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Language } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
-import { BrainCircuit, Code2, Sparkles, Loader2, History, Plus, X, MessageSquare, Trash2 } from "lucide-react";
+import { Brain, Code2, Sparkles, Loader2, History, Plus, X, MessageSquare, Trash2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -155,20 +155,53 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
   const [showHistory, setShowHistory] = useState(false);
   const [provider, setProvider] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      const container = chatContainerRef.current;
+      container.scrollTop = container.scrollHeight;
+      
+      const timer = setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+      }, 50);
+      
+      return () => clearTimeout(timer);
     }
   }, [messages, isLoading]);
 
   useEffect(() => {
+    // Process any queued contexts
+    if (typeof window !== "undefined" && (window as any).ckAiContexts) {
+      const queue = (window as any).ckAiContexts;
+      if (queue.length > 0) {
+        setCustomContexts(prev => {
+          const next = [...prev];
+          queue.forEach((item: any) => {
+            if (!next.find(c => c.id === item.id)) {
+              next.push(item);
+            }
+          });
+          return next;
+        });
+      }
+    }
+
     const handleAddContext = (e: any) => {
       if (e.detail && e.detail.id && e.detail.content) {
         setCustomContexts(prev => {
           if (prev.find(c => c.id === e.detail.id)) return prev;
           return [...prev, { id: e.detail.id, title: e.detail.title || "Note", content: e.detail.content }];
         });
+        
+        // Also remove from global queue if present to keep it clean
+        if (typeof window !== "undefined" && (window as any).ckAiContexts) {
+          (window as any).ckAiContexts = (window as any).ckAiContexts.filter((item: any) => item.id !== e.detail.id);
+        }
       }
     };
     window.addEventListener('add_ai_context', handleAddContext);
@@ -300,10 +333,14 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
 
 
 
+  if (!mounted) {
+    return <div style={{ height: '100%', background: 'var(--bg)' }} />;
+  }
+
   if (isBattleActive) {
     return (
       <div style={{ padding: '1.5rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', background: 'var(--bg)' }}>
-        <Bot size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+        <Brain size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
         <p style={{ color: 'var(--text-muted)' }}>{t("agentDisabled")}</p>
       </div>
     );
@@ -391,7 +428,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
         {messages.length === 0 && !isLoading && (
           <div style={{ margin: 'auto', color: 'var(--text-muted)', textAlign: 'center', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BrainCircuit size={32} color="var(--text-muted)" />
+              <Brain size={32} color="var(--text-muted)" />
             </div>
             <p style={{ margin: 0 }}>{t("agentGreeting")}</p>
           </div>
@@ -412,7 +449,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
               letterSpacing: '0.05em',
               padding: '0 0.5rem'
             }}>
-              {msg.role === 'user' ? t('you') || 'You' : provider?.name || 'AI Assistant'}
+              {msg.role === 'user' ? t('you' as any) || 'You' : provider?.name || 'AI Assistant'}
             </div>
             <div style={{ 
               maxWidth: '85%',

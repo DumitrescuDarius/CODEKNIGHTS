@@ -52,7 +52,8 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session, t }) => {
     <div style={{ 
       padding: '2.5rem', 
       height: '100%', 
-      overflow: 'auto', 
+      overflowY: 'auto',
+      overflowX: 'hidden', 
       display: 'flex', 
       flexDirection: 'column', 
       background: 'linear-gradient(135deg, var(--bg) 0%, rgba(0,0,0,0.8) 100%)', 
@@ -67,7 +68,7 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session, t }) => {
         <div style={{ background: 'var(--accent)', color: '#000', padding: '0.5rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <MessageSquareHeart size={20} />
         </div>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text)' }}>{t("sendFeedbackTitle") || t("sendFeedback")}</h2>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text)' }}>{t("sendFeedback")}</h2>
       </div>
       
       <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.95rem', lineHeight: 1.5, zIndex: 1 }}>

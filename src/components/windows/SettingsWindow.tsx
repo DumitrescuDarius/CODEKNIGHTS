@@ -30,19 +30,25 @@ interface SettingsWindowProps {
   setWindowBorderThickness: (thickness: string) => void;
   navStyle: string;
   setNavStyle: (style: string) => void;
+  tabSize: number;
+  setTabSize: (size: number) => void;
+  insertSpaces: boolean;
+  setInsertSpaces: (val: boolean) => void;
   t: (key: TranslationKey) => string;
 }
 
 export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
   themeIndex, setThemeIndex, fontFamily, setFontFamily, fontSize, setFontSize,
   terminalFontSize, setTerminalFontSize, vimMode, setVimMode, uiLang, setUiLang,
-  animationSpeed, setAnimationSpeed, windowRadius, setWindowRadius, windowGap, setWindowGap, windowBorderThickness, setWindowBorderThickness, navStyle, setNavStyle, t
+  animationSpeed, setAnimationSpeed, windowRadius, setWindowRadius, windowGap, setWindowGap, windowBorderThickness, setWindowBorderThickness, navStyle, setNavStyle,
+  tabSize, setTabSize, insertSpaces, setInsertSpaces, t
 }) => {
   const handleExport = () => {
     const settings = {
       themeIndex, fontFamily, fontSize, terminalFontSize,
       vimMode, uiLang, animationSpeed, windowRadius,
-      windowGap, windowBorderThickness, navStyle
+      windowGap, windowBorderThickness, navStyle,
+      tabSize, insertSpaces
     };
     const jsonStr = JSON.stringify(settings, null, 2);
     const blob = new Blob([jsonStr], { type: 'text/plain' });
@@ -73,6 +79,8 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
         if (typeof parsed.windowGap === 'string') setWindowGap(parsed.windowGap);
         if (typeof parsed.windowBorderThickness === 'string') setWindowBorderThickness(parsed.windowBorderThickness);
         if (typeof parsed.navStyle === 'string') setNavStyle(parsed.navStyle);
+        if (typeof parsed.tabSize === 'number') setTabSize(parsed.tabSize);
+        if (typeof parsed.insertSpaces === 'boolean') setInsertSpaces(parsed.insertSpaces);
       } catch (err) {
         console.error("Failed to parse settings file", err);
         alert("Failed to parse settings file. Make sure it's a valid JSON.");
@@ -181,6 +189,138 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
         </div>
       </div>
 
+
+
+
+
+
+      {/* Indentation Settings */}
+      <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
+        <span className="settings-label">{t("indentation")}</span>
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              {t("indentSize")}
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {[2, 4, 8].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => setTabSize(size)}
+                  className="btn"
+                  style={{
+                    height: '44px',
+                    padding: '0 1.2rem',
+                    borderRadius: '0.4rem',
+                    border: `1px solid ${tabSize === size ? 'var(--accent)' : 'var(--line)'}`,
+                    color: tabSize === size ? 'var(--accent)' : 'var(--text)',
+                    boxShadow: tabSize === size ? `inset 0 0 0 2px var(--accent)` : 'none',
+                    transition: 'all 0.2s ease',
+                    background: 'rgba(255,255,255,0.02)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              {t("indentStyle")}
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {[
+                { label: t("spaces"), value: true },
+                { label: t("tabs"), value: false }
+              ].map((style) => (
+                <button
+                  key={style.label}
+                  onClick={() => setInsertSpaces(style.value)}
+                  className="btn"
+                  style={{
+                    height: '44px',
+                    padding: '0 1.2rem',
+                    borderRadius: '0.4rem',
+                    border: `1px solid ${insertSpaces === style.value ? 'var(--accent)' : 'var(--line)'}`,
+                    color: insertSpaces === style.value ? 'var(--accent)' : 'var(--text)',
+                    boxShadow: insertSpaces === style.value ? `inset 0 0 0 2px var(--accent)` : 'none',
+                    transition: 'all 0.2s ease',
+                    background: 'rgba(255,255,255,0.02)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  {style.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Keybindings */}
+      <div className="settings-group">
+        <span className="settings-label">{t("keybindings")}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button 
+            onClick={() => setVimMode(!vimMode)} 
+            className={`btn`} 
+            style={{ 
+              height: '44px',
+              padding: '0 1rem',
+              borderRadius: '0.4rem',
+              border: `1px solid ${vimMode ? 'var(--accent)' : 'var(--line)'}`, 
+              color: vimMode ? 'var(--accent)' : 'var(--text)',
+              boxShadow: vimMode ? `inset 0 0 0 2px var(--accent)` : 'none',
+              transition: 'all 0.2s ease',
+              background: 'rgba(255,255,255,0.02)',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.85rem'
+            }}
+          >
+            {vimMode ? t("vimModeOn") : t("vimModeOff")}
+          </button>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t("vimModeDesc")}</p>
+        </div>
+      </div>
+
+      {/* 4. Font Family */}
+      <div className="settings-group">
+        <span className="settings-label">{t("fontFamily")}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+          {FONTS.map((f) => (
+            <button 
+              key={f.name} 
+              onClick={() => setFontFamily(f.value)} 
+              className={`btn`}
+              style={{ 
+                fontFamily: f.value, 
+                fontSize: '0.8rem', 
+                textAlign: 'center', 
+                height: '44px',
+                padding: '0 0.8rem',
+                borderRadius: '0.4rem',
+                border: `1px solid ${fontFamily === f.value ? 'var(--accent)' : 'var(--line)'}`,
+                color: fontFamily === f.value ? 'var(--accent)' : 'var(--text)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: fontFamily === f.value ? `inset 0 0 0 2px var(--accent)` : 'none',
+                transition: 'all 0.2s ease',
+                background: 'rgba(255,255,255,0.02)',
+                cursor: 'pointer'
+              }}
+            >
+              {f.name}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* 2.5. Window Angles (Radius) */}
       <div className="settings-group" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
@@ -316,72 +456,13 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                 color: navStyle === n.value ? 'var(--accent)' : 'var(--text)',
                 boxShadow: navStyle === n.value ? `inset 0 0 0 2px var(--accent)` : 'none',
                 transition: 'all 0.2s ease',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'rgba(255, 255, 255, 0.02)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: '0.8rem'
               }}
             >
               {n.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {/* 3. Keybindings */}
-      <div className="settings-group">
-        <span className="settings-label">{t("keybindings")}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button 
-            onClick={() => setVimMode(!vimMode)} 
-            className={`btn`} 
-            style={{ 
-              height: '44px',
-              padding: '0 1rem',
-              borderRadius: '0.4rem',
-              border: `1px solid ${vimMode ? 'var(--accent)' : 'var(--line)'}`, 
-              color: vimMode ? 'var(--accent)' : 'var(--text)',
-              boxShadow: vimMode ? `inset 0 0 0 2px var(--accent)` : 'none',
-              transition: 'all 0.2s ease',
-              background: 'rgba(255,255,255,0.02)',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem'
-            }}
-          >
-            {vimMode ? t("vimModeOn") : t("vimModeOff")}
-          </button>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t("vimModeDesc")}</p>
-        </div>
-      </div>
-
-      {/* 4. Font Family */}
-      <div className="settings-group">
-        <span className="settings-label">{t("fontFamily")}</span>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
-          {FONTS.map((f) => (
-            <button 
-              key={f.name} 
-              onClick={() => setFontFamily(f.value)} 
-              className={`btn`}
-              style={{ 
-                fontFamily: f.value, 
-                fontSize: '0.8rem', 
-                textAlign: 'center', 
-                height: '44px',
-                padding: '0 0.8rem',
-                borderRadius: '0.4rem',
-                border: `1px solid ${fontFamily === f.value ? 'var(--accent)' : 'var(--line)'}`,
-                color: fontFamily === f.value ? 'var(--accent)' : 'var(--text)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: fontFamily === f.value ? `inset 0 0 0 2px var(--accent)` : 'none',
-                transition: 'all 0.2s ease',
-                background: 'rgba(255,255,255,0.02)',
-                cursor: 'pointer'
-              }}
-            >
-              {f.name}
             </button>
           ))}
         </div>

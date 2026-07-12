@@ -9,6 +9,7 @@ import { Language } from "../../types";
 loader.config({ monaco });
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
+import { registerAutocompletes } from "../../lib/monacoAutocomplete";
 
 interface EditorWindowProps {
   lang: Language;
@@ -43,6 +44,10 @@ interface EditorWindowProps {
     complexityExplanation?: string;
   } | null;
   isAnalyzing?: boolean;
+  tabSize: number;
+  insertSpaces: boolean;
+  setFontSize: (size: number) => void;
+  setTerminalFontSize: (size: number) => void;
 }
 
 export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
@@ -50,9 +55,19 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
   showTerminal, setShowTerminal, terminalHeight, startTerminalResizing,
   stdin, setStdin, terminalOutput, terminalFontSize, vimMode,
   vimStatusBarRef, editorRef, langSelectorOpen, setLangSelectorOpen,
-  cursorPos, setCursorPos, compileErrors, t, isResizing, analysis, isAnalyzing
+  cursorPos, setCursorPos, compileErrors, t, isResizing, analysis, isAnalyzing,
+  tabSize, insertSpaces, setFontSize, setTerminalFontSize
 }) => {
   const monaco = useMonaco();
+
+  useEffect(() => {
+    if (monaco) {
+      const completionRegistration = registerAutocompletes(monaco);
+      return () => {
+        completionRegistration.dispose();
+      };
+    }
+  }, [monaco]);
 
   const editorOptions = useMemo(() => ({
     fontSize: fontSize, 
@@ -88,8 +103,11 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
     autoSurround: "languageDefined" as const, 
     bracketPairColorization: { enabled: true }, 
     wordBasedSuggestions: "currentDocument" as const, 
-    wordBasedSuggestionsOnlySameLanguage: true 
-  }), [fontSize, fontFamily, isResizing]);
+    wordBasedSuggestionsOnlySameLanguage: true,
+    tabSize: tabSize,
+    insertSpaces: insertSpaces,
+    detectIndentation: false
+  }), [fontSize, fontFamily, isResizing, tabSize, insertSpaces]);
 
   useEffect(() => {
     if (!isResizing && editorRef.current) {
@@ -153,6 +171,18 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
     }
   }, [code, editorRef]);
 
+  useEffect(() => {
+    if (editorRef.current) {
+      const model = editorRef.current.getModel();
+      if (model) {
+        model.updateOptions({
+          tabSize: tabSize,
+          insertSpaces: insertSpaces
+        });
+      }
+    }
+  }, [tabSize, insertSpaces, editorRef, lang]);
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
       <div style={{ flex: 1, minHeight: 0, position: 'relative', background: 'var(--bg)' }}>
@@ -175,6 +205,27 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
             editor.onDidChangeCursorPosition((e: any) => {
               setCursorPos({ ln: e.position.lineNumber, col: e.position.column });
             });
+
+            // Initialize model options
+            const model = editor.getModel();
+            if (model) {
+              model.updateOptions({
+                tabSize: tabSize,
+                insertSpaces: insertSpaces
+              });
+            }
+
+            // Ensure any future models also get updated options
+            editor.onDidChangeModel(() => {
+              const m = editor.getModel();
+              if (m) {
+                m.updateOptions({
+                  tabSize: tabSize,
+                  insertSpaces: insertSpaces
+                });
+              }
+            });
+
             // Force layout calculation multiple times to handle animations and initial rendering
             setTimeout(() => editor.layout(), 50);
             setTimeout(() => editor.layout(), 200);
@@ -190,14 +241,14 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
           <div className="terminal-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <TerminalIcon size={12} />
-              Terminal
+              {t("terminalLabel")}
             </div>
             <button onClick={() => setShowTerminal(false)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer' }}><X size={12} /></button>
           </div>
           <div className="terminal-split">
             <div className="terminal-section">
               <div className="terminal-label">{t("stdin")}</div>
-              <textarea className="terminal-input" style={{ fontSize: `${terminalFontSize}px`, fontFamily: fontFamily }} placeholder="Input..." value={stdin} onChange={(e) => setStdin(e.target.value)} />
+              <textarea className="terminal-input" style={{ fontSize: `${terminalFontSize}px`, fontFamily: fontFamily }} placeholder={t("stdin") || "Input..."} value={stdin} onChange={(e) => setStdin(e.target.value)} />
             </div>
             <div className="terminal-section">
               <div className="terminal-label">{t("stdout")}</div>
@@ -211,14 +262,13 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
 
       <div className="ide-status">
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingRight: '1rem', borderRight: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', paddingRight: '1rem' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Ln {cursorPos.ln}, Col {cursorPos.col}</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{fontSize}px</span>
           </div>
           {vimMode && <div className="vim-status-bar" ref={vimStatusBarRef} style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }} />}
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <button onClick={() => setShowTerminal(!showTerminal)} className="twm-btn" style={{ color: showTerminal ? 'var(--accent)' : 'inherit' }} title="Toggle Terminal">
+          <button onClick={() => setShowTerminal(!showTerminal)} className="twm-btn" style={{ color: showTerminal ? 'var(--accent)' : 'inherit' }} title={t("toggleTerminal")}>
             <TerminalIcon size={14} />
           </button>
           <div style={{ position: 'relative' }}>

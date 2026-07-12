@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, BrainCircuit, MessageSquare } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -130,6 +130,37 @@ const DEFAULT_QUESTION: Question = {
   ])
 };
 
+const changeCodeIndentation = (
+  code: string,
+  oldTabSize: number,
+  newTabSize: number,
+  oldUseSpaces: boolean,
+  newUseSpaces: boolean
+): string => {
+  return code.split('\n').map(line => {
+    const match = line.match(/^([ \t]+)/);
+    if (!match) return line;
+    const leading = match[1];
+    const content = line.substring(leading.length);
+    
+    let indentLevel = 0;
+    if (oldUseSpaces) {
+      const spacesCount = leading.length;
+      indentLevel = Math.round(spacesCount / oldTabSize);
+    } else {
+      const tabsCount = (leading.match(/\t/g) || []).length;
+      const spacesCount = (leading.match(/ /g) || []).length;
+      indentLevel = tabsCount + Math.round(spacesCount / oldTabSize);
+    }
+    
+    const newIndent = newUseSpaces 
+      ? " ".repeat(indentLevel * newTabSize) 
+      : "\t".repeat(indentLevel);
+      
+    return newIndent + content;
+  }).join('\n');
+};
+
 const MainMenu: React.FC = () => {
   const { data: session, update: updateSession } = useSession();
   const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
@@ -144,10 +175,40 @@ const MainMenu: React.FC = () => {
   const [fontFamily, setFontFamily] = useState(FONTS[0].value);
   const [terminalFontSize, setTerminalFontSize] = useState(13);
   const [vimMode, setVimMode] = useState(false);
+  const [tabSize, setTabSize] = useState(4);
+  const [insertSpaces, setInsertSpaces] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
   const [draggedWindow, setDraggedWindow] = useState<WindowId | null>(null);
   const [langSelectorOpen, setLangSelectorOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  const prevTabSizeRef = useRef(tabSize);
+  const prevInsertSpacesRef = useRef(insertSpaces);
+
+  useEffect(() => {
+    if (!isLoaded) {
+      prevTabSizeRef.current = tabSize;
+      prevInsertSpacesRef.current = insertSpaces;
+      return;
+    }
+
+    const sizeChanged = prevTabSizeRef.current !== tabSize;
+    const styleChanged = prevInsertSpacesRef.current !== insertSpaces;
+
+    if (sizeChanged || styleChanged) {
+      const oldSize = prevTabSizeRef.current;
+      const oldStyle = prevInsertSpacesRef.current;
+      const newSize = tabSize;
+      const newStyle = insertSpaces;
+
+      setCode(prevCode => {
+        if (!prevCode) return prevCode;
+        return changeCodeIndentation(prevCode, oldSize, newSize, oldStyle, newStyle);
+      });
+      prevTabSizeRef.current = tabSize;
+      prevInsertSpacesRef.current = insertSpaces;
+    }
+  }, [tabSize, insertSpaces, isLoaded]);
 
   const [activeWorkspace, setActiveWorkspace] = useState(0);
   const workspacesRef = useRef<{ openWindows: WindowId[], windowFlexes: number[] }[]>(
@@ -299,6 +360,7 @@ const MainMenu: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeDuel, setActiveDuel] = useState<Duel | null>(null);
   const activeDuelRef = useRef<Duel | null>(null);
+  const wasSignedInRef = useRef(false);
 
   const handleSetThemeIndex = (idx: number) => {
     setThemeIndex(idx);
@@ -313,6 +375,14 @@ const MainMenu: React.FC = () => {
 
   useEffect(() => {
     if (session?.user && !isGuest) {
+      if (!wasSignedInRef.current) {
+        setOpenWindows(["editor"]);
+        setWindowFlexes([1]);
+        setMaximizedWindow(null);
+        setActiveWindow("editor");
+        wasSignedInRef.current = true;
+      }
+
       const dbTheme = (session.user as any).themeIndex;
       if (dbTheme !== undefined && dbTheme !== null) {
         setThemeIndex(dbTheme);
@@ -325,6 +395,8 @@ const MainMenu: React.FC = () => {
       } else {
         setShowUsernamePrompt(false);
       }
+    } else {
+      wasSignedInRef.current = false;
     }
   }, [session, isGuest]);
 
@@ -729,7 +801,10 @@ const MainMenu: React.FC = () => {
 
   const pollDuel = useCallback(async () => {
     const currentActiveDuel = activeDuelRef.current;
-    if (!currentActiveDuel || currentActiveDuel.status === "FINISHED") return;
+    if (!currentActiveDuel) return;
+    if (currentActiveDuel.status === "FINISHED" && currentActiveDuel.hostRatingChange !== null && currentActiveDuel.hostRatingChange !== undefined) {
+      return;
+    }
     try {
       const res = await fetch(`/api/duels/poll?pin=${currentActiveDuel.pin}&t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
@@ -742,9 +817,11 @@ const MainMenu: React.FC = () => {
         if (data.id) {
           // Merge partial polled data with the existing full duel object, but preserve live socket stats
           const current = activeDuelRef.current;
+          const mergedStatus = (current && current.status === "FINISHED") ? "FINISHED" : data.status;
           const updatedDuel = { 
             ...current, 
             ...data,
+            status: mergedStatus,
             hostCodeLength: current.hostCodeLength ?? data.hostCodeLength,
             hostLineCount: current.hostLineCount ?? data.hostLineCount,
             hostTestsPassed: current.hostTestsPassed ?? data.hostTestsPassed,
@@ -1419,7 +1496,8 @@ const MainMenu: React.FC = () => {
                 solveTime: time * 1000,
                 complexityScore: totalComplexity,
                 totalPenalty: totalPenalty,
-                code: code
+                code: code,
+                guestUserId: guestId || undefined
             })
           });
         }
@@ -1626,7 +1704,7 @@ const MainMenu: React.FC = () => {
           fetch("/api/duels/submit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code })
+            body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code, guestUserId: guestId || undefined })
           }).catch(err => console.error("Failed to terminate duel:", err));
         }
       } else {
@@ -1677,6 +1755,25 @@ const MainMenu: React.FC = () => {
       }
     });
   }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow, setMaximizedWindow, setActiveWindow, setOpenWindows, setWindowFlexes, setActiveQuestion, setTestResults, setShowQuitConfirmation, setShowCancelDuel, setShowLimitWarning]);
+
+  const openAgentWindow = useCallback(() => {
+    setOpenWindows(prev => {
+      if (prev.includes("agent")) {
+        setActiveWindow("agent");
+        return prev;
+      }
+      if (prev.length >= 4) {
+        setShowLimitWarning(true);
+        return prev;
+      }
+      setWindowFlexes(flexes => [...flexes, 1]);
+      if (maximizedWindow) setMaximizedWindow(null);
+      setActiveWindow("agent");
+      const nextWindows: WindowId[] = [...prev, "agent"];
+      if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
+      return nextWindows;
+    });
+  }, [maximizedWindow, setOpenWindows, setWindowFlexes, setActiveWindow, setShowLimitWarning]);
 
   const moveWindow = (id: WindowId, direction: 'left' | 'right') => {
     ignoreHoverRef.current = true;
@@ -1866,6 +1963,10 @@ const MainMenu: React.FC = () => {
             isResizing={isDragging}
             analysis={analysis}
             isAnalyzing={isAnalyzing}
+            tabSize={tabSize}
+            insertSpaces={insertSpaces}
+            setFontSize={setFontSize}
+            setTerminalFontSize={setTerminalFontSize}
           />
         );
       case "settings":
@@ -1894,6 +1995,8 @@ const MainMenu: React.FC = () => {
               setNavStyle(n);
               localStorage.setItem('navStyle', n);
             }}
+            tabSize={tabSize} setTabSize={setTabSize}
+            insertSpaces={insertSpaces} setInsertSpaces={setInsertSpaces}
             t={t}
           />
         );
@@ -1923,7 +2026,7 @@ const MainMenu: React.FC = () => {
                       await fetch("/api/duels/submit", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code })
+                        body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code, guestUserId: guestId || undefined })
                       });
                     } catch (err) {
                         console.error("Failed to terminate duel:", err);
@@ -1949,7 +2052,7 @@ const MainMenu: React.FC = () => {
         );
       case "notes":
         return (
-          <NotesWindow t={t} />
+          <NotesWindow t={t} openAgentWindow={openAgentWindow} setCode={setCode} />
         );
       case "problem":
         const currentUserId = session?.user ? (session.user as any).id : "guest";
@@ -2004,7 +2107,7 @@ const MainMenu: React.FC = () => {
                   const res = await fetch("/api/duels/submit", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code })
+                    body: JSON.stringify({ duelId: currentDuel.id, surrender: true, code: code, guestUserId: guestId || undefined })
                   });
                   const updatedDuel = await res.json();
                   window.dispatchEvent(new CustomEvent("duel_update_required", { detail: currentDuel.id }));
@@ -2126,7 +2229,7 @@ const MainMenu: React.FC = () => {
     .filter(id => {
       // Only allow certain windows if not logged in
       if (!session) {
-        return ["editor", "settings", "battle", "problem"].includes(id);
+        return ["editor", "settings", "battle", "problem", "privacy", "terms", "feedback"].includes(id);
       }
       return true;
     })
@@ -2198,7 +2301,7 @@ const MainMenu: React.FC = () => {
             showWorkspaceWarning && { id: 'workspace', color: '#ff5555', content: <span>You need at least one workspace available.</span> },
             showWrongAnswerPopup && { id: 'wrong', color: '#ff5555', content: <span>Wrong Answer! Check your logic.</span> },
             showInviteSentPopup && { id: 'invite', color: 'var(--text-muted)', content: <span>Invite sent! Waiting for response...</span> },
-            showWaitingPopup && { id: 'waiting', color: 'var(--text-muted)', content: <span>{`Waiting for opponent... PIN: ${activeDuel?.pin || ''}`}</span> },
+
             showOpponentFoundPopup && { id: 'opponent', color: '#50fa7b', content: <span>Opponent found!</span> },
             incomingInvite && {
               id: 'incoming',
@@ -2352,7 +2455,7 @@ const MainMenu: React.FC = () => {
           </ul>
           <div className="nav-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             {(session && !isGuest) && (
-              <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><BrainCircuit size={20} /></button>
+              <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><Brain size={20} /></button>
             )}
             <button onClick={() => toggleWindow("settings")} style={{ background: 'transparent', border: 'none', color: '#f1fa8c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
             {(session || isGuest) ? (
@@ -2453,11 +2556,11 @@ const MainMenu: React.FC = () => {
             if (id === 'tutorial') icon = <BookOpen size={16} />;
             if (id === 'terms') icon = <FileText size={16} />;
             if (id === 'privacy') icon = <Shield size={16} />;
-            if (id === 'agent') icon = <BrainCircuit size={16} />;
+            if (id === 'agent') icon = <Brain size={16} />;
             if (id === 'feedback') icon = <MessageSquare size={16} />;
             if (id.startsWith('profile')) icon = <User size={16} />;
             const rawId = id.startsWith('profile_') ? 'profile' : id;
-            const displayId = navItem?.label || (rawId === 'editor' ? t("editorLabel") : rawId === 'admin' ? t("admin") : rawId === 'agent' ? t("agentsTitle") : rawId === 'problem' ? t("problemLabel") : rawId === 'tutorial' ? t("tutorial") : rawId === 'profile' ? t("profileOverview") : rawId === 'tournaments' ? t("tourna")+t("ments") : rawId);
+            const displayId = navItem?.label || (rawId === 'editor' ? t("editorLabel") : rawId === 'admin' ? t("admin") : rawId === 'agent' ? t("agentsTitle") : rawId === 'problem' ? t("problem") : rawId === 'tutorial' ? t("tutorial") : rawId === 'profile' ? t("profileOverview") : rawId === 'tournaments' ? t("tournaments") : rawId);
             const isMax = id === maximizedWindow;
             const originalIdx = openWindows.indexOf(id);
             const rwIdx = renderedWindows.indexOf(id);

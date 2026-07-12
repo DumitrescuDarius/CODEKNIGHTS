@@ -142,8 +142,8 @@ export async function POST(req: NextRequest) {
         const hasGuest = isHostGuest || isGuestGuest;
 
         const eloChange = Math.floor(Math.random() * 21) + 50;
-        const hostRatingChange = (isDraw || hasGuest) ? 0 : (hostWon ? eloChange : -eloChange);
-        const guestRatingChange = (isDraw || hasGuest) ? 0 : (hostWon ? -eloChange : eloChange);
+        const hostRatingChange = isDraw ? 0 : (hostWon ? eloChange : -eloChange);
+        const guestRatingChange = isDraw ? 0 : (hostWon ? -eloChange : eloChange);
         let finishReason = "SOLVED";
         if (isDraw) finishReason = "DRAW";
         else if (hostSurrendered || guestSurrendered) finishReason = isTimedOut ? "TIMEOUT" : "SURRENDERED";
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
                 include: { host: true, guest: true, question: true }
             }) as any;
 
-            if (!isDraw && !hasGuest) {
+            if (!isDraw) {
                 const winnerId = hostRatingChange > 0 ? updatedDuel.hostId : updatedDuel.guestId;
                 const loserId = hostRatingChange > 0 ? updatedDuel.guestId : updatedDuel.hostId;
                 const absEloChange = Math.abs(hostRatingChange);

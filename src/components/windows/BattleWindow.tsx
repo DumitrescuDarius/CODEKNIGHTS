@@ -3,14 +3,45 @@
 import React, { useState, useEffect } from "react";
 import { Question } from "../../types";
 import { signIn } from "next-auth/react";
-import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search, Flame, Github, ArrowLeft } from "lucide-react";
+import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search, Flame, Github, ArrowLeft, Sparkles } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const FAKE_PLAYERS = [
   "ShadowKnight", "ByteSlayer", "NullPointer", "CodeWizard", "AlgoPro", 
   "VimMaster", "ReactGod", "O(n)Ninja", "SyntaxTerror", "ScriptKiddie",
   "MergeConflict", "DevOpsGuru", "StackOverflowRep", "BugMagnet", "MemoryLeak"
+];
+
+const BUBBLE_OPTIONS = [
+  {
+    id: "bughunter",
+    name: "BUGHUNTER",
+    description: "Hunt down hidden bugs in real-time. Gain penalty reduction for clean, compiler-error-free submissions.",
+    color: "#50fa7b",
+    icon: <i className="nf nf-fa-bug"></i>
+  },
+  {
+    id: "hackbounty",
+    name: "HACKBOUNTY",
+    description: "High-stakes battles. Win matches within the ideal time complexity constraints to collect bonus rating bounties.",
+    color: "#ffb86c",
+    icon: <i className="nf nf-fa-coins"></i>
+  },
+  {
+    id: "mlmages",
+    name: "MLMAGES",
+    description: "Cast code generation spells. Harness AI-powered snippets to solve complex algorithms at lightning speed.",
+    color: "#bd93f9",
+    icon: <i className="nf nf-fa-hat_wizard"></i>
+  },
+  {
+    id: "codeknights",
+    name: "CODEKNIGHTS",
+    description: "The ultimate tournament. Face off in a standard bracket format to claim the title of Grand Master.",
+    color: "#38bdf8",
+    icon: <i className="nf nf-fa-chess_knight"></i>
+  }
 ];
 
 interface BattleWindowProps {
@@ -35,6 +66,7 @@ interface BattleWindowProps {
   timeLeft: number | null;
   showSignInOptions: boolean;
   setShowSignInOptions: (val: boolean) => void;
+  userStats?: any;
 }
 
 export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
@@ -43,6 +75,14 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   showSignInOptions, setShowSignInOptions
 }) => {
   const [joinPin, setJoinPin] = useState("");
+  const [showBubbles, setShowBubbles] = useState(false);
+  const [selectedBubble, setSelectedBubble] = useState<string | null>(null);
+  const [activePath, setActivePath] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ck_active_path") || "codeknights";
+    }
+    return "codeknights";
+  });
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [isQuickMatchMode, setIsQuickMatchMode] = useState(false);
@@ -59,6 +99,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   }, [isQuickMatchMode]);
 
   const isAdmin = !!session?.user?.isAdmin;
+  const themeColor = activePath === "bughunter" ? "#50fa7b" : activePath === "hackbounty" ? "#ffb86c" : activePath === "mlmages" ? "#bd93f9" : "#38bdf8";
 
   // Automatically reset if duel finishes
   useEffect(() => {
@@ -494,39 +535,340 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   }
 
   return (
-    <div style={{ padding: '2.5rem 1.5rem', height: '100%', overflow: 'auto', position: 'relative' }}>
+    <div style={{ padding: '2.5rem 1.5rem', height: '100%', overflow: 'hidden', position: 'relative', containerType: 'inline-size' }}>
+      {/* Top Left Path Selector Button */}
+      {(!activeDuel || activeDuel.status !== 'ACTIVE') && !isCreating && !isJoining && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowBubbles(!showBubbles);
+            if (showBubbles) setSelectedBubble(null);
+          }}
+          style={{
+            position: 'absolute',
+            top: '1.25rem',
+            left: '1.25rem',
+            width: showBubbles ? '38px' : '48px',
+            height: showBubbles ? '38px' : '48px',
+            borderRadius: '50%',
+            background: 'rgba(30, 30, 40, 0.6)',
+            border: `1.5px solid ${themeColor}`,
+            color: themeColor,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.12s ease',
+            zIndex: 110,
+            boxShadow: `0 0 10px ${themeColor}33`
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.08)';
+            e.currentTarget.style.boxShadow = `0 0 15px ${themeColor}66`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = `0 0 10px ${themeColor}33`;
+          }}
+          title="Select Path"
+        >
+          {showBubbles ? <X size={16} /> : (
+            <span style={{ fontSize: '1.6rem', display: 'flex', alignItems: 'center' }}>
+              {BUBBLE_OPTIONS.find(o => o.id === activePath)?.icon || <i className="nf nf-fa-chess_knight"></i>}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Bubble Options Blur Overlay */}
+      <AnimatePresence>
+        {showBubbles && (
+          <>
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0, 0, 0, 0.25)',
+                backdropFilter: 'blur(3px)',
+                zIndex: 90,
+              }}
+              onClick={() => {
+                setShowBubbles(false);
+                setSelectedBubble(null);
+              }}
+            />
+
+            {/* Radial Bubbles & Details */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 100 }}>
+              {BUBBLE_OPTIONS.map((b, idx) => {
+                const radius = 120;
+                const buttonCenter = { x: 39, y: 39 };
+                const angles = [0.05, 0.52, 0.99, 1.47];
+                const angle = angles[idx];
+                const bubbleX = buttonCenter.x + radius * Math.cos(angle) - 22;
+                const bubbleY = buttonCenter.y + radius * Math.sin(angle) - 22;
+
+                return (
+                  <motion.button
+                    key={b.id}
+                    onClick={() => {
+                      setSelectedBubble(null);
+                      setActivePath(b.id);
+                      localStorage.setItem("ck_active_path", b.id);
+                      setShowBubbles(false);
+                    }}
+                    onMouseEnter={() => {
+                      setSelectedBubble(b.id);
+                    }}
+                    onMouseLeave={() => {
+                      setSelectedBubble(null);
+                    }}
+                    whileHover={{ scale: 1.1, boxShadow: `0 0 20px ${b.color}` }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ 
+                      opacity: 0, 
+                      scale: 0.2, 
+                      x: buttonCenter.x - 22 - bubbleX, 
+                      y: buttonCenter.y - 22 - bubbleY 
+                    }}
+                    animate={{ 
+                      opacity: 1, 
+                      scale: 1, 
+                      x: 0, 
+                      y: 0 
+                    }}
+                    exit={{ 
+                      opacity: 0, 
+                      scale: 0.2, 
+                      x: buttonCenter.x - 22 - bubbleX, 
+                      y: buttonCenter.y - 22 - bubbleY 
+                    }}
+                    transition={{ 
+                      type: "spring", 
+                      stiffness: 280, 
+                      damping: 20,
+                      delay: idx * 0.015 
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: bubbleX,
+                      top: bubbleY,
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      background: 'rgba(30, 30, 40, 0.95)',
+                      border: `2px solid ${b.color}`,
+                      color: '#fff',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      gap: '0.15rem',
+                      boxShadow: `0 0 10px ${b.color}22`,
+                      transition: 'box-shadow 0.3s ease',
+                      pointerEvents: 'auto'
+                    }}
+                  >
+                    <span style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center' }}>{b.icon}</span>
+                  </motion.button>
+                );
+              })}
+
+              {/* Selected Bubble Detail Card */}
+              {selectedBubble && (() => {
+                const hoveredIdx = BUBBLE_OPTIONS.findIndex(b => b.id === selectedBubble);
+                const hoveredOption = BUBBLE_OPTIONS[hoveredIdx];
+                const radius = 120;
+                const buttonCenter = { x: 39, y: 39 };
+                const angles = [0.05, 0.52, 0.99, 1.47];
+                const angle = angles[hoveredIdx] || 0;
+                const bubbleX = buttonCenter.x + radius * Math.cos(angle) - 22;
+                const bubbleY = buttonCenter.y + radius * Math.sin(angle) - 22;
+                
+                return (
+                  <motion.div
+                    key={selectedBubble}
+                    initial={{ opacity: 0, scale: 0.9, x: -10 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, x: -10 }}
+                    transition={{ duration: 0.15 }}
+                    style={{
+                      position: 'absolute',
+                      left: `${bubbleX + 54}px`,
+                      top: `${bubbleY - 20}px`,
+                      background: 'rgba(20, 20, 30, 0.95)',
+                      border: `1px solid ${hoveredOption?.color}`,
+                      borderRadius: '0.8rem',
+                      padding: '1rem',
+                      maxWidth: '260px',
+                      boxShadow: `0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px ${hoveredOption?.color}22`,
+                      pointerEvents: 'auto',
+                      zIndex: 105
+                    }}
+                  >
+                    <h4 style={{ 
+                      margin: '0 0 0.5rem 0', 
+                      color: hoveredOption?.color,
+                      fontSize: '0.9rem',
+                      fontWeight: 900,
+                      letterSpacing: '0.05em'
+                    }}>
+                      {hoveredOption?.name}
+                    </h4>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.4 }}>
+                      {hoveredOption?.description}
+                    </p>
+                  </motion.div>
+                );
+              })()}
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
       {(isCreating || isJoining) && (
         <div style={{ position: 'absolute', inset: 0, background: 'var(--bg)', zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
           <div className="loading-spinner" style={{ width: '40px', height: '40px' }} />
           <div style={{ color: 'var(--accent)', fontWeight: 800, letterSpacing: '0.1em' }}>
-            {isCreating ? t("joining") : t("joining")}
+            {isCreating ? "GENERATING..." : t("joining")}
           </div>
         </div>
       )}
-      <div style={{ maxWidth: '800px', margin: '0 auto', opacity: (isCreating || isJoining) ? 0 : 1, pointerEvents: (isCreating || isJoining) ? 'none' : 'auto', transition: 'opacity 0.2s ease' }}>
-        <div style={{ marginBottom: '3.5rem', textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-            <Sword size={32} color="var(--accent)" />
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>{t("battle")}<span style={{ color: 'var(--accent)' }}>{t("arena")}</span></h2>
-          </div>
-          <div style={{ height: '2px', width: '60px', background: 'var(--accent)', margin: '0.5rem auto 1.5rem' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
-              {t("secureCombat")}
-            </p>
-            {(userStats?.currentStreak !== undefined && session) && (
-               <div title={`Current Win Streak: ${userStats.currentStreak}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: userStats.currentStreak > 0 ? '#ffb86c' : 'var(--text-muted)', filter: userStats.currentStreak > 0 ? 'drop-shadow(0 0 8px rgba(255, 184, 108, 0.4))' : 'none', background: userStats.currentStreak > 0 ? 'rgba(255, 184, 108, 0.1)' : 'rgba(255,255,255,0.05)', padding: '0.5rem 1.25rem', borderRadius: '2rem', border: userStats.currentStreak > 0 ? '1px solid rgba(255, 184, 108, 0.2)' : '1px solid var(--line)' }}>
-                  <Flame size={20} fill={userStats.currentStreak > 0 ? "#ffb86c" : "none"} />
-                  <span style={{ fontWeight: 900, fontSize: '1rem', letterSpacing: '0.05em' }}>{userStats.currentStreak} {t("currentStreak")?.toUpperCase() || "STREAK"}</span>
+      
+      <div style={{ 
+        maxWidth: '800px', 
+        margin: '0 auto', 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'space-between', 
+        opacity: (isCreating || isJoining) ? 0 : 1, 
+        pointerEvents: (isCreating || isJoining) ? 'none' : 'auto', 
+        transition: 'opacity 0.2s ease' 
+      }}>
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+          {/* Dynamic Header Titles based on path */}
+          {activePath === "bughunter" ? (
+            <h2 style={{ fontSize: 'clamp(1.8rem, 10cqw, 3.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>BUG<span style={{ color: '#50fa7b' }}>HUNTER</span></h2>
+          ) : activePath === "hackbounty" ? (
+            <h2 style={{ fontSize: 'clamp(1.8rem, 10cqw, 3.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>HACK<span style={{ color: '#ffb86c' }}>BOUNTY</span></h2>
+          ) : activePath === "mlmages" ? (
+            <h2 style={{ fontSize: 'clamp(1.8rem, 10cqw, 3.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>ML<span style={{ color: '#bd93f9' }}>MAGES</span></h2>
+          ) : (
+            <h2 style={{ fontSize: 'clamp(1.8rem, 10cqw, 3.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>CODE<span style={{ color: '#38bdf8' }}>KNIGHTS</span></h2>
+          )}
+          {/* Win streak under the title */}
+          {session && (() => {
+             const streak = activePath === "codeknights" ? (userStats?.currentStreak || 0) : 0;
+             return (
+               <div title={`Current Win Streak: ${streak}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: streak > 0 ? '#ffb86c' : 'var(--text-muted)', filter: streak > 0 ? 'drop-shadow(0 0 8px rgba(255, 184, 108, 0.4))' : 'none', background: streak > 0 ? 'rgba(255, 184, 108, 0.1)' : 'rgba(255,255,255,0.05)', padding: '0.5rem 1.25rem', borderRadius: '2rem', border: streak > 0 ? '1px solid rgba(255, 184, 108, 0.2)' : '1px solid var(--line)', marginTop: '0.5rem' }}>
+                  <Flame size={20} fill={streak > 0 ? "#ffb86c" : "none"} />
+                  <span style={{ fontWeight: 900, fontSize: '1rem', letterSpacing: '0.05em' }}>{streak} {t("currentStreak")?.toUpperCase() || "STREAK"}</span>
                </div>
-            )}
-          </div>
+             );
+          })()}
         </div>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+        {/* Unified Setup Controls for All Paths */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', paddingBottom: '1rem' }}>
+          {/* Game Mode Description */}
+          <div style={{ maxWidth: '600px', margin: '0 auto 0.5rem', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+              {activePath === "bughunter" 
+                ? "Race in a 1v1 challenge to fix broken code as quickly as possible while making the least amount of changes."
+                : activePath === "hackbounty"
+                ? "Compete 1v1 to inspect given algorithms and secure rating bounties by finding critical edge cases in the code."
+                : activePath === "mlmages"
+                ? "Engage in a 1v1 machine learning competition to see who can build the model with the better prediction accuracy."
+                : "Face off in a 1v1 combat duel to solve complex programming problems faster and write more efficient solutions than your opponent."}
+            </p>
+          </div>
+
+          {/* Quick Battle Button */}
+          <button 
+            onClick={async () => {
+              if (activePath !== "codeknights") return;
+              if (startQuickMatch) {
+                setIsQuickMatchMode(true);
+                try {
+                  await startQuickMatch();
+                } catch (e) {
+                  setIsQuickMatchMode(false);
+                }
+                return;
+              }
+              startBattle();
+            }}
+            disabled={isJoining || isCreating}
+            style={{ 
+              width: '100%', 
+              background: themeColor, 
+              color: '#000', 
+              border: 'none', 
+              padding: '1.5rem', 
+              borderRadius: '0.4rem', 
+              fontWeight: 900, 
+              fontSize: '1.1rem', 
+              cursor: activePath === "codeknights" ? 'pointer' : 'not-allowed', 
+              letterSpacing: '0.1em',
+              boxShadow: `0 0 25px ${themeColor}33`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1rem',
+              transition: 'all 0.2s ease',
+              opacity: activePath === "codeknights" ? 1 : 0.6
+            }}
+            onMouseEnter={(e) => { if (activePath === "codeknights") e.currentTarget.style.transform = 'translateY(-2px)' }}
+            onMouseLeave={(e) => { if (activePath === "codeknights") e.currentTarget.style.transform = 'translateY(0)' }}
+          >
+            <Sword size={22} fill="currentColor" /> {activePath === "bughunter" ? "START DEBUG MATCH" : activePath === "hackbounty" ? "START BOUNTY DUEL" : activePath === "mlmages" ? "START GENERATION MATCH" : t("startQuickBattle").toUpperCase()}
+          </button>
+
+          {/* Generate Uplink Button */}
+          <button 
+            onClick={async () => { 
+              if (activePath !== "codeknights") return;
+              setIsCreating(true);
+              await createDuel(); 
+              setShowWaitingPopup(true);
+              setIsCreating(false);
+            }}
+            disabled={isCreating || isJoining}
+            style={{ 
+              width: '100%', 
+              background: 'rgba(255,255,255,0.05)', 
+              color: themeColor, 
+              border: `1px solid ${themeColor}33`, 
+              padding: '1.5rem', 
+              borderRadius: '0.4rem', 
+              fontWeight: 900, 
+              fontSize: '1.1rem', 
+              cursor: activePath === "codeknights" ? 'pointer' : 'not-allowed', 
+              letterSpacing: '0.1em',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1rem',
+              transition: 'all 0.2s ease',
+              opacity: activePath === "codeknights" ? 1 : 0.6
+            }}
+            onMouseEnter={(e) => { if (activePath === "codeknights") e.currentTarget.style.transform = 'translateY(-2px)' }}
+            onMouseLeave={(e) => { if (activePath === "codeknights") e.currentTarget.style.transform = 'translateY(0)' }}
+          >
+            <Users size={22} /> {isCreating ? "GENERATING..." : t("createUplink").toUpperCase()}
+          </button>
+
+          {/* Join Section */}
+          <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
             <div style={{ position: 'relative', flex: 1 }}>
-              <Hash size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)', opacity: 0.7 }} />
+              <Hash size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: themeColor, opacity: 0.7 }} />
               <input 
                 type="text" 
                 maxLength={6}
@@ -548,13 +890,14 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   letterSpacing: '0.2em',
                   fontFamily: 'inherit'
                 }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+                onFocus={(e) => e.target.style.borderColor = themeColor}
                 onBlur={(e) => e.target.style.borderColor = 'var(--line)'}
               />
             </div>
             <button 
               onClick={async () => {
                 if (!joinPin) return;
+                if (activePath !== "codeknights") return;
                 setIsJoining(true);
                 await joinDuel(joinPin);
                 setIsJoining(false);
@@ -562,13 +905,13 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               disabled={isJoining || isCreating}
               style={{ 
                 height: '56px', 
-                background: 'var(--text)', 
-                color: '#000', 
-                border: 'none', 
+                background: activePath === "codeknights" ? 'var(--text)' : 'rgba(255,255,255,0.05)', 
+                color: activePath === "codeknights" ? '#000' : 'var(--text-muted)', 
+                border: activePath === "codeknights" ? 'none' : '1px solid var(--line)', 
                 fontWeight: 900, 
                 padding: '0 2rem',
                 borderRadius: '0.4rem',
-                cursor: (isJoining || isCreating) ? 'wait' : 'pointer',
+                cursor: (isJoining || isCreating) ? 'wait' : (activePath === "codeknights" ? 'pointer' : 'not-allowed'),
                 fontSize: '0.9rem',
                 letterSpacing: '0.1em',
                 opacity: (isJoining || isCreating) ? 0.7 : 1
@@ -577,120 +920,6 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               {isJoining ? t("joining") : t("join")}
             </button>
           </div>
-
-          {/* Quick Battle */}
-          <section>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent)', letterSpacing: '0.2em', marginBottom: '1.5rem', textTransform: 'uppercase' }}>
-              <Zap size={16} /> {t("rapidDeployment")}
-            </span>
-            <button 
-              onClick={async () => {
-                if (startQuickMatch) {
-                  setIsQuickMatchMode(true);
-                  try {
-                    await startQuickMatch();
-                  } catch (e) {
-                    setIsQuickMatchMode(false);
-                  }
-                  return;
-                }
-                startBattle();
-              }}
-              style={{ 
-                width: '100%', 
-                background: 'var(--accent)', 
-                color: '#000', 
-                border: 'none', 
-                padding: '1.5rem', 
-                borderRadius: '0.4rem', 
-                fontWeight: 900, 
-                fontSize: '1.1rem', 
-                cursor: 'pointer', 
-                letterSpacing: '0.1em',
-                boxShadow: '0 0 25px rgba(122, 162, 247, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '1rem',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <Sword size={22} fill="currentColor" /> {t("startQuickBattle").toUpperCase()}
-            </button>
-            <button 
-              onClick={async () => { 
-                setIsCreating(true);
-                await createDuel(); 
-                setShowWaitingPopup(true);
-                setIsCreating(false);
-              }}
-              disabled={isCreating}
-              style={{ 
-                width: '100%', 
-                background: 'rgba(255,255,255,0.05)', 
-                color: 'var(--text)', 
-                border: '1px solid var(--line)', 
-                padding: '1.5rem', 
-                borderRadius: '0.4rem', 
-                fontWeight: 900, 
-                fontSize: '1.1rem', 
-                cursor: 'pointer', 
-                letterSpacing: '0.1em',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '1rem',
-                transition: 'all 0.2s ease',
-                marginTop: '1rem'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <Users size={22} /> {isCreating ? t("joining") : t("createUplink").toUpperCase()}
-            </button>
-          </section>
-
-          {/* Private Duel Section */}
-          <section>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.2em', marginBottom: '1.5rem', textTransform: 'uppercase' }}>
-              <Users size={16} /> {t("secureCombat")}
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <button 
-                onClick={async () => { 
-                  setIsCreating(true);
-                  await createDuel(true); 
-                  setShowWaitingPopup(true);
-                  setIsCreating(false);
-                }}
-                disabled={isCreating}
-                style={{ 
-                  width: '100%', 
-                  background: 'rgba(255,255,255,0.05)', 
-                  color: 'var(--text)', 
-                  border: '1px solid var(--line)', 
-                  padding: '1.5rem', 
-                  borderRadius: '0.4rem', 
-                  fontWeight: 900, 
-                  fontSize: '1.1rem', 
-                  cursor: 'pointer', 
-                  letterSpacing: '0.1em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '1rem',
-                  transition: 'all 0.2s ease',
-                  marginBottom: '1rem'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                <Users size={22} /> DEMO MODE
-              </button>
-            </div>
-          </section>
         </div>
       </div>
     </div>

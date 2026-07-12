@@ -66,8 +66,8 @@ export const TutorialWindow: React.FC<{ t: (k: TranslationKey) => string }> = ({
             <li><strong>{t("silver")}</strong>: 1100+ points</li>
             <li><strong>{t("gold")}</strong>: 1300+ points</li>
             <li><strong>{t("diamond")}</strong>: 1600+ points</li>
-            <li><strong>{t("master")}</strong>: 2000+ points</li>
-            <li><strong>{t("grandmaster")}</strong>: 2500+ points</li>
+            <li><strong>{t("master" as any)}</strong>: 2000+ points</li>
+            <li><strong>{t("grandmaster" as any)}</strong>: 2500+ points</li>
           </ul>
         </div>
 

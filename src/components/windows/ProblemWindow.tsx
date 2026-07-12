@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye, BrainCircuit } from "lucide-react";
+import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye } from "lucide-react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
@@ -251,7 +251,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           detail: {
             id: `problem-${activeQuestion.id}`,
             title: `Problem: ${activeQuestion.title}`,
-            content: `Problem Title: ${activeQuestion.title}\n\nDescription:\n${activeQuestion.description}\n\nRestrictions:\n${activeQuestion.restrictions || 'None'}\n\nConstraints:\n${activeQuestion.constraints || 'None'}`
+            content: `Problem Title: ${activeQuestion.title}\n\nDescription:\n${activeQuestion.description}\n\nRestrictions:\n${activeQuestion.restrictions || 'None'}`
           }
         }));
       }
@@ -386,12 +386,12 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         <div style={{ background: 'var(--accent)', color: '#000', padding: '1rem', borderRadius: '50%', marginBottom: '1.5rem', boxShadow: '0 0 20px var(--accent)' }}>
           <Trophy size={48} />
         </div>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>DUEL RESULT</h2>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>{t("duelResult")}</h2>
         <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem' }}>{activeDuel.question.title}</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', width: '100%', maxWidth: '500px', marginBottom: '3rem' }}>
           <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
-            {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
+            {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
             <div style={{ marginBottom: '1rem' }}>{activeDuel.host?.image ? <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(activeDuel.host?.username || activeDuel.host?.name || "Host")}&rowColor=random`} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} />}</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
             <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
@@ -405,7 +405,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             <div style={{ fontSize: hostSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : 'inherit') }}>{activeDuel.hostSolveTime ? formatTime(Math.floor(activeDuel.hostSolveTime/1000)) : "--:--"}</div>
           </div>
           <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
-            {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>WINNER</div>}
+            {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
             <div style={{ marginBottom: '1rem' }}>{activeDuel.guest?.image ? <img src={activeDuel.guest.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(activeDuel.guest?.username || activeDuel.guest?.name || "Guest")}&rowColor=random`} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} />}</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
             <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
@@ -419,8 +419,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             <div style={{ fontSize: guestSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : 'inherit') }}>{activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime/1000)) : "--:--"}</div>
           </div>
         </div>
-        {draw && <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '2rem' }}>⚔️ IT&apos;S A FAIR DRAW! ⚔️</p>}
-        <button onClick={() => { setActiveDuel?.(null); setDuelPin?.(""); handleQuitBattle(); }} className="btn" style={{ width: '100%', maxWidth: '300px', background: 'var(--line)', border: 'none', padding: '1rem' }}>BACK TO ARENA</button>
+        {draw && !hostSurrendered && !guestSurrendered && <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '2rem' }}>{t("fairDraw")}</p>}
+        <button onClick={() => { setActiveDuel?.(null); setDuelPin?.(""); handleQuitBattle(); }} className="btn" style={{ width: '100%', maxWidth: '300px', background: 'var(--line)', border: 'none', padding: '1rem' }}>{t("backToArena")}</button>
       </div>
     );
   }
@@ -433,9 +433,9 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1.5rem', borderRadius: '50%', marginBottom: '1rem' }}>
           <Activity size={48} />
         </div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>WAITING FOR OPPONENT</h2>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{t("waitingForOpponent")}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '400px', marginBottom: '1.5rem' }}>
-          You have finalized your solution. Waiting for your opponent to finish...
+          {t("waitingForOpponentMessage")}
         </p>
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '1.5rem' }}>
            {timeLeft !== null && timeLeft !== undefined ? formatTime(timeLeft) : "--:--"}
@@ -444,7 +444,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         {opponentCode ? (
           <div style={{ width: '100%', maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.5rem', overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Eye size={14} /> LIVE OPPONENT CODE
+              <Eye size={14} /> {t("liveOpponentCode")}
             </div>
             <pre style={{ margin: 0, padding: '1rem', fontSize: '0.85rem', fontFamily: 'monospace', color: 'var(--text)', overflow: 'auto', textAlign: 'left', flex: 1 }}>
               {opponentCode}
@@ -452,7 +452,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           </div>
         ) : (
           <div style={{ width: '100%', maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.5rem', color: 'var(--text-muted)' }}>
-             <p>No code synced yet...</p>
+             <p>{t("noCodeSynced")}</p>
           </div>
         )}
       </div>
@@ -487,7 +487,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                     gap: '0.5rem'
                   }}
                 >
-                  {isSubmitting ? "SUBMITTING..." : (submitted ? "SUBMITTED" : "FINAL SUBMIT")}
+                  {isSubmitting ? t("submitting") || "SUBMITTING..." : (submitted ? t("submitted") : t("finalSubmit") || "FINAL SUBMIT")}
                 </button>
               ) : (
                 <button 
@@ -506,7 +506,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                     opacity: 0.7
                   }}
                 >
-                  Submitted
+                  {t("submitted") || "Submitted"}
                 </button>
               )}
           </div>

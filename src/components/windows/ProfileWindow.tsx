@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { BarChart2, BookOpen, Clock, Code, Settings, Trophy, User as UserIcon, Users, FileText, Check, User, ShieldCheck, Loader2, Sword, BrainCircuit } from "lucide-react";
+import { BarChart2, BookOpen, Clock, Code, Settings, Trophy, User as UserIcon, Users, FileText, Check, User, ShieldCheck, Loader2, Sword } from "lucide-react";
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 import { TranslationKey } from "../../constants/translations";
@@ -339,7 +339,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
               </div>
             </div>
             <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-               <button className="twm-btn" style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.1)' }} onClick={() => setIsCropping(false)}>Cancel</button>
+               <button className="twm-btn" style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.1)' }} onClick={() => setIsCropping(false)}>{t("cancel")}</button>
                <button className="twm-btn" style={{ background: 'var(--accent)', color: '#000', padding: '0.75rem 1.5rem', fontWeight: 600 }} onClick={handleCropSave}>{t("saveCrop")}</button>
             </div>
         </div>,
@@ -367,7 +367,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                 boxShadow: isOnline ? '0 0 10px rgba(80, 250, 123, 0.4)' : 'none',
                 border: '3px solid var(--bg)',
                 zIndex: 10
-              }} title={isOnline ? 'Online' : 'Offline'} />
+              }} title={isOnline ? t("online") : t("offline")} />
             )}
           </div>
           <div>
@@ -386,14 +386,14 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                  <button onClick={() => onCancelInvite && onCancelInvite()} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.8rem', background: 'transparent', color: '#ff5555', border: '1px solid #ff5555', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 800, transition: 'all 0.2s ease', marginLeft: '1rem' }}
                          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)'; }}
                          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'transparent'; }}>
-                   <span style={{ fontSize: '0.8rem' }}>CANCEL</span>
+                   <span style={{ fontSize: '0.8rem' }}>{t("cancel")}</span>
                  </button>
                 ) : (
                  <button onClick={() => onInviteDuel && onInviteDuel(userId, profile.username || profile.name)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.8rem', background: '#ff5555', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 800, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(255, 85, 85, 0.3)', marginLeft: '1rem' }}
                          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#ff6b6b'; }}
                          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#ff5555'; }}>
                    <Sword size={14} fill="currentColor" />
-                   <span style={{ fontSize: '0.8rem' }}>DUEL!</span>
+                   <span style={{ fontSize: '0.8rem' }}>{t("duelBtn")}</span>
                  </button>
                 )
               )}
@@ -428,7 +428,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
                    onMouseLeave={(e) => { e.currentTarget.style.background = isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'; }}>
              <Settings size={16} />
-             <span>{isEditingProfile ? "Cancel" : t("configureProfile")}</span>
+             <span>{isEditingProfile ? t("cancel") : t("configureProfile")}</span>
            </button>
         )}
 
@@ -438,11 +438,11 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <h2 style={{ margin: 0, color: 'var(--text)', fontSize: '1.25rem' }}>{t("configureProfile")}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Username</label>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t("username") || "Username"}</label>
                 <input type="text" defaultValue={profile.username || profile.name} id="edit-username" style={{ background: 'var(--bg)', border: '1px solid var(--line)', color: 'var(--text)', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Profile Image</label>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t("profileImage") || "Profile Image"}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--bg)', border: '1px solid var(--line)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem' }}>
                     {finalImage || profile.image ? (
                         <img src={finalImage || profile.image} alt="Profile" style={{ width: 36, height: 36, borderRadius: '0.3rem', objectFit: 'cover' }} />
@@ -452,8 +452,8 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                         </div>
                     )}
                     <label style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Choose new photo...</span>
-                        <div style={{ padding: '0.25rem 0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--line)', borderRadius: '0.3rem', fontSize: '0.8rem', fontWeight: 600 }}>Browse</div>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t("chooseNewPhoto")}</span>
+                        <div style={{ padding: '0.25rem 0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--line)', borderRadius: '0.3rem', fontSize: '0.8rem', fontWeight: 600 }}>{t("browse")}</div>
                         <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
                     </label>
                 </div>
@@ -494,25 +494,25 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                 }} style={{ padding: '0.75rem 1.5rem', background: saveSuccess ? '#50fa7b' : 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: isSaving ? 'wait' : 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {isSaving && <Loader2 size={16} className="spin" />}
                   {saveSuccess && <Check size={16} />}
-                  {saveSuccess ? "Saved Successfully!" : isSaving ? "Saving..." : "Save Changes"}
+                  {saveSuccess ? t("saveSuccess") || "Saved Successfully!" : isSaving ? t("saving") || "Saving..." : t("saveChanges") || "Save Changes"}
                 </button>
             </div>
 
             <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '1rem 0' }} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Password Settings</label>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t("passwordSettings") || "Password Settings"}</label>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)' }}>
-                  You are authenticated via a third-party provider (GitHub / Google). Password management is handled by your provider.
+                  {t("passwordProviderMessage") || "You are authenticated via a third-party provider (GitHub / Google). Password management is handled by your provider."}
                 </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-                <label style={{ fontSize: '0.85rem', color: '#ff5555', fontWeight: 600 }}>Danger Zone</label>
+                <label style={{ fontSize: '0.85rem', color: '#ff5555', fontWeight: 600 }}>{t("dangerZone") || "Danger Zone"}</label>
                 <div style={{ background: 'rgba(255,85,85,0.05)', border: '1px solid rgba(255,85,85,0.2)', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--text)', fontWeight: 600 }}>Delete Account</span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Permanently delete your account and all data. This cannot be undone.</span>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text)', fontWeight: 600 }}>{t("deleteAccount") || "Delete Account"}</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t("deleteAccountWarning") || "Permanently delete your account and all data. This cannot be undone."}</span>
                   </div>
                   <button onClick={() => {
                      if (confirm("Are you ABSOLUTELY sure you want to delete your account? This action cannot be undone.")) {
@@ -526,7 +526,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                      }
                   }} style={{ padding: '0.5rem 1rem', background: 'transparent', color: '#ff5555', border: '1px solid #ff5555', borderRadius: '0.4rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = '#ff5555'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ff5555'; }}>Delete Account</button>
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ff5555'; }}>{t("deleteAccount") || "Delete Account"}</button>
                 </div>
             </div>
          </div>
@@ -535,7 +535,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
       {/* Historical Data Wrapper */}
       <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text)', fontWeight: 800 }}>Historical Data</h2>
+          <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text)', fontWeight: 800 }}>{t("historicalData") || "Historical Data"}</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
              <div style={{ position: 'relative' }}>
                 <button 
@@ -605,7 +605,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2rem' }}>
           {/* Activity Grid */}
           <div style={{ minWidth: 0 }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>Activity Graph</h3>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>{t("activityGraph") || "Activity Graph"}</h3>
           
           <div ref={graphRef} style={{ display: 'flex', gap: '2.5rem', width: '100%', overflowX: 'auto', paddingBottom: '0.5rem' }}>
             {getLastMonths().map(month => (
@@ -636,7 +636,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
 
           {/* Rating Chart */}
           <div style={{ minWidth: 0 }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>Rating History</h3>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>{t("ratingHistory") || "Rating History"}</h3>
           {ratingHistory.length > 1 ? (
             <div style={{ width: '100%', overflowX: 'auto', padding: '1rem 0' }}>
                 <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ minWidth: '400px', overflow: 'visible', display: 'block' }}>
@@ -689,7 +689,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
 
         {/* Past Battles */}
         <div>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text)' }}>Past Battles</h3>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text)' }}>{t("pastBattles") || "Past Battles"}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {[...filteredDuels].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5).map((duel: any) => {
               const isHost = duel.hostId === profile.id;
@@ -737,7 +737,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                                       <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
                                         <Code size={18} /> {t("addToEditor") || "Add to Editor"}
                                       </button>
-                                  ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>) : (duel.guestCode ? (
+                                  ) : <span style={{ color: 'var(--text-muted)' }}>{t("noCodeSubmitted") || "No code submitted"}</span>) : (duel.guestCode ? (
                                       <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>
                                         <Code size={18} /> {t("addToEditor") || "Add to Editor"}
                                       </button>
@@ -751,7 +751,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                                       <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>
                                         <Code size={18} /> {t("addToEditor") || "Add to Editor"}
                                       </button>
-                                  ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>) : (duel.hostCode ? (
+                                  ) : <span style={{ color: 'var(--text-muted)' }}>{t("noCodeSubmitted") || "No code submitted"}</span>) : (duel.hostCode ? (
                                       <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
                                         <Code size={18} /> {t("addToEditor") || "Add to Editor"}
                                       </button>
@@ -764,7 +764,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                 </div>
               );
             })}
-            {filteredDuels.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>No past battles found in this timeframe.</div>}
+            {filteredDuels.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>{t("noPastBattles") || "No past battles found in this timeframe."}</div>}
           </div>
         </div>
       </div>

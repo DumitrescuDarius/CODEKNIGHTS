@@ -2,11 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, X, Move, Link, Sidebar as SidebarIcon, FileText, LayoutDashboard, BrainCircuit } from "lucide-react";
+import { Plus, Trash2, X, Move, Link, Sidebar as SidebarIcon, FileText, LayoutDashboard, Edit, Eye, Brain, Check, Code2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { TranslationKey } from "../../constants/translations";
-import { useLanguage } from '@/contexts/LanguageContext';
+
 
 // Global cache to prevent race conditions during rapid close/reopen
 // We use window.ckNotesCache so it can be preloaded by MainMenu.
@@ -35,6 +35,8 @@ interface Workspace {
   nodes: Node[];
   edges: Edge[];
   updatedAt: number;
+  pan?: { x: number; y: number };
+  zoom?: number;
 }
 
 type Port = 'top' | 'right' | 'bottom' | 'left';
@@ -134,11 +136,78 @@ const getOrthogonalMidpoint = (x1: number, y1: number, p1: string, x2: number, y
   }
 };
 
+const simpleHighlightCpp = (code: string) => {
+  const keywords = /\b(int|float|double|char|bool|void|include|iostream|vector|unordered_map|algorithm|using|namespace|std|return|for|while|if|else|cin|cout|endl)\b/g;
+  const parts = code.split(keywords);
+  return parts.map((part, i) => {
+    if (keywords.test(part)) return <span key={i} style={{ color: '#ff79c6' }}>{part}</span>;
+    return <span key={i} style={{ color: 'var(--text)' }}>{part}</span>;
+  });
+};
+
+const getMarkdownComponents = (setCode?: (val: string) => void) => ({
+  code(props: any) {
+    const { children, className, node, ...rest } = props;
+    const match = /language-(\w+)/.exec(className || '');
+    const isBlock = match || String(children).includes('\n');
+    
+    if (isBlock) {
+      const codeContent = String(children).replace(/\n$/, '');
+      return (
+        <div style={{ margin: '0.5rem 0', borderRadius: '0.4rem', overflow: 'hidden' }}>
+          {setCode && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.2)', padding: '0.25rem 0.5rem' }}>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCode(codeContent);
+                }} 
+                style={{ 
+                  background: 'transparent', 
+                  border: 'none', 
+                  color: 'var(--accent)', 
+                  fontSize: '0.75rem', 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.25rem' 
+                }}
+              >
+                <Code2 size={12} /> Add to Editor
+              </button>
+            </div>
+          )}
+          <pre style={{ 
+            background: 'rgba(0,0,0,0.4)', 
+            padding: '0.75rem 1rem', 
+            borderRadius: setCode ? '0 0 0.4rem 0.4rem' : '0.4rem', 
+            overflowX: 'auto',
+            margin: 0
+          }}>
+            <code style={{ fontFamily: 'monospace', fontSize: '0.85rem' }} {...rest}>
+              {simpleHighlightCpp(codeContent)}
+            </code>
+          </pre>
+        </div>
+      );
+    }
+    
+    return (
+      <code style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '0.2rem' }} {...rest}>
+        {children}
+      </code>
+    );
+  }
+});
+
 interface NotesWindowProps {
   t: (key: TranslationKey) => string;
+  openAgentWindow?: () => void;
+  setCode?: (val: string) => void;
 }
 
-export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
+export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, setCode }) => {
+  const markdownComponents = React.useMemo(() => getMarkdownComponents(setCode), [setCode]);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -152,6 +221,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
+  const [addedContextIds, setAddedContextIds] = useState<Set<string>>(new Set());
 
   // Handle keyboard delete
   useEffect(() => {
@@ -266,11 +336,11 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
     return () => clearInterval(interval);
   }, [headerPortalNode]);
 
-  // Sync current nodes/edges to workspaces
+  // Sync current nodes/edges/pan/zoom to workspaces
   useEffect(() => {
     if (!isLoaded || !activeWorkspaceId) return;
-    setWorkspaces(prev => prev.map(w => w.id === activeWorkspaceId ? { ...w, nodes, edges, updatedAt: Date.now() } : w));
-  }, [nodes, edges, activeWorkspaceId, isLoaded]);
+    setWorkspaces(prev => prev.map(w => w.id === activeWorkspaceId ? { ...w, nodes, edges, pan, zoom, updatedAt: Date.now() } : w));
+  }, [nodes, edges, pan, zoom, activeWorkspaceId, isLoaded]);
 
   // Load from DB or LocalStorage
   useEffect(() => {
@@ -290,10 +360,14 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
         if (active) {
           setNodes(active.nodes || []);
           setEdges(active.edges || []);
+          if (active.pan) setPan(active.pan);
+          if (active.zoom) setZoom(active.zoom);
         }
       } else if (initialData.workspaces.length > 0) {
         setNodes(initialData.workspaces[0].nodes || []);
         setEdges(initialData.workspaces[0].edges || []);
+        if (initialData.workspaces[0].pan) setPan(initialData.workspaces[0].pan);
+        if (initialData.workspaces[0].zoom) setZoom(initialData.workspaces[0].zoom);
       }
       setIsLoaded(true);
       return;
@@ -310,10 +384,14 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
             if (active) {
               setNodes(active.nodes || []);
               setEdges(active.edges || []);
+              if (active.pan) setPan(active.pan);
+              if (active.zoom) setZoom(active.zoom);
             }
           } else if (data.workspaces.length > 0) {
             setNodes(data.workspaces[0].nodes || []);
             setEdges(data.workspaces[0].edges || []);
+            if (data.workspaces[0].pan) setPan(data.workspaces[0].pan);
+            if (data.workspaces[0].zoom) setZoom(data.workspaces[0].zoom);
           }
         } else {
           // Migration from old single-workspace structure
@@ -344,13 +422,17 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
   const activeWorkspaceIdRef = useRef(activeWorkspaceId);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
+  const panRef = useRef(pan);
+  const zoomRef = useRef(zoom);
   
   useEffect(() => {
     workspacesRef.current = workspaces;
     activeWorkspaceIdRef.current = activeWorkspaceId;
     nodesRef.current = nodes;
     edgesRef.current = edges;
-  }, [workspaces, activeWorkspaceId, nodes, edges]);
+    panRef.current = pan;
+    zoomRef.current = zoom;
+  }, [workspaces, activeWorkspaceId, nodes, edges, pan, zoom]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -379,7 +461,14 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
     const getLatestPayload = () => {
       const currentWorkspaces = workspacesRef.current.map(w => {
         if (w.id === activeWorkspaceIdRef.current) {
-          return { ...w, nodes: nodesRef.current, edges: edgesRef.current, updatedAt: Date.now() };
+          return { 
+            ...w, 
+            nodes: nodesRef.current, 
+            edges: edgesRef.current, 
+            pan: panRef.current,
+            zoom: zoomRef.current,
+            updatedAt: Date.now() 
+          };
         }
         return w;
       });
@@ -418,8 +507,8 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
     setActiveWorkspaceId(id);
     setNodes(target.nodes || []);
     setEdges(target.edges || []);
-    setPan({ x: 0, y: 0 });
-    setZoom(1);
+    setPan(target.pan || { x: 0, y: 0 });
+    setZoom(target.zoom || 1);
   };
 
   const handleCreateWorkspace = () => {
@@ -599,14 +688,46 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
     setDrawingEdge(null);
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
+
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheelRaw = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.closest('.note-card')) {
+        return; // Allow normal scrolling inside the note card itself
+      }
+      
       e.preventDefault();
-      const zoomSensitivity = 0.001;
-      const newZoom = Math.min(Math.max(0.1, zoom - e.deltaY * zoomSensitivity), 3);
+      
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const currentZoom = zoomRef.current;
+      const currentPan = panRef.current;
+
+      const zoomSensitivity = 0.0015;
+      const zoomFactor = 1 - e.deltaY * zoomSensitivity;
+      let newZoom = currentZoom * zoomFactor;
+      newZoom = Math.min(Math.max(0.1, newZoom), 3);
+
+      if (newZoom === currentZoom) return;
+
+      const newPanX = mouseX - (mouseX - currentPan.x) * (newZoom / currentZoom);
+      const newPanY = mouseY - (mouseY - currentPan.y) * (newZoom / currentZoom);
+
       setZoom(newZoom);
-    }
-  };
+      setPan({ x: newPanX, y: newPanY });
+    };
+
+    container.addEventListener('wheel', handleWheelRaw, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheelRaw);
+    };
+  }, [isLoaded]);
 
   const bringNodeToFront = (id: string) => {
     setNodes(prev => {
@@ -894,7 +1015,6 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
           overflow: 'hidden'
         }}
         onMouseDown={handleBackgroundMouseDown}
-        onWheel={handleWheel}
       >
         <div 
           id="notes-workspace-inner"
@@ -995,6 +1115,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
           {nodes.map(node => (
             <div
               key={node.id}
+              className="note-card"
               onMouseEnter={() => setHoveredNode(node.id)}
               onMouseLeave={() => setHoveredNode(null)}
               onMouseDownCapture={() => bringNodeToFront(node.id)}
@@ -1050,6 +1171,62 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '0.3rem', marginLeft: '0.5rem', flexShrink: 0 }}>
+                  <button 
+                    className="twm-btn" 
+                    style={{ 
+                      width: '24px', 
+                      height: '24px', 
+                      padding: 0,
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      color: addedContextIds.has(node.id) ? '#50fa7b' : 'var(--text-muted)', 
+                      borderRadius: '4px',
+                      background: 'transparent',
+                      transition: 'background 0.2s, color 0.2s'
+                    }} 
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const noteContext = {
+                        id: `note-${node.id}`,
+                        title: node.title ? `Note: ${node.title}` : `Note (Untitled)`,
+                        content: node.content || "(Empty Note)"
+                      };
+                      if (typeof window !== "undefined") {
+                        if (!(window as any).ckAiContexts) {
+                          (window as any).ckAiContexts = [];
+                        }
+                        const exists = (window as any).ckAiContexts.some((item: any) => item.id === noteContext.id);
+                        if (!exists) {
+                          (window as any).ckAiContexts.push(noteContext);
+                        }
+                      }
+                      window.dispatchEvent(new CustomEvent('add_ai_context', {
+                        detail: noteContext
+                      }));
+                      setAddedContextIds(prev => {
+                        const next = new Set(prev);
+                        next.add(node.id);
+                        return next;
+                      });
+                      setTimeout(() => {
+                        setAddedContextIds(prev => {
+                          const next = new Set(prev);
+                          next.delete(node.id);
+                          return next;
+                        });
+                      }, 1500);
+                      if (openAgentWindow) {
+                        openAgentWindow();
+                      }
+                    }}
+                    title="Send Note as AI Context"
+                  >
+                    {addedContextIds.has(node.id) ? <Check size={13} /> : <Brain size={13} />}
+                  </button>
+
 
                   <button 
                     className="twm-btn" 
@@ -1079,23 +1256,54 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t }) => {
               </div>
               
               {/* Node Content */}
-              <textarea
-                value={node.content}
-                onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, content: e.target.value } : n))}
-                style={{
-                  flex: 1,
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '0.5rem',
-                  color: 'var(--text)',
-                  fontSize: '0.8rem',
-                  resize: 'none',
-                  outline: 'none',
-                  cursor: 'text'
-                }}
-                onMouseDown={(e) => e.stopPropagation()} // Allow text selection without dragging
-                placeholder={t("takeNotePlaceholder")}
-              />
+              {editingNodeId === node.id ? (
+                <textarea
+                  value={node.content}
+                  onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, content: e.target.value } : n))}
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '0.5rem',
+                    color: 'var(--text)',
+                    fontSize: '0.8rem',
+                    resize: 'none',
+                    outline: 'none',
+                    cursor: 'text'
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()} // Allow text selection without dragging
+                  placeholder={t("takeNotePlaceholder")}
+                  autoFocus={true}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      setEditingNodeId(prev => prev === node.id ? null : prev);
+                    }, 150);
+                  }}
+                />
+              ) : (
+                <div
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setEditingNodeId(node.id);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem',
+                    color: 'var(--text)',
+                    fontSize: '0.8rem',
+                    overflowY: 'auto',
+                    cursor: 'pointer',
+                    userSelect: 'text',
+                    wordBreak: 'break-word'
+                  }}
+                  className="notes-preview-area markdown-body"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {node.content || `_Double-click to edit..._`}
+                  </ReactMarkdown>
+                </div>
+              )}
               
               {/* Resize Handle */}
               <div

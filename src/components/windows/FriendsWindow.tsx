@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, UserPlus, UserCheck, Loader2, Users, Trophy, UserX, Check, User as UserIcon, BrainCircuit } from "lucide-react";
+import { Search, UserPlus, UserCheck, Loader2, Users, Trophy, UserX, Check, User as UserIcon } from "lucide-react";
 // framer-motion removed: use plain elements instead
 import { User } from "../../types";
 import { TranslationKey } from "../../constants/translations";
@@ -46,6 +46,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
   const [requests, setRequests] = useState<User[]>(cachedRequests || []);
   const [isLoading, setIsLoading] = useState(!cachedFriends || !cachedRequests);
   const [unfriendConfirm, setUnfriendConfirm] = useState<User | null>(null);
+  const removeFriendConfirmText = unfriendConfirm
+    ? t("removeFriendConfirm").replace("{name}", unfriendConfirm.username || unfriendConfirm.name || "this user")
+    : "";
 
   const fetchData = useCallback(async (force = false) => {
     if (cachedFriends && cachedRequests && !force) return;
@@ -199,7 +202,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
           <span>{t("friendsList") || "FRIENDS"}</span>
         </div>
         <div className="friends-header-subtitle">
-          Manage your alliances and search players
+          {t("friendsListSubtitle") || "Manage your alliances and search players"}
         </div>
       </div>
 
@@ -282,9 +285,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   {pendingInviteTargetId === user.id ? (
                     <button className="friend-btn friend-btn--primary" style={{ background: 'transparent', color: '#ff5555', border: '1px solid #ff5555' }} onClick={() => onCancelInvite && onCancelInvite()}>{t("cancelInvite") || t("cancel")}</button>
                   ) : (
-                    <button className="friend-btn friend-btn--primary" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => onInviteDuel && onInviteDuel(user.id, user.username || user.name || "Knight")}>{t("duelBtn") || t("duel")}</button>
+                    <button className="friend-btn friend-btn--primary" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => onInviteDuel && onInviteDuel(user.id, user.username || user.name || "Knight")}>{t("duelBtn")}</button>
                   )}
-                  <button className="friend-btn friend-btn--danger" onClick={() => setUnfriendConfirm(user)} title="Unfriend">
+                  <button className="friend-btn friend-btn--danger" onClick={() => setUnfriendConfirm(user)} title={t("unfriend")}>
                     <UserX size={14} />
                   </button>
                 </div>
@@ -345,8 +348,8 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   </div>
                 </div>
                 <div className="friend-card-actions">
-                  <button className="friend-btn friend-btn--success" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')}><Check size={14}/> Accept</button>
-                  <button className="friend-btn friend-btn--danger" onClick={() => handleRequestAction(user.requestId, 'REJECT')}><UserX size={14}/> Reject</button>
+                  <button className="friend-btn friend-btn--success" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')}><Check size={14}/> {t("accept")}</button>
+                  <button className="friend-btn friend-btn--danger" onClick={() => handleRequestAction(user.requestId, 'REJECT')}><UserX size={14}/> {t("reject")}</button>
                 </div>
               </div>
             ))}
@@ -418,12 +421,12 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     </button>
                   ) : user.status === "SENT" ? (
                     <button disabled className="friend-btn" style={{ opacity: 0.6 }}>
-                      Pending
+                      {t("pending")}
                     </button>
                   ) : user.status === "RECEIVED" ? (
                     <>
-                      <button className="friend-btn friend-btn--success" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')} title="Accept"><Check size={14}/></button>
-                      <button className="friend-btn friend-btn--danger" onClick={() => handleRequestAction(user.requestId, 'REJECT')} title="Reject"><UserX size={14}/></button>
+                      <button className="friend-btn friend-btn--success" onClick={() => handleRequestAction(user.requestId, 'ACCEPT')} title={t("accept")}><Check size={14}/></button>
+                      <button className="friend-btn friend-btn--danger" onClick={() => handleRequestAction(user.requestId, 'REJECT')} title={t("reject")}><UserX size={14}/></button>
                     </>
                   ) : (
                     <button onClick={() => handleSendRequest(user.id)} className="friend-btn friend-btn--primary">
@@ -440,7 +443,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'var(--bg)', padding: '2rem', borderRadius: '0.4rem', border: '1px solid var(--accent)', maxWidth: '400px', textAlign: 'center' }}>
             <h3 style={{ margin: '0 0 1rem 0' }}>{t("removeFriendTitle") || t("removeFriend")}</h3>
-            <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>Are you sure you want to remove {unfriendConfirm.username || unfriendConfirm.name} from your friends list?</p>
+            <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>{removeFriendConfirmText}</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <button className="twm-btn" onClick={() => setUnfriendConfirm(null)}>{t("cancel")}</button>
               <button className="twm-btn" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => handleUnfriend(unfriendConfirm.id)}>{t("removeBtn") || t("remove")}</button>
