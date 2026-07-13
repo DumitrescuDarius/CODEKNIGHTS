@@ -5,6 +5,31 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+async function attachQuestionsToDuel(d: any) {
+  const safeDuel = { ...d };
+  if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
+    (safeDuel.question as any).hiddenTestCases = null;
+  }
+  if (safeDuel.questionIds && safeDuel.questionIds.length > 0) {
+    const allQuestions = await prisma.question.findMany({
+      where: { id: { in: safeDuel.questionIds } }
+    });
+    const safeQuestions = allQuestions.map(q => {
+      const sq = { ...q };
+      if ('hiddenTestCases' in sq) {
+        (sq as any).hiddenTestCases = null;
+      }
+      return sq;
+    });
+    (safeDuel as any).questions = safeDuel.questionIds
+      .map(id => safeQuestions.find(q => q.id === id))
+      .filter(Boolean);
+  } else {
+    (safeDuel as any).questions = safeDuel.question ? [safeDuel.question] : [];
+  }
+  return safeDuel;
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const { guestName, demoMode, hostId, guestId, gameMode, unrated } = await req.json().catch(() => ({}));
@@ -56,10 +81,7 @@ export async function POST(req: NextRequest) {
           guest: true
         }
       });
-      const safeDuel = { ...duel };
-      if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
-         (safeDuel.question as any).hiddenTestCases = null;
-      }
+      const safeDuel = await attachQuestionsToDuel(duel);
       return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
     }
 
@@ -77,11 +99,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const safeDuel = { ...duel };
-    if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
-       (safeDuel.question as any).hiddenTestCases = null;
-    }
-
+    const safeDuel = await attachQuestionsToDuel(duel);
     return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
   } catch (err: any) {
     console.error("Failed to create duel:", err);
@@ -111,7 +129,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Duel not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ ...duel, serverTime: Date.now() });
+    const safeDuel = await attachQuestionsToDuel(duel);
+    return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
   } catch (err: any) {
     return NextResponse.json({ error: "Failed to fetch duel" }, { status: 500 });
   }

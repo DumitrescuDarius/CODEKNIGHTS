@@ -359,11 +359,13 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', display: 'flex' }}>
-            {profile.image ? (
-              <img src={profile.image} alt="Profile" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--accent)', objectFit: 'cover' }} />
-            ) : (
-              <DefaultAvatar name={profile.username || profile.name || "Knight"} size={80} style={{ border: '2px solid var(--accent)' }} />
-            )}
+            <DefaultAvatar 
+              name={profile.username || profile.name || "Knight"} 
+              size={80} 
+              image={profile.image}
+              isRoyal={!!profile.isRoyal}
+              style={{ border: '1px solid var(--accent)' }} 
+            />
             {userId && userId !== session?.user?.id && (
               <span style={{ 
                 position: 'absolute',
@@ -384,6 +386,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.75rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {profile.username || profile.name || "Knight"}
+                {isRoyal && <Crown size={20} color="#ffd700" fill="#ffd700" style={{ filter: "drop-shadow(0 0 5px rgba(255, 215, 0, 0.6))" }} />}
               </h2>
               {isAdmin && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--accent)', color: '#000', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>
@@ -396,22 +399,6 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                   <Crown size={12} fill="currentColor" />
                   ROYAL
                 </div>
-              )}
-              {userId && userId !== session?.user?.id && (
-                pendingInviteTargetId === userId ? (
-                 <button onClick={() => onCancelInvite && onCancelInvite()} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.8rem', background: 'transparent', color: '#ff5555', border: '1px solid #ff5555', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 800, transition: 'all 0.2s ease', marginLeft: '1rem' }}
-                         onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)'; }}
-                         onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'transparent'; }}>
-                   <span style={{ fontSize: '0.8rem' }}>{t("cancel")}</span>
-                 </button>
-                ) : (
-                 <button onClick={() => onInviteDuel && onInviteDuel(userId, profile.username || profile.name)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.8rem', background: '#ff5555', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 800, transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(255, 85, 85, 0.3)', marginLeft: '1rem' }}
-                         onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#ff6b6b'; }}
-                         onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#ff5555'; }}>
-                   <Sword size={14} fill="currentColor" />
-                   <span style={{ fontSize: '0.8rem' }}>{t("duelBtn")}</span>
-                 </button>
-                )
               )}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
@@ -460,11 +447,13 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t("profileImage") || "Profile Image"}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--bg)', border: '1px solid var(--line)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem' }}>
-                    {finalImage || profile.image ? (
-                        <img src={finalImage || profile.image} alt="Profile" style={{ width: 36, height: 36, borderRadius: '0.3rem', objectFit: 'cover' }} />
-                    ) : (
-                        <DefaultAvatar name={profile.username || profile.name || "Knight"} size={36} style={{ borderRadius: '0.3rem' }} />
-                    )}
+                    <DefaultAvatar 
+                      name={profile.username || profile.name || "Knight"} 
+                      size={36} 
+                      image={finalImage || profile.image}
+                      isRoyal={!!profile.isRoyal}
+                      style={{ border: '1px solid var(--line)' }} 
+                    />
                     <label style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t("chooseNewPhoto")}</span>
                         <div style={{ padding: '0.25rem 0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--line)', borderRadius: '0.3rem', fontSize: '0.8rem', fontWeight: 600 }}>{t("browse")}</div>
@@ -713,11 +702,12 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                           <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem', color: 'var(--text)' }}>{duel.question?.title || "Unknown Problem"}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
                             vs 
-                            {opponent?.image ? (
-                              <img src={opponent.image} alt="opponent" style={{ width: '16px', height: '16px', borderRadius: '50%', objectFit: 'cover' }} />
-                            ) : (
-                              <DefaultAvatar name={opponent?.username || opponent?.name || "Knight"} size={16} />
-                            )}
+                            <DefaultAvatar 
+                              name={opponent?.username || opponent?.name || "Knight"} 
+                              size={16} 
+                              image={opponent?.image}
+                              isRoyal={!!opponent?.isRoyal}
+                            />
                             <span style={{ color: 'var(--accent)' }}>{opponent?.username || opponent?.name || "Unknown"}</span>
                           </div>
                         </div>

@@ -205,7 +205,13 @@ export async function POST(req: Request) {
       if (compileCmd) {
         await new Promise((resolve, reject) => {
           exec(compileCmd, { timeout: 10000 }, (error, stdout, stderr) => {
-            if (error) reject({ stderr: stderr || error.message });
+            if (error) {
+              let msg = stderr || error.message;
+              if (msg.includes("not recognized as an internal or external command") || msg.includes("not found") || msg.includes("cannot find")) {
+                msg = `Compilation Failed: 'g++' (C++ compiler) is not installed or not in your system PATH.\n\nTo run C++ code, please install MinGW/GCC (e.g. from MSYS2 on Windows) and add its 'bin' folder to your system environment PATH variables.`;
+              }
+              reject({ stderr: msg });
+            }
             else resolve(stdout);
           });
         });

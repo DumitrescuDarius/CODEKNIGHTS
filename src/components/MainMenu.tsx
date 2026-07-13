@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -28,6 +28,7 @@ import { TournamentWindow } from "./windows/TournamentWindow";
 import { LegalWindow } from "./windows/LegalWindow";
 import { FriendsWindow } from "./windows/FriendsWindow";
 import { AgentWindow } from "./windows/AgentWindow";
+import { RoyalWindow } from "./windows/RoyalWindow";
 import { TutorialWindow } from "./windows/TutorialWindow";
 import FeedbackWindow from "./windows/FeedbackWindow";
 import { LeaderboardWindow } from "./windows/LeaderboardWindow";
@@ -165,6 +166,8 @@ const changeCodeIndentation = (
 
 const MainMenu: React.FC = () => {
   const { data: session, update: updateSession } = useSession();
+  const isRoyal = !!(session?.user as any)?.isRoyal;
+  const maxWindows = isRoyal ? 999 : 5;
   const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [usernameError, setUsernameError] = useState("");
@@ -293,7 +296,11 @@ const MainMenu: React.FC = () => {
   });
   const [adminError, setAdminError] = useState<string | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const problemCodesRef = useRef<Record<string, string>>({});
   const [testResults, setTestResults] = useState<{ passed: number, total: number, details: TestDetail[] } | null>(null);
+  const [problemTestResults, setProblemTestResults] = useState<Record<string, { passed: number; total: number; details: any[] }>>({});
+  const [problemScores, setProblemScores] = useState<Record<string, number>>({});
   const [totalPenalty, setTotalPenalty] = useState<number | null>(null);
   const [wrongAttemptCount, setWrongAttemptCount] = useState(0);
 
@@ -365,8 +372,8 @@ const MainMenu: React.FC = () => {
   const [uiLang, setUiLang] = useState<SupportedLanguage>("en");
   const [analysis, setAnalysis] = useState<CodeAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeDuel, setActiveDuel] = useState<Duel | null>(null);
-  const activeDuelRef = useRef<Duel | null>(null);
+  const [activeDuel, setActiveDuel] = useState<any>(null);
+  const activeDuelRef = useRef<any>(null);
   const wasSignedInRef = useRef(false);
 
   const handleSetThemeIndex = (idx: number) => {
@@ -456,9 +463,29 @@ const MainMenu: React.FC = () => {
   const [showLimitWarning, setShowLimitWarning] = useState(false);
   const [showWorkspaceWarning, setShowWorkspaceWarning] = useState(false);
   const [showWrongAnswerPopup, setShowWrongAnswerPopup] = useState(false);
+  const [showAiDisabledWarning, setShowAiDisabledWarning] = useState(false);
+  const [showDuelInBattleWarning, setShowDuelInBattleWarning] = useState(false);
+  const [showDuelHasUplinkWarning, setShowDuelHasUplinkWarning] = useState(false);
+  const [showUplinkPendingWarning, setShowUplinkPendingWarning] = useState(false);
+  const [showPinCopiedNotification, setShowPinCopiedNotification] = useState(false);
   const [showRatingChangePopup, setShowRatingChangePopup] = useState<{ amount: number, isWin: boolean } | null>(null);
   const [showSignInOptions, setShowSignInOptions] = useState(false);
   const lastFinishedDuelId = useRef<string | null>(null);
+
+  useEffect(() => {
+    const handlePinCopied = () => {
+      setShowPinCopiedNotification(true);
+    };
+    window.addEventListener("pin_copied", handlePinCopied);
+    return () => window.removeEventListener("pin_copied", handlePinCopied);
+  }, []);
+
+  useEffect(() => {
+    if (showPinCopiedNotification) {
+      const timer = setTimeout(() => setShowPinCopiedNotification(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showPinCopiedNotification]);
 
   useEffect(() => {
     if (showRatingChangePopup) {
@@ -485,6 +512,34 @@ const MainMenu: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [showWorkspaceWarning]);
+
+  useEffect(() => {
+    if (showAiDisabledWarning) {
+      const timer = setTimeout(() => setShowAiDisabledWarning(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAiDisabledWarning]);
+
+  useEffect(() => {
+    if (showDuelInBattleWarning) {
+      const timer = setTimeout(() => setShowDuelInBattleWarning(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showDuelInBattleWarning]);
+
+  useEffect(() => {
+    if (showDuelHasUplinkWarning) {
+      const timer = setTimeout(() => setShowDuelHasUplinkWarning(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showDuelHasUplinkWarning]);
+
+  useEffect(() => {
+    if (showUplinkPendingWarning) {
+      const timer = setTimeout(() => setShowUplinkPendingWarning(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showUplinkPendingWarning]);
 
   useEffect(() => {
     if (showWrongAnswerPopup) {
@@ -679,12 +734,12 @@ const MainMenu: React.FC = () => {
     const handleOpenAgent = () => {
       const isDuelActive = activeDuelRef.current && activeDuelRef.current.status === "ACTIVE";
       if (isDuelActive) {
-        alert("AI assistance is disabled during active duels!");
+        setShowAiDisabledWarning(true);
         return;
       }
       setOpenWindows(prev => {
         if (!prev.includes("agent")) {
-          if (prev.length >= 4) {
+          if (prev.length >= maxWindows) {
             setShowLimitWarning(true);
             return prev;
           }
@@ -698,9 +753,13 @@ const MainMenu: React.FC = () => {
     };
     window.addEventListener("open_agent_window", handleOpenAgent);
     return () => window.removeEventListener("open_agent_window", handleOpenAgent);
-  }, [setShowLimitWarning]);
+  }, [setShowLimitWarning, maxWindows, setShowAiDisabledWarning]);
 
   const createDuel = useCallback(async (demoMode: boolean = false) => {
+    if (pendingInviteTargetId !== null) {
+      setShowUplinkPendingWarning(true);
+      return;
+    }
     try {
       const res = await fetch("/api/duels", { 
         method: "POST",
@@ -722,7 +781,7 @@ const MainMenu: React.FC = () => {
     } catch (err) {
       console.error(err);
     }
-  }, [isGuest, guestName]);
+  }, [isGuest, guestName, pendingInviteTargetId]);
 
   const joinDuel = useCallback(async (pin: string) => {
     try {
@@ -738,6 +797,10 @@ const MainMenu: React.FC = () => {
           setShowWaitingPopup(false);
           setShowInviteSentPopup(false);
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
+          if (isGuest && data.guestId) {
+            setGuestId(data.guestId);
+          }
+          console.log("[CLIENT joinDuel] data.questionIds:", data.questionIds, "questions count:", data.questions?.length);
           setActiveDuel(data);
           socketRef.current?.emit("duel_update", { duelId: data.id });
           const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
@@ -755,6 +818,17 @@ const MainMenu: React.FC = () => {
   }, [isGuest, guestName]);
 
   const handleInviteDuel = useCallback(async (targetId: string, targetName: string) => {
+    const inBattle = activeDuel && activeDuel.status === "ACTIVE";
+    if (inBattle) {
+      setShowDuelInBattleWarning(true);
+      return;
+    }
+    const hasUplink = activeDuel && activeDuel.status === "WAITING";
+    if (hasUplink) {
+      setShowDuelHasUplinkWarning(true);
+      return;
+    }
+
     setActiveGameModeCallback(() => async (mode: string, isUnrated: boolean) => {
       const myName = (session?.user as any)?.name || (session?.user as any)?.username || "Knight";
       const myId = (session?.user as any)?.id || guestId || "host-id";
@@ -774,7 +848,7 @@ const MainMenu: React.FC = () => {
       setDuelPin(pin);
     });
     setShowGameModeSelection(true);
-  }, [isGuest, guestId, session]);
+  }, [isGuest, guestId, session, activeDuel]);
 
   const cancelInviteDuel = useCallback(() => {
     if (duelPin) {
@@ -864,6 +938,7 @@ const MainMenu: React.FC = () => {
             startBattle(updatedDuel.question, actualStart);
           }
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
+          console.log("[CLIENT pollDuel] updatedDuel.questionIds:", updatedDuel.questionIds, "questions count:", updatedDuel.questions?.length);
           setActiveDuel(updatedDuel);
         }
       }
@@ -876,7 +951,7 @@ const MainMenu: React.FC = () => {
     const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
     if (!isDuelActive) return;
 
-    // 1. Refresh Prevention
+    // 1. Refresh Prevention Warning
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
@@ -884,50 +959,23 @@ const MainMenu: React.FC = () => {
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // 2. Tab/Window leaving triggers auto-surrender
-    const handleLeave = async () => {
-      try {
-        await fetch("/api/duels/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            duelId: activeDuel.id, 
-            surrender: true, 
-            code: code, 
-            guestUserId: guestId || undefined 
-          })
-        });
-        socketRef.current?.emit("duel_update", { duelId: activeDuel.id });
-      } catch (err) {
-        console.error("Auto-surrender failed:", err);
-      }
-
-      // Reset client states
-      setActiveDuel(null);
-      setDuelPin("");
-      setShowCancelDuel(false);
-      setShowWaitingPopup(false);
-      setShowInviteSentPopup(false);
-      alert("You have been automatically surrendered for leaving the tab/window.");
+    // 2. Auto-surrender via Beacon API on page refresh / close
+    const handleUnload = () => {
+      const url = "/api/duels/submit";
+      const payload = JSON.stringify({ 
+        duelId: activeDuel.id, 
+        surrender: true, 
+        code: code, 
+        guestUserId: guestId || undefined 
+      });
+      const blob = new Blob([payload], { type: 'application/json' });
+      navigator.sendBeacon(url, blob);
     };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        handleLeave();
-      }
-    };
-
-    const handleBlur = () => {
-      handleLeave();
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("blur", handleBlur);
+    window.addEventListener("unload", handleUnload);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("unload", handleUnload);
     };
   }, [activeDuel, code, guestId]);
 
@@ -1103,7 +1151,7 @@ const MainMenu: React.FC = () => {
         "Medium": 12 * 60,
         "Hard": 18 * 60
       };
-      let limit = difficultyTimeLimits[activeDuel.question?.difficulty] || 8 * 60;
+      let limit = activeDuel.totalTime ? activeDuel.totalTime * 60 : (difficultyTimeLimits[activeDuel.question?.difficulty] || 8 * 60);
       
       const currentUserId = session?.user ? (session.user as any).id : guestId;
       const isHostLocal = activeDuel.hostId === currentUserId;
@@ -1482,7 +1530,11 @@ const MainMenu: React.FC = () => {
     
     setActiveQuestion(q);
     setTestResults(null);
+    setProblemTestResults({});
+    setProblemScores({});
     setWrongAttemptCount(0); // Reset
+    setActiveQuestionIndex(0);
+    problemCodesRef.current = {};
     
     // If it's a duel, use startedAt as the start time, otherwise now.
     const startTime = forceStartTime || (activeDuel ? new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset : Date.now());
@@ -1503,18 +1555,51 @@ const MainMenu: React.FC = () => {
     setActiveWindow("editor");
   }, [questions, maximizedWindow, activeDuel]);
 
-  const startQuickMatch = useCallback(async () => {
+  const changeActiveQuestion = useCallback((index: number) => {
+    const currentDuel = activeDuel;
+    if (!currentDuel || !currentDuel.questions || !currentDuel.questions[index]) return;
+    
+    // Save current code for current activeQuestion synchronously in ref
+    if (activeQuestion) {
+      problemCodesRef.current[activeQuestion.id] = code;
+    }
+    
+    // Load new code
+    const targetQ = currentDuel.questions[index];
+    const newCode = problemCodesRef.current[targetQ.id] || LANG_CONFIG[lang]?.defaultCode || "";
+    setCode(newCode);
+    
+    setActiveQuestionIndex(index);
+    setActiveQuestion(targetQ);
+
+    const savedResults = problemTestResults[targetQ.id] || null;
+    setTestResults(savedResults);
+  }, [activeDuel, activeQuestion, code, lang, problemTestResults]);
+
+  const startQuickMatch = useCallback(async (
+    mode: 'create' | 'find' = 'find',
+    settings?: { problems?: string[]; isRanked?: boolean }
+  ) => {
     try {
       const res = await fetch('/api/duels/quick', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestName: isGuest ? guestName : undefined })
+        body: JSON.stringify({ 
+          guestName: isGuest ? guestName : undefined,
+          forceCreate: mode === 'create',
+          findOnly: mode === 'find',
+          problems: settings?.problems,
+          unrated: settings?.isRanked === false
+        })
       });
       if (res.ok) {
         const data = await res.json();
         if (data) {
           // If returned duel is waiting, show waiting UI; if active, start immediately
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
+          if (isGuest && data.hostId) {
+            setGuestId(data.hostId);
+          }
           setActiveDuel(data);
           socketRef.current?.emit("duel_update", { duelId: data.id });
           if (data.status === 'ACTIVE') {
@@ -1526,10 +1611,12 @@ const MainMenu: React.FC = () => {
         }
       } else {
         const data = await res.json().catch(() => ({}));
-        console.error('Quick match failed:', data.error || res.statusText);
+        alert(data.error || "No active public match found.");
+        throw new Error(data.error || "Quick match failed");
       }
     } catch (err) {
       console.error('Quick match error:', err);
+      throw err;
     }
   }, [isGuest, guestName, clockOffset, startBattle]);
 
@@ -1579,20 +1666,43 @@ const MainMenu: React.FC = () => {
       const { passed, total, details } = data;
       const allTestsLength = total || details.length;
       
-      setTestResults({ passed, total: allTestsLength, details });
+      const newResults = { passed, total: allTestsLength, details };
+      setTestResults(newResults);
+
+      if (activeQuestion) {
+        setProblemTestResults(prev => ({ ...prev, [activeQuestion.id]: newResults }));
+        
+        const currentProblemScore = passed * 50 + (passed > 0 ? (timeLeft || 0) : 0);
+        
+        setProblemScores(prev => {
+          const nextScores = { ...prev, [activeQuestion.id]: currentProblemScore };
+          const totalScore = Object.values(nextScores).reduce((sum, v) => sum + v, 0);
+          setTotalPenalty(totalScore);
+
+          if (activeDuel && activeDuel.status === "ACTIVE") {
+            const time = Math.floor((Date.now() - (battleStartTime || Date.now())) / 1000);
+            const totalComplexity = analysis?.scores ? 
+              (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) : 0;
+            
+            fetch("/api/duels/submit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                  duelId: activeDuel.id, 
+                  solveTime: time * 1000,
+                  complexityScore: totalComplexity,
+                  totalPenalty: totalScore,
+                  code: code,
+                  guestUserId: guestId || undefined
+              })
+            }).catch(console.error);
+          }
+          return nextScores;
+        });
+      }
+
       if (passed === allTestsLength) {
-        // Penalty calculation
         const time = Math.floor((Date.now() - (battleStartTime || Date.now())) / 1000);
-
-        const totalPenalty = calculatePenalty(
-            time, 
-            wrongAttemptCount, 
-            analysis?.scores, 
-            analysis?.timeComplexity, 
-            activeQuestion?.idealComplexity
-        );
-        setTotalPenalty(totalPenalty);
-
         const mins = Math.floor(time / 60);
         const secs = time % 60;
         const formatted = `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -1600,24 +1710,6 @@ const MainMenu: React.FC = () => {
 
         analyzeCode(code, lang, activeQuestion);
         fetchUserStats();
-
-        if (activeDuel && activeDuel.status === "ACTIVE") {
-          const totalComplexity = analysis?.scores ? 
-            (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) : 0;
-          
-          await fetch("/api/duels/submit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                duelId: activeDuel.id, 
-                solveTime: time * 1000,
-                complexityScore: totalComplexity,
-                totalPenalty: totalPenalty,
-                code: code,
-                guestUserId: guestId || undefined
-            })
-          });
-        }
       } else {
         setWrongAttemptCount(prev => prev + 1); // Increment on fail
         setShowWrongAnswerPopup(true);
@@ -1628,7 +1720,7 @@ const MainMenu: React.FC = () => {
     } finally {
       setIsTesting(false);
     }
-  }, [activeQuestion, code, lang, battleStartTime, analyzeCode, fetchUserStats, activeDuel]);
+  }, [activeQuestion, code, lang, battleStartTime, analyzeCode, fetchUserStats, activeDuel, timeLeft, problemScores, guestId]);
 
   const runSingleTest = useCallback(async (input: string, index: number) => {
     setIsRunning(true);
@@ -1791,7 +1883,7 @@ const MainMenu: React.FC = () => {
     if (id === "agent") {
       const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
       if (isDuelActive) {
-        alert("AI assistance is disabled during active duels!");
+        setShowAiDisabledWarning(true);
         return;
       }
     }
@@ -1867,7 +1959,7 @@ const MainMenu: React.FC = () => {
       } else {
         if (prev.includes(id)) return prev;
         
-        if (prev.length >= 4) {
+        if (prev.length >= maxWindows) {
           setShowLimitWarning(true);
           return prev;
         }
@@ -1879,12 +1971,12 @@ const MainMenu: React.FC = () => {
         return nextWindows;
       }
     });
-  }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow, setMaximizedWindow, setActiveWindow, setOpenWindows, setWindowFlexes, setActiveQuestion, setTestResults, setShowQuitConfirmation, setShowCancelDuel, setShowLimitWarning]);
+  }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow, setMaximizedWindow, setActiveWindow, setOpenWindows, setWindowFlexes, setActiveQuestion, setTestResults, setShowQuitConfirmation, setShowCancelDuel, setShowLimitWarning, maxWindows, setShowAiDisabledWarning]);
 
   const openAgentWindow = useCallback(() => {
     const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
     if (isDuelActive) {
-      alert("AI assistance is disabled during active duels!");
+      setShowAiDisabledWarning(true);
       return;
     }
     setOpenWindows(prev => {
@@ -1892,7 +1984,7 @@ const MainMenu: React.FC = () => {
         setActiveWindow("agent");
         return prev;
       }
-      if (prev.length >= 4) {
+      if (prev.length >= maxWindows) {
         setShowLimitWarning(true);
         return prev;
       }
@@ -1903,7 +1995,7 @@ const MainMenu: React.FC = () => {
       if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
       return nextWindows;
     });
-  }, [activeDuel, maximizedWindow, setOpenWindows, setWindowFlexes, setActiveWindow, setShowLimitWarning]);
+  }, [activeDuel, maximizedWindow, setOpenWindows, setWindowFlexes, setActiveWindow, setShowLimitWarning, maxWindows, setShowAiDisabledWarning]);
 
   const moveWindow = (id: WindowId, direction: 'left' | 'right') => {
     ignoreHoverRef.current = true;
@@ -2136,12 +2228,13 @@ const MainMenu: React.FC = () => {
           <BattleWindow 
             startBattle={startBattle} questions={questions}
             startQuickMatch={startQuickMatch}
-            session={session} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest}
+            session={session} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest} guestId={guestId}
             showSignInOptions={showSignInOptions} setShowSignInOptions={setShowSignInOptions}
             t={t} onDeleteQuestion={handleDeleteQuestion} onEditQuestion={onEditQuestion}
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
             setActiveDuel={setActiveDuel} setDuelPin={setDuelPin}
             showCancelDuel={showCancelDuel} setShowCancelDuel={setShowCancelDuel}
+            isWaitingForResponse={pendingInviteTargetId !== null}
             handleCancelDuel={async () => { 
                 const currentDuel = activeDuel;
                 setActiveDuel(null); 
@@ -2169,7 +2262,7 @@ const MainMenu: React.FC = () => {
         );
       case "agent":
         return (
-          <AgentWindow t={t} lang={lang} setLang={setLang} code={code} setCode={setCode} isBattleActive={!!activeDuel && activeDuel.status === 'ACTIVE'} />
+          <AgentWindow t={t} lang={lang} setLang={setLang} code={code} setCode={setCode} isBattleActive={!!activeDuel && activeDuel.status === 'ACTIVE'} session={session} />
         );
       case "admin":
         return (
@@ -2283,6 +2376,10 @@ const MainMenu: React.FC = () => {
             timeLeft={timeLeft}
             setActiveDuel={setActiveDuel}
             setDuelPin={setDuelPin}
+            activeQuestionIndex={activeQuestionIndex}
+            changeActiveQuestion={changeActiveQuestion}
+            problemTestResults={problemTestResults}
+            problemScores={problemScores}
           />
         );
       case "profile":
@@ -2320,7 +2417,7 @@ const MainMenu: React.FC = () => {
                   setActiveWindow(winId);
                   return prev;
                 }
-                if (prev.length >= 4) {
+                if (prev.length >= maxWindows) {
                   setShowLimitWarning(true);
                   return prev;
                 }
@@ -2342,7 +2439,7 @@ const MainMenu: React.FC = () => {
                 setActiveWindow(winId);
                 return prev;
               }
-              if (prev.length >= 4) {
+              if (prev.length >= maxWindows) {
                 setShowLimitWarning(true);
                 return prev;
               }
@@ -2362,6 +2459,28 @@ const MainMenu: React.FC = () => {
       );
       case "feedback":
         return <FeedbackWindow session={session} t={t} />;
+      case "royal":
+        return (
+          <RoyalWindow 
+            session={session} 
+            t={t} 
+            onUpgradeSuccess={async () => {
+              await fetchUserStats();
+              try {
+                const res = await fetch("/api/user/profile");
+                if (res.ok) {
+                  const data = await res.json();
+                  setFullProfile(data);
+                }
+              } catch (err) {
+                console.error("Failed to refresh profile stats:", err);
+              }
+              if (session && session.user) {
+                (session.user as any).isRoyal = true;
+              }
+            }} 
+          />
+        );
       default: 
         if (id.startsWith("profile_")) {
           const targetId = id.replace("profile_", "");
@@ -2457,13 +2576,18 @@ const MainMenu: React.FC = () => {
       <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', pointerEvents: 'none' }}>
         <AnimatePresence>
           {[
-            showLimitWarning && { id: 'limit', color: 'var(--accent)', content: <span>Maximum of 4 windows allowed.</span> },
+            showLimitWarning && { id: 'limit', color: 'var(--accent)', content: <span>Maximum of {maxWindows} windows allowed.</span> },
             showWorkspaceWarning && { id: 'workspace', color: '#ff5555', content: <span>You need at least one workspace available.</span> },
             showWrongAnswerPopup && { id: 'wrong', color: '#ff5555', content: <span>Wrong Answer! Check your logic.</span> },
             showInviteSentPopup && { id: 'invite', color: 'var(--text-muted)', content: <span>Invite sent! Waiting for response...</span> },
             isAcceptingInvite && { id: 'accepting', color: 'var(--accent)', content: <span>Loading problems...</span> },
 
             showOpponentFoundPopup && { id: 'opponent', color: '#50fa7b', content: <span>Opponent found!</span> },
+            showAiDisabledWarning && { id: 'ai-disabled', color: '#ff5555', content: <span>AI assistance is disabled during active duels!</span> },
+            showDuelInBattleWarning && { id: 'duel-in-battle', color: '#ff5555', content: <span>You cannot invite someone to a duel while in a battle!</span> },
+            showDuelHasUplinkWarning && { id: 'duel-has-uplink', color: '#ff5555', content: <span>You cannot invite someone to a duel while you have an active matchmaking uplink!</span> },
+            showUplinkPendingWarning && { id: 'uplink-pending', color: '#ff5555', content: <span>You cannot generate an uplink while waiting for a duel invite response!</span> },
+            showPinCopiedNotification && { id: 'pin-copied', color: '#50fa7b', icon: <Check size={18} color="#50fa7b" />, content: <span>Uplink PIN copied to clipboard!</span> },
             incomingInvite && {
               id: 'incoming',
               color: 'var(--accent)',
@@ -2495,6 +2619,9 @@ const MainMenu: React.FC = () => {
                             
                             const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
                             startBattle(data.question, actualStart);
+                            if (isGuest && data.guestId) {
+                               setGuestId(data.guestId);
+                            }
                             setActiveDuel(data);
 
                             setOpenWindows(prev => {
@@ -2598,7 +2725,7 @@ const MainMenu: React.FC = () => {
             </Link>
 
             {/* Workspace Selector */}
-            <div style={{ display: 'flex', gap: '0.75rem', marginLeft: '1.5rem', alignItems: 'center' }}>
+            <div className="workspace-selector" style={{ display: 'flex', gap: '0.75rem', marginLeft: '1.5rem', alignItems: 'center' }}>
                {Array.from({ length: 9 }).map((_, i) => {
                  const ws = workspacesRef.current[i];
                  const isExisting = ws.openWindows.length > 1 || (ws.openWindows.length === 1 && ws.openWindows[0] !== "editor");
@@ -2667,11 +2794,12 @@ const MainMenu: React.FC = () => {
                   className="btn-ghost"
                 >
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{isGuest ? (guestName || "Guest") : (session?.user?.username || session?.user?.name)}</span>
-                  {session?.user?.image ? (
-                    <img src={session.user.image} alt="Profile" width={24} height={24} style={{ borderRadius: '50%', border: '1px solid var(--line)' }} />
-                  ) : (
-                    <DefaultAvatar name={isGuest ? (guestName || "Guest Knight") : (session?.user?.username || session?.user?.name || "Knight")} size={24} />
-                  )}
+                  <DefaultAvatar 
+                    name={isGuest ? (guestName || "Guest Knight") : (session?.user?.username || session?.user?.name || "Knight")} 
+                    size={24} 
+                    image={isGuest ? null : session?.user?.image}
+                    isRoyal={!!(session?.user as any)?.isRoyal}
+                  />
                 </button>
 
                 <AnimatePresence>
@@ -2731,25 +2859,35 @@ const MainMenu: React.FC = () => {
                               </button>
                             )}
 
-                            {(session?.user as any)?.isRoyal ? (
-                              <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.5rem 0.75rem',
-                                borderRadius: '0.4rem',
-                                color: '#ffd700',
-                                background: 'rgba(255, 215, 0, 0.08)',
-                                border: '1px solid rgba(255, 215, 0, 0.2)',
-                                marginTop: '0.25rem',
-                                fontWeight: 700,
-                              }}>
-                                <Crown size={14} fill="currentColor" />
-                                <span style={{ fontSize: '0.85rem' }}>Royal Member</span>
-                              </div>
+                             {(session?.user as any)?.isRoyal ? (
+                               <button 
+                                 onClick={() => { toggleWindow("royal"); setIsProfileMenuOpen(false); }} 
+                                 style={{
+                                   display: 'flex',
+                                   alignItems: 'center',
+                                   justifyContent: 'space-between',
+                                   padding: '0.5rem 0.75rem',
+                                   borderRadius: '0.4rem',
+                                   color: '#ffd700',
+                                   background: 'rgba(255, 215, 0, 0.08)',
+                                   border: '1px solid rgba(255, 215, 0, 0.25)',
+                                   marginTop: '0.25rem',
+                                   fontWeight: 700,
+                                   cursor: 'pointer',
+                                   width: '100%',
+                                   textAlign: 'left',
+                                   boxSizing: 'border-box',
+                                 }}
+                               >
+                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                   <Crown size={14} fill="currentColor" />
+                                   <span style={{ fontSize: '0.85rem' }}>Royal Member</span>
+                                 </div>
+                                 <ChevronRight size={12} color="#ffd700" />
+                               </button>
                             ) : (
                               <button 
-                                onClick={() => { handleBuyRoyal(); setIsProfileMenuOpen(false); }} 
+                                onClick={() => { toggleWindow("royal"); setIsProfileMenuOpen(false); }} 
                                 style={{ 
                                   display: 'flex', 
                                   alignItems: 'center', 
@@ -2851,9 +2989,10 @@ const MainMenu: React.FC = () => {
             if (id === 'privacy') icon = <Shield size={16} />;
             if (id === 'agent') icon = <Brain size={16} />;
             if (id === 'feedback') icon = <MessageSquare size={16} />;
+            if (id === 'royal') icon = <Crown size={16} color="#ffd700" fill="#ffd700" />;
             if (id.startsWith('profile')) icon = <User size={16} />;
             const rawId = id.startsWith('profile_') ? 'profile' : id;
-            const displayId = navItem?.label || (rawId === 'editor' ? t("editorLabel") : rawId === 'admin' ? t("admin") : rawId === 'agent' ? t("agentsTitle") : rawId === 'problem' ? t("problem") : rawId === 'tutorial' ? t("tutorial") : rawId === 'profile' ? t("profileOverview") : rawId === 'tournaments' ? t("tournaments") : rawId);
+            const displayId = navItem?.label || (rawId === 'editor' ? t("editorLabel") : rawId === 'admin' ? t("admin") : rawId === 'agent' ? t("agentsTitle") : rawId === 'problem' ? t("problem") : rawId === 'tutorial' ? t("tutorial") : rawId === 'profile' ? t("profileOverview") : rawId === 'tournaments' ? t("tournaments") : rawId === 'royal' ? "Royal Subscription" : rawId);
             const isMax = id === maximizedWindow;
             const originalIdx = openWindows.indexOf(id);
             const rwIdx = renderedWindows.indexOf(id);

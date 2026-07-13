@@ -247,12 +247,14 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
               <div key={user.id} className={`friend-card friend-card--${getRankClass(user.rank)}`}>
                 <div className="friend-card-header">
                   <div className="friend-avatar-wrapper">
-                    {user.image ? (
-                      <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
-                    ) : (
-                      <DefaultAvatar name={user.username || user.name || "Knight"} size={36} style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }} />
-                    )}
-                    <div className="friend-status-dot" />
+                    <DefaultAvatar 
+                      name={user.username || user.name || "Knight"} 
+                      size={36} 
+                      image={user.image}
+                      isRoyal={!!user.isRoyal}
+                      style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }}
+                    />
+                    {onlineUsers?.has(user.id) && <div className="friend-status-dot" />}
                   </div>
                   <div className="friend-meta">
                     <div className="friend-username" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -305,25 +307,18 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
               <div key={user.id} className={`friend-card friend-card--${getRankClass(user.rank)}`}>
                 <div className="friend-card-header">
                   <div className="friend-avatar-wrapper">
-                    {user.image ? (
-                      <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
-                    ) : (
-                      <DefaultAvatar name={user.username || user.name || "Knight"} size={36} style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }} />
-                    )}
+                    <DefaultAvatar 
+                      name={user.username || user.name || "Knight"} 
+                      size={36} 
+                      image={user.image}
+                      isRoyal={!!user.isRoyal}
+                      style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }}
+                    />
+                    {onlineUsers?.has(user.id) && <div className="friend-status-dot" />}
                   </div>
                   <div className="friend-meta">
                     <div className="friend-username" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       {user.username || user.name || "Unknown"}
-                      {onlineUsers?.has(user.id) && (
-                        <span style={{ 
-                          width: '8px', 
-                          height: '8px', 
-                          borderRadius: '50%', 
-                          background: '#50fa7b', 
-                          display: 'inline-block',
-                          boxShadow: '0 0 8px rgba(80, 250, 123, 0.4)',
-                        }} title="Online" />
-                      )}
                     </div>
                     <div className={`friend-rank rank--${getRankClass(user.rank)}`}>{user.rank || "Novice"}</div>
                     <div className="friend-rating">
@@ -371,25 +366,18 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
               <div key={user.id} className={`friend-card friend-card--${getRankClass(user.rank)}`}>
                 <div className="friend-card-header">
                   <div className="friend-avatar-wrapper">
-                    {user.image ? (
-                      <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
-                    ) : (
-                      <DefaultAvatar name={user.username || user.name || "Knight"} size={36} style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }} />
-                    )}
+                    <DefaultAvatar 
+                      name={user.username || user.name || "Knight"} 
+                      size={36} 
+                      image={user.image}
+                      isRoyal={!!user.isRoyal}
+                      style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }}
+                    />
+                    {onlineUsers?.has(user.id) && <div className="friend-status-dot" />}
                   </div>
                   <div className="friend-meta">
                     <div className="friend-username" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       {user.username || user.name || "Unknown"}
-                      {onlineUsers?.has(user.id) && (
-                        <span style={{ 
-                          width: '8px', 
-                          height: '8px', 
-                          borderRadius: '50%', 
-                          background: '#50fa7b', 
-                          display: 'inline-block',
-                          boxShadow: '0 0 8px rgba(80, 250, 123, 0.4)',
-                        }} title="Online" />
-                      )}
                     </div>
                     <div className={`friend-rank rank--${getRankClass(user.rank)}`}>{user.rank || "Novice"}</div>
                     <div className="friend-rating">

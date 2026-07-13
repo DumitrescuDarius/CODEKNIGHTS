@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         rank: true,
         battlesWon: true,
         battlesTotal: true,
+        isRoyal: true,
       },
       take: 100,
     });
@@ -46,6 +47,7 @@ export async function GET(req: NextRequest) {
           rank: true,
           battlesWon: true,
           battlesTotal: true,
+          isRoyal: true,
         }
       });
       if (user) {

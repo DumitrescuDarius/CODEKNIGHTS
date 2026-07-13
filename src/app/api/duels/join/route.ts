@@ -57,6 +57,25 @@ export async function POST(req: NextRequest) {
        (safeDuel.question as any).hiddenTestCases = null;
     }
 
+    if (safeDuel.questionIds && safeDuel.questionIds.length > 0) {
+      const allQuestions = await prisma.question.findMany({
+        where: { id: { in: safeDuel.questionIds } }
+      });
+      const safeQuestions = allQuestions.map(q => {
+        const sq = { ...q };
+        if ('hiddenTestCases' in sq) {
+          (sq as any).hiddenTestCases = null;
+        }
+        return sq;
+      });
+      (safeDuel as any).questions = safeDuel.questionIds
+        .map(id => safeQuestions.find(q => q.id === id))
+        .filter(Boolean);
+    } else {
+      (safeDuel as any).questions = safeDuel.question ? [safeDuel.question] : [];
+    }
+
+    console.log("[JOIN ROUTE] safeDuel.questionIds:", safeDuel.questionIds, "questions count:", (safeDuel as any).questions?.length);
     return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
   } catch (err) {
     console.error("Join duel error:", err);

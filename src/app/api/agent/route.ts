@@ -1,8 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+const guestPromptCache = new Map<string, number[]>();
 
 export async function POST(req: NextRequest) {
   console.log("[api/agent] POST request received");
   try {
+    const session = await getServerSession(authOptions);
+    const now = Date.now();
+    const oneHourAgo = new Date(now - 60 * 60 * 1000);
+    let isRoyalUser = false;
+    let userId: string | null = null;
+
+    if (session?.user) {
+      userId = (session.user as any).id;
+      const user = await prisma.user.findUnique({
+        where: { id: userId || "" },
+        select: { isRoyal: true }
+      });
+      isRoyalUser = !!user?.isRoyal;
+    }
+
+    if (!isRoyalUser) {
+      if (userId) {
+        const count = await prisma.aiPrompt.count({
+          where: {
+            userId,
+            createdAt: { gte: oneHourAgo }
+          }
+        });
+        if (count >= 3) {
+          return NextResponse.json({
+            error: "You have reached your limit of 3 AI prompts per hour. Upgrade to CodeKnights Royal for unlimited AI access!"
+          }, { status: 429 });
+        }
+        await prisma.aiPrompt.create({
+          data: { userId }
+        });
+      } else {
+        const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous-guest";
+        let timestamps = guestPromptCache.get(ip) || [];
+        timestamps = timestamps.filter(t => t > now - 60 * 60 * 1000);
+        if (timestamps.length >= 3) {
+          return NextResponse.json({
+            error: "You have reached your limit of 3 AI prompts per hour. Upgrade to CodeKnights Royal for unlimited AI access!"
+          }, { status: 429 });
+        }
+        timestamps.push(now);
+        guestPromptCache.set(ip, timestamps);
+      }
+    }
+
     const body = await req.json();
     console.log("[api/agent] Body parsed");
     const messages = body.messages || []; // Array of { role: 'user' | 'assistant', content: string }

@@ -174,11 +174,12 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
                   {getPinnedRankIcon(currentUser.globalRank)}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>
-                  {currentUser.image ? (
-                    <img src={currentUser.image} alt={currentUser.username} style={{ width: "20px", height: "20px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
-                  ) : (
-                    <DefaultAvatar name={currentUser.username || currentUser.name || "Anonymous"} size={20} />
-                  )}
+                  <DefaultAvatar 
+                    name={currentUser.username || currentUser.name || "Anonymous"} 
+                    size={20} 
+                    image={currentUser.image}
+                    isRoyal={!!currentUser.isRoyal}
+                  />
                   <span style={{ fontWeight: 800, color: "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: "0.3rem", maxWidth: "100%", minWidth: 0 }}>
                     <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", minWidth: 0 }}>
                       {currentUser.username || currentUser.name || "Anonymous"} 
@@ -258,11 +259,12 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
                   {getRankIcon(index)}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>
-                  {leader.image ? (
-                    <img src={leader.image} alt={leader.username} style={{ width: "20px", height: "20px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
-                  ) : (
-                    <DefaultAvatar name={leader.username || leader.name || "Anonymous"} size={20} />
-                  )}
+                  <DefaultAvatar 
+                    name={leader.username || leader.name || "Anonymous"} 
+                    size={20} 
+                    image={leader.image}
+                    isRoyal={!!leader.isRoyal}
+                  />
                   <span style={{ fontWeight: 700, color: "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: "0.3rem", maxWidth: "100%", minWidth: 0 }}>
                     <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", minWidth: 0 }}>
                       {leader.username || leader.name || "Anonymous"}

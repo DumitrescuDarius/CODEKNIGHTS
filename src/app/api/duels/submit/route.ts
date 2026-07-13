@@ -46,16 +46,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not a participant in this duel" }, { status: 403 });
     }
 
-    const INFINITE_PENALTY = 999999999;
+    const ZERO_SCORE = 0;
     const updateData: any = {};
 
     if (surrender) {
       if (isHost) { 
-        updateData.hostPenalty = INFINITE_PENALTY; 
+        updateData.hostPenalty = ZERO_SCORE; 
         if (code) updateData.hostCode = code;
       }
       if (isGuest) { 
-        updateData.guestPenalty = INFINITE_PENALTY; 
+        updateData.guestPenalty = ZERO_SCORE; 
         if (code) updateData.guestCode = code;
       }
       updateData.hostFinalized = true;
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
           updateData.hostPenalty = totalPenalty;
           if (code) updateData.hostCode = code;
         } else if (duel.hostPenalty === null || duel.hostPenalty === undefined) {
-          updateData.hostPenalty = INFINITE_PENALTY;
+          updateData.hostPenalty = ZERO_SCORE;
         }
       }
       if (isGuest) {
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
           updateData.guestPenalty = totalPenalty;
           if (code) updateData.guestCode = code;
         } else if (duel.guestPenalty === null || duel.guestPenalty === undefined) {
-          updateData.guestPenalty = INFINITE_PENALTY;
+          updateData.guestPenalty = ZERO_SCORE;
         }
       }
     } else if (finalize) {
@@ -85,23 +85,29 @@ export async function POST(req: NextRequest) {
         if (solveTime) updateData.hostSolveTime = solveTime;
         if (complexityScore) updateData.hostComplexity = complexityScore;
         if (code) updateData.hostCode = code;
+        if (totalPenalty !== undefined && totalPenalty !== null) {
+          updateData.hostPenalty = totalPenalty;
+        }
       }
       if (isGuest) {
         updateData.guestFinalized = true;
         if (solveTime) updateData.guestSolveTime = solveTime;
         if (complexityScore) updateData.guestComplexity = complexityScore;
         if (code) updateData.guestCode = code;
+        if (totalPenalty !== undefined && totalPenalty !== null) {
+          updateData.guestPenalty = totalPenalty;
+        }
       }
     } else {
       if (isHost) {
-        const currentPenalty = duel.hostPenalty || INFINITE_PENALTY;
-        if (totalPenalty < currentPenalty) {
+        const currentPenalty = duel.hostPenalty || ZERO_SCORE;
+        if (totalPenalty > currentPenalty) {
           updateData.hostPenalty = totalPenalty;
         }
       }
       if (isGuest) {
-        const currentPenalty = duel.guestPenalty || INFINITE_PENALTY;
-        if (totalPenalty < currentPenalty) {
+        const currentPenalty = duel.guestPenalty || ZERO_SCORE;
+        if (totalPenalty > currentPenalty) {
           updateData.guestPenalty = totalPenalty;
         }
       }
@@ -115,8 +121,8 @@ export async function POST(req: NextRequest) {
     });
     
     // Now evaluate if the duel should be finished based on the FRESH updatedDuel
-    const hostSurrendered = (isHost && surrender) || updatedDuel.hostPenalty === INFINITE_PENALTY || (isTimedOut && updatedDuel.hostPenalty === null);
-    const guestSurrendered = (isGuest && surrender) || updatedDuel.guestPenalty === INFINITE_PENALTY || (isTimedOut && updatedDuel.guestPenalty === null);
+    const hostSurrendered = (isHost && surrender) || updatedDuel.hostPenalty === ZERO_SCORE || (isTimedOut && updatedDuel.hostPenalty === null);
+    const guestSurrendered = (isGuest && surrender) || updatedDuel.guestPenalty === ZERO_SCORE || (isTimedOut && updatedDuel.guestPenalty === null);
     const bothFinalized = updatedDuel.hostFinalized && updatedDuel.guestFinalized;
 
     if (updatedDuel.status === "ACTIVE" && (bothFinalized || isTimedOut || hostSurrendered || guestSurrendered)) {
@@ -130,11 +136,11 @@ export async function POST(req: NextRequest) {
         } else if (guestSurrendered) {
             hostWon = true;
         } else {
-            const hostPenalty = updatedDuel.hostPenalty ?? INFINITE_PENALTY;
-            const guestPenalty = updatedDuel.guestPenalty ?? INFINITE_PENALTY;
-            const isClose = Math.abs(hostPenalty - guestPenalty) < 0.0001;
+            const hostScore = updatedDuel.hostPenalty ?? ZERO_SCORE;
+            const guestScore = updatedDuel.guestPenalty ?? ZERO_SCORE;
+            const isClose = Math.abs(hostScore - guestScore) < 0.0001;
             isDraw = isClose;
-            hostWon = !isClose && hostPenalty < guestPenalty;
+            hostWon = !isClose && hostScore > guestScore;
         }
 
         const isHostGuest = updatedDuel.host?.username?.startsWith("Guest Knight") || false;

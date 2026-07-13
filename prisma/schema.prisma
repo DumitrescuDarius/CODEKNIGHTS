@@ -60,6 +60,7 @@ model User {
   submissions   Submission[]
   hostDuels     Duel[]    @relation("HostDuels")
   guestDuels    Duel[]    @relation("GuestDuels")
+  aiPrompts     AiPrompt[]
 }
 
 model FriendRequest {
@@ -137,6 +138,10 @@ model Duel {
   unrated     Boolean  @default(false)
   gameMode    String   @default("CODEKNIGHTS")
   expiresAt   DateTime
+  numProblems Int      @default(1)
+  totalTime   Int      @default(30)
+  difficulty  String   @default("ANY")
+  questionIds String[] @default([])
 
   question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   host        User     @relation("HostDuels", fields: [hostId], references: [id], onDelete: Cascade)
@@ -162,4 +167,11 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model AiPrompt {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

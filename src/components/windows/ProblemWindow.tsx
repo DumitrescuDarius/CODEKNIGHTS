@@ -123,6 +123,10 @@ interface ProblemWindowProps {
   setActiveDuel?: (val: any) => void;
   setDuelPin?: (val: string) => void;
   onOpenUserProfile?: (userId: string) => void;
+  activeQuestionIndex?: number;
+  changeActiveQuestion?: (index: number) => void;
+  problemTestResults?: Record<string, { passed: number; total: number; details: any[] }>;
+  problemScores?: Record<string, number>;
 }
 
 export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
@@ -130,7 +134,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
   analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin,
-  onOpenUserProfile
+  onOpenUserProfile, activeQuestionIndex, changeActiveQuestion, problemTestResults = {}, problemScores = {}
 }) => {
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
   const isDuelFinished = activeDuel?.status === "FINISHED" || (activeDuel != null && timeLeft === 0);
@@ -394,11 +398,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
             <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
-              {activeDuel.host?.image ? (
-                <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)', objectFit: 'cover' }} />
-              ) : (
-                <DefaultAvatar name={activeDuel.host?.username || activeDuel.host?.name || "Host"} size={48} style={{ border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} />
-              )}
+              <DefaultAvatar 
+                name={activeDuel.host?.username || activeDuel.host?.name || "Host"} 
+                size={48} 
+                image={activeDuel.host?.image}
+                isRoyal={!!activeDuel.host?.isRoyal}
+                style={{ border: hostWin ? '1px solid #50fa7b' : '1px solid var(--line)' }} 
+              />
             </div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
             <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
@@ -414,11 +420,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
             <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
-              {activeDuel.guest?.image ? (
-                <img src={activeDuel.guest.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)', objectFit: 'cover' }} />
-              ) : (
-                <DefaultAvatar name={activeDuel.guest?.username || activeDuel.guest?.name || "Guest"} size={48} style={{ border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} />
-              )}
+              <DefaultAvatar 
+                name={activeDuel.guest?.username || activeDuel.guest?.name || "Guest"} 
+                size={48} 
+                image={activeDuel.guest?.image}
+                isRoyal={!!activeDuel.guest?.isRoyal}
+                style={{ border: guestWin ? '1px solid #50fa7b' : '1px solid var(--line)' }} 
+              />
             </div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
             <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
@@ -472,7 +480,16 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     );
   }
 
-  if (allPassed) {
+  const allProblemsSolved = activeDuel?.questions && activeDuel.questions.length > 0
+    ? activeDuel.questions.every((q: any) => {
+        const res = problemTestResults[q.id];
+        return res && res.passed === res.total && res.total > 0;
+      })
+    : allPassed;
+
+  if (allProblemsSolved) {
+    const totalScoreVal = Object.values(problemScores).reduce((sum, val) => sum + val, 0);
+
     return (
       <div style={{ padding: '2rem', height: '100%', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)', marginBottom: '1.5rem' }}>
@@ -530,47 +547,30 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             <Trophy size={48} />
           </div>
           <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>{t("battleVictorious")}</h2>
-          <p style={{ color: 'var(--text-muted)' }}>{t("battleVictorious") === "LUPTĂ CÂȘTIGATĂ" ? "Ai rezolvat cu succes această provocare." : "You have successfully solved the challenge."}</p>
+          <p style={{ color: 'var(--text-muted)' }}>{t("battleVictorious") === "LUPTĂ CÂȘTIGATĂ" ? "Ai rezolvat cu succes toate provocările din arenă." : "You have successfully solved all challenges in the arena."}</p>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
-            <div style={{ position: 'relative', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer' }}>
-              <div onClick={() => setIsPenaltyOpen(!isPenaltyOpen)} style={{ padding: '1.25rem' }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Penalty Score ℹ️</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{penaltyBreakdown.time + penaltyBreakdown.wa}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
+            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total Match Score</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)' }}>
+                {totalScoreVal} pts
               </div>
-              
-              {isPenaltyOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    zIndex: 100,
-                    background: 'var(--bg)',
-                    border: '1px solid var(--line)',
-                    borderRadius: '0.5rem',
-                    marginTop: '0.5rem',
-                    padding: '1.25rem',
-                    fontSize: '0.85rem',
-                    color: 'var(--text-muted)',
-                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time:</span><span style={{color: 'var(--text)'}}>{solveTime || "--:--"}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Battle Bad Submissions:</span><span style={{color: 'var(--text)'}}>{wrongAttemptCount}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Lifetime Bad Submissions:</span><span style={{color: 'var(--text)'}}>{analysis?.failedSubmissionsCount || 0}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Time Penalty:</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.time}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Wrong Answers ({wrongAttemptCount} × 50):</span><span style={{color: 'var(--text)'}}>{penaltyBreakdown.wa}</span></div>
-                </div>
-              )}
             </div>
 
-            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{t("langUsed")}</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{(LANG_CONFIG as any)[lang]?.label || lang}</div>
-            </div>
+            {activeDuel?.questions && activeDuel.questions.map((q: any, idx: number) => {
+              const pScore = problemScores[q.id] || 0;
+              const pRes = problemTestResults[q.id];
+              return (
+                <div key={q.id} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Problem {idx + 1} Score</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>{pScore} pts</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                    Passed: {pRes?.passed ?? 0}/{pRes?.total ?? 0} tests
+                  </div>
+                </div>
+              );
+            })}
         </div>
 
         <button 
@@ -635,6 +635,87 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             borderBottom: '1px solid rgba(255,255,255,0.05)'
           }}>
             {renderOpponentProgress()}
+            {activeDuel?.questions && activeDuel.questions.length > 1 && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginRight: '0.25rem', letterSpacing: '0.05em' }}>
+                  PROBLEMS:
+                </span>
+                {activeDuel.questions.map((q: any, idx: number) => {
+                  const isSelected = activeQuestion?.id === q.id;
+                  const isSolved = (() => {
+                    const res = problemTestResults[q.id];
+                    return res && res.passed === res.total && res.total > 0;
+                  })();
+                  const score = problemScores[q.id] || 0;
+
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => changeActiveQuestion?.(idx)}
+                      style={{
+                        minWidth: '32px',
+                        height: '32px',
+                        padding: '0 0.75rem',
+                        borderRadius: '0.4rem',
+                        border: isSelected ? '2px solid var(--accent)' : '1px solid var(--line)',
+                        background: isSelected ? 'rgba(122, 162, 247, 0.15)' : 'rgba(255,255,255,0.03)',
+                        color: isSelected ? 'var(--accent)' : 'var(--text-muted)',
+                        fontWeight: 900,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {isSolved ? "✓ " : ""}{idx + 1}{score > 0 ? ` (${score} pts)` : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            
+            {allPassed && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 1.25rem',
+                background: 'rgba(80, 250, 123, 0.08)',
+                border: '1px solid rgba(80, 250, 123, 0.25)',
+                borderRadius: '0.5rem',
+                marginTop: '0.25rem',
+                marginBottom: '0.5rem',
+                boxShadow: '0 4px 15px rgba(80, 250, 123, 0.05)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <Trophy size={16} color="#50fa7b" />
+                  <span style={{ fontWeight: 800, color: '#50fa7b', fontSize: '0.85rem' }}>
+                    PROBLEM DONE! All test cases passed.
+                  </span>
+                </div>
+                <button
+                  onClick={retryProblem}
+                  style={{
+                    background: 'rgba(80, 250, 123, 0.15)',
+                    color: '#50fa7b',
+                    border: '1px solid rgba(80, 250, 123, 0.3)',
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: '0.4rem',
+                    fontWeight: 800,
+                    fontSize: '0.7rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#50fa7b'; e.currentTarget.style.color = '#000'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)'; e.currentTarget.style.color = '#50fa7b'; }}
+                >
+                  RETRY
+                </button>
+              </div>
+            )}
+
             <h2 style={{ 
               fontSize: '1.8rem', 
               fontWeight: 900, 

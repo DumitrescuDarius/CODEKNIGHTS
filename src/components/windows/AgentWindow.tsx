@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Language } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
-import { Brain, Code2, Sparkles, Loader2, History, Plus, X, MessageSquare, Trash2 } from "lucide-react";
+import { Brain, Code2, Sparkles, Loader2, History, Plus, X, MessageSquare, Trash2, Crown } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -15,6 +15,7 @@ interface AgentWindowProps {
   code: string;
   setCode: (c: string) => void;
   isBattleActive: boolean;
+  session: any;
 }
 
 const simpleHighlightCpp = (code: string) => {
@@ -141,7 +142,8 @@ const TypewriterMarkdown = React.memo(({ content, isNew, setCode, scrollContaine
   );
 });
 
-export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code, setCode, isBattleActive }) => {
+export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code, setCode, isBattleActive, session }) => {
+  const isRoyal = !!(session?.user as any)?.isRoyal;
   const chatContainerRef = React.useRef<HTMLDivElement>(null);
   type ChatMessage = {role: 'user'|'assistant', content: string, isNew?: boolean};
   type ChatSession = { id: string; title: string; updatedAt: number; messages: ChatMessage[] };
