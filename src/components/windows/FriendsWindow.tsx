@@ -5,6 +5,7 @@ import { Search, UserPlus, UserCheck, Loader2, Users, Trophy, UserX, Check, User
 // framer-motion removed: use plain elements instead
 import { User } from "../../types";
 import { TranslationKey } from "../../constants/translations";
+import { DefaultAvatar } from "../DefaultAvatar";
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -249,7 +250,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     {user.image ? (
                       <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     ) : (
-                      <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username || user.name || "Knight")}&rowColor=random`} alt="Avatar" className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
+                      <DefaultAvatar name={user.username || user.name || "Knight"} size={36} style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }} />
                     )}
                     <div className="friend-status-dot" />
                   </div>
@@ -307,7 +308,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     {user.image ? (
                       <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     ) : (
-                      <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username || user.name || "Knight")}&rowColor=random`} alt="Avatar" className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
+                      <DefaultAvatar name={user.username || user.name || "Knight"} size={36} style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }} />
                     )}
                   </div>
                   <div className="friend-meta">
@@ -373,7 +374,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     {user.image ? (
                       <img src={user.image} alt={user.username || "User"} className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
                     ) : (
-                      <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(user.username || user.name || "Knight")}&rowColor=random`} alt="Avatar" className={`friend-avatar friend-avatar--${getRankClass(user.rank)}`} />
+                      <DefaultAvatar name={user.username || user.name || "Knight"} size={36} style={{ border: `1px solid var(--rank-${getRankClass(user.rank)})` }} />
                     )}
                   </div>
                   <div className="friend-meta">

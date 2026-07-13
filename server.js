@@ -92,6 +92,14 @@ app.prepare().then(() => {
       }
     });
 
+    socket.on("reject_invite", (data) => {
+      io.emit("invite_rejected", data);
+    });
+
+    socket.on("accept_invite", (data) => {
+      io.emit("invite_accepted", data);
+    });
+
     socket.on("disconnect", () => {
       if (socket.userId) {
         // Simple approach: we might remove them even if another tab is open,

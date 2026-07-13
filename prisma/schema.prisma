@@ -43,6 +43,7 @@ model User {
   image         String?
   themeIndex    Int       @default(0)
   isAdmin       Boolean   @default(false)
+  isRoyal       Boolean   @default(false)
   battlesWon    Int       @default(0)
   battlesTotal  Int       @default(0)
   rating        Int       @default(1000)
@@ -133,6 +134,8 @@ model Duel {
 
   createdAt   DateTime @default(now())
   startedAt   DateTime?
+  unrated     Boolean  @default(false)
+  gameMode    String   @default("CODEKNIGHTS")
   expiresAt   DateTime
 
   question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)

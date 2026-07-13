@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -17,6 +17,7 @@ import beautify from "js-beautify";
 import { TRANSLATIONS, TranslationKey } from "../constants/translations";
 
 import { EditorWindow } from "./windows/EditorWindow";
+import { DefaultAvatar } from "./DefaultAvatar";
 import { SettingsWindow } from "./windows/SettingsWindow";
 import { BattleWindow } from "./windows/BattleWindow";
 import { ProblemWindow } from "./windows/ProblemWindow";
@@ -29,6 +30,7 @@ import { FriendsWindow } from "./windows/FriendsWindow";
 import { AgentWindow } from "./windows/AgentWindow";
 import { TutorialWindow } from "./windows/TutorialWindow";
 import FeedbackWindow from "./windows/FeedbackWindow";
+import { LeaderboardWindow } from "./windows/LeaderboardWindow";
 import { Transition } from "framer-motion";
 
 declare global {
@@ -338,8 +340,13 @@ const MainMenu: React.FC = () => {
   const [fullProfile, setFullProfile] = useState<any>(null);
   const [cachedFriends, setCachedFriends] = useState<any[] | null>(null);
   const [cachedRequests, setCachedRequests] = useState<any[] | null>(null);
+  const [cachedLeaderboard, setCachedLeaderboard] = useState<any>(null);
+  const [activeGameModeCallback, setActiveGameModeCallback] = useState<((mode: string, isUnrated: boolean) => void) | null>(null);
+  const [showGameModeSelection, setShowGameModeSelection] = useState(false);
+  const [modalIsUnrated, setModalIsUnrated] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
-  const [incomingInvite, setIncomingInvite] = useState<{hostName: string, pin: string} | null>(null);
+  const [incomingInvite, setIncomingInvite] = useState<{hostName: string, hostId: string, gameMode: string, unrated: boolean, pin: string} | null>(null);
+  const [isAcceptingInvite, setIsAcceptingInvite] = useState(false);
   const [showQuitConfirmation, setShowQuitConfirmation] = useState(false);
   const [showCancelDuel, setShowCancelDuel] = useState(false);
   const [battleStartTime, setBattleStartTime] = useState<number | null>(null);
@@ -372,6 +379,17 @@ const MainMenu: React.FC = () => {
       }).catch(console.error);
     }
   };
+
+  useEffect(() => {
+    fetch('/api/leaderboard')
+      .then(async res => {
+        if (res.ok) {
+          const data = await res.json();
+          setCachedLeaderboard(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (session?.user && !isGuest) {
@@ -659,6 +677,11 @@ const MainMenu: React.FC = () => {
 
   useEffect(() => {
     const handleOpenAgent = () => {
+      const isDuelActive = activeDuelRef.current && activeDuelRef.current.status === "ACTIVE";
+      if (isDuelActive) {
+        alert("AI assistance is disabled during active duels!");
+        return;
+      }
       setOpenWindows(prev => {
         if (!prev.includes("agent")) {
           if (prev.length >= 4) {
@@ -732,72 +755,54 @@ const MainMenu: React.FC = () => {
   }, [isGuest, guestName]);
 
   const handleInviteDuel = useCallback(async (targetId: string, targetName: string) => {
+    setActiveGameModeCallback(() => async (mode: string, isUnrated: boolean) => {
+      const myName = (session?.user as any)?.name || (session?.user as any)?.username || "Knight";
+      const myId = (session?.user as any)?.id || guestId || "host-id";
+      const pin = "INV-" + Math.floor(100000 + Math.random() * 900000).toString();
+      
+      socketRef.current?.emit("invite_duel", { 
+        targetId, 
+        hostName: myName, 
+        hostId: myId,
+        gameMode: mode, 
+        unrated: isUnrated, 
+        pin 
+      });
+      
+      setPendingInviteTargetId(targetId);
+      setShowInviteSentPopup(true);
+      setDuelPin(pin);
+    });
+    setShowGameModeSelection(true);
+  }, [isGuest, guestId, session]);
+
+  const cancelInviteDuel = useCallback(() => {
+    if (duelPin) {
+      socketRef.current?.emit("cancel_invite", { targetId: pendingInviteTargetId, pin: duelPin });
+    }
+    setShowInviteSentPopup(false);
+    setPendingInviteTargetId(null);
+    setDuelPin("");
+    setActiveDuel(null);
+  }, [pendingInviteTargetId, duelPin]);
+
+  const handleBuyRoyal = useCallback(async () => {
     try {
-      const res = await fetch("/api/duels", { 
+      const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestName: isGuest ? guestName : undefined })
       });
       const data = await res.json();
-      if (res.ok && data.pin) {
-        setDuelPin(data.pin);
-        if (data.serverTime) setClockOffset(data.serverTime - Date.now());
-        setActiveDuel(data);
-        
-        const myName = (session?.user as any)?.name || (session?.user as any)?.username || "Knight";
-        socketRef.current?.emit("invite_duel", { targetId, hostName: myName, pin: data.pin });
-        
-        setPendingInviteTargetId(targetId);
-        setShowInviteSentPopup(true);
-        
+      if (res.ok && data.url) {
+        window.location.href = data.url;
       } else {
-        alert("Failed to create duel for invite.");
+        alert(data.error || "Failed to start checkout. Please try again.");
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to create duel.");
+      alert("Failed to initiate Stripe Checkout.");
     }
-  }, [isGuest, guestName, session]);
-
-  const cancelInviteDuel = useCallback(() => {
-    if (activeDuel && activeDuel.pin) {
-      socketRef.current?.emit("cancel_invite", { targetId: "any", pin: activeDuel.pin });
-      setShowInviteSentPopup(false);
-      setPendingInviteTargetId(null);
-      setActiveDuel(null);
-      setDuelPin("");
-    }
-  }, [activeDuel]);
-
-  const startQuickMatch = useCallback(async () => {
-    try {
-      const res = await fetch('/api/duels/quick', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestName: isGuest ? guestName : undefined })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data) {
-          // If returned duel is waiting, show waiting UI; if active, start immediately
-          if (data.serverTime) setClockOffset(data.serverTime - Date.now());
-          setActiveDuel(data);
-          socketRef.current?.emit("duel_update", { duelId: data.id });
-          if (data.status === 'ACTIVE') {
-            setShowWaitingPopup(false);
-            setShowOpponentFoundPopup(true);
-            const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-            startBattle(data.question, actualStart);
-          }
-        }
-      } else {
-        const data = await res.json().catch(() => ({}));
-        console.error('Quick match failed:', data.error || res.statusText);
-      }
-    } catch (err) {
-      console.error('Quick match error:', err);
-    }
-  }, [isGuest, guestName]);
+  }, []);
 
   const pollDuel = useCallback(async () => {
     const currentActiveDuel = activeDuelRef.current;
@@ -867,6 +872,65 @@ const MainMenu: React.FC = () => {
     }
   }, [session, fetchUserStats]);
 
+  useEffect(() => {
+    const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
+    if (!isDuelActive) return;
+
+    // 1. Refresh Prevention
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // 2. Tab/Window leaving triggers auto-surrender
+    const handleLeave = async () => {
+      try {
+        await fetch("/api/duels/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            duelId: activeDuel.id, 
+            surrender: true, 
+            code: code, 
+            guestUserId: guestId || undefined 
+          })
+        });
+        socketRef.current?.emit("duel_update", { duelId: activeDuel.id });
+      } catch (err) {
+        console.error("Auto-surrender failed:", err);
+      }
+
+      // Reset client states
+      setActiveDuel(null);
+      setDuelPin("");
+      setShowCancelDuel(false);
+      setShowWaitingPopup(false);
+      setShowInviteSentPopup(false);
+      alert("You have been automatically surrendered for leaving the tab/window.");
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        handleLeave();
+      }
+    };
+
+    const handleBlur = () => {
+      handleLeave();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [activeDuel, code, guestId]);
+
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -918,7 +982,7 @@ const MainMenu: React.FC = () => {
     });
 
     socketRef.current.on("duel_invite", (data) => {
-      const userId = session?.user ? (session.user as any).id : null;
+      const userId = session?.user ? (session.user as any).id : (isGuest ? guestId : null);
       console.log("RECEIVED duel_invite. targetId:", data.targetId, "my userId:", userId, "data:", data);
       if (userId && data.targetId === userId) {
          setIncomingInvite(data);
@@ -927,6 +991,29 @@ const MainMenu: React.FC = () => {
 
     socketRef.current.on("cancel_invite", (data) => {
       setIncomingInvite(prev => prev?.pin === data.pin ? null : prev);
+    });
+
+    socketRef.current.on("invite_rejected", (data) => {
+      if (duelPin && duelPin === data.pin) {
+        alert("Your duel request was rejected.");
+        setShowInviteSentPopup(false);
+        setPendingInviteTargetId(null);
+        setDuelPin("");
+        setActiveDuel(null);
+      }
+    });
+
+    socketRef.current.on("invite_accepted", (data) => {
+      const myId = session?.user ? (session.user as any).id : (isGuest ? guestId : null);
+      if (myId && data.hostId === myId) {
+         setDuelPin(data.pin);
+         setShowInviteSentPopup(false);
+         setPendingInviteTargetId(null);
+         
+         const actualStart = new Date(data.duel.startedAt || data.duel.createdAt).getTime() - (data.duel.serverTime ? data.duel.serverTime - Date.now() : clockOffset);
+         startBattle(data.duel.question, actualStart);
+         setActiveDuel(data.duel);
+      }
     });
 
     socketRef.current.on("online_users_update", (usersArray: string[]) => {
@@ -939,7 +1026,7 @@ const MainMenu: React.FC = () => {
         socketRef.current?.emit("join_duel", id);
       }
       
-      const userId = session?.user ? (session.user as any).id : null;
+      const userId = session?.user ? (session.user as any).id : (isGuest ? guestId : null);
       if (userId) {
         socketRef.current?.emit("identify", userId);
       }
@@ -1406,7 +1493,7 @@ const MainMenu: React.FC = () => {
     if (maximizedWindow === "battle") setMaximizedWindow(null);
 
     setOpenWindows(prev => {
-      const next = prev.filter(w => w !== "battle");
+      const next = prev.filter(w => w !== "battle" && w !== "agent");
       if (!next.includes("problem")) next.push("problem");
       if (!next.includes("editor")) next.unshift("editor");
       
@@ -1415,6 +1502,36 @@ const MainMenu: React.FC = () => {
     });
     setActiveWindow("editor");
   }, [questions, maximizedWindow, activeDuel]);
+
+  const startQuickMatch = useCallback(async () => {
+    try {
+      const res = await fetch('/api/duels/quick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestName: isGuest ? guestName : undefined })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data) {
+          // If returned duel is waiting, show waiting UI; if active, start immediately
+          if (data.serverTime) setClockOffset(data.serverTime - Date.now());
+          setActiveDuel(data);
+          socketRef.current?.emit("duel_update", { duelId: data.id });
+          if (data.status === 'ACTIVE') {
+            setShowWaitingPopup(false);
+            setShowOpponentFoundPopup(true);
+            const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
+            startBattle(data.question, actualStart);
+          }
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error('Quick match failed:', data.error || res.statusText);
+      }
+    } catch (err) {
+      console.error('Quick match error:', err);
+    }
+  }, [isGuest, guestName, clockOffset, startBattle]);
 
   const runTests = useCallback(async () => {
     if (!activeQuestion) return;
@@ -1671,6 +1788,14 @@ const MainMenu: React.FC = () => {
   const toggleWindow = useCallback((id: WindowId) => {
     console.log("[MainMenu] toggleWindow called for:", id);
     
+    if (id === "agent") {
+      const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
+      if (isDuelActive) {
+        alert("AI assistance is disabled during active duels!");
+        return;
+      }
+    }
+    
     // Check if we should allow closing (confirmation)
     if (id === "problem" && activeQuestion) {
       const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
@@ -1757,6 +1882,11 @@ const MainMenu: React.FC = () => {
   }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow, setMaximizedWindow, setActiveWindow, setOpenWindows, setWindowFlexes, setActiveQuestion, setTestResults, setShowQuitConfirmation, setShowCancelDuel, setShowLimitWarning]);
 
   const openAgentWindow = useCallback(() => {
+    const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
+    if (isDuelActive) {
+      alert("AI assistance is disabled during active duels!");
+      return;
+    }
     setOpenWindows(prev => {
       if (prev.includes("agent")) {
         setActiveWindow("agent");
@@ -1773,7 +1903,7 @@ const MainMenu: React.FC = () => {
       if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
       return nextWindows;
     });
-  }, [maximizedWindow, setOpenWindows, setWindowFlexes, setActiveWindow, setShowLimitWarning]);
+  }, [activeDuel, maximizedWindow, setOpenWindows, setWindowFlexes, setActiveWindow, setShowLimitWarning]);
 
   const moveWindow = (id: WindowId, direction: 'left' | 'right') => {
     ignoreHoverRef.current = true;
@@ -2176,7 +2306,32 @@ const MainMenu: React.FC = () => {
         return <TutorialWindow t={t} />;
       case "terms": return <LegalWindow type="terms" />;
       case "privacy": return <LegalWindow type="privacy" />;
-      case "leaderboard": return <div style={{ padding: '1.5rem' }}><h2>{t("global")}</h2><div style={{ marginTop: '1rem' }}>1. tourist (3842)</div></div>;
+      case "leaderboard":
+        return (
+          <LeaderboardWindow 
+            t={t} 
+            currentUserId={session?.user ? (session.user as any).id : (guestId || undefined)}
+            cachedLeaderboard={cachedLeaderboard}
+            onUpdateCache={setCachedLeaderboard}
+            openProfile={(id: string) => { 
+              const winId = `profile_${id}` as WindowId;
+              setOpenWindows(prev => {
+                if (prev.includes(winId)) {
+                  setActiveWindow(winId);
+                  return prev;
+                }
+                if (prev.length >= 4) {
+                  setShowLimitWarning(true);
+                  return prev;
+                }
+                setWindowFlexes(flexes => [...flexes, 1]);
+                if (maximizedWindow) setMaximizedWindow(null);
+                setActiveWindow(winId);
+                return [...prev, winId];
+              });
+            }} 
+          />
+        );
       case "friends": return (
         <FriendsWindow 
           t={t} 
@@ -2220,6 +2375,11 @@ const MainMenu: React.FC = () => {
                    pendingInviteTargetId={pendingInviteTargetId}
                    onCancelInvite={cancelInviteDuel}
                    isOnline={onlineUsers.has(targetId)}
+                   addToEditor={(c) => {
+                       setCode(c);
+                       if (!openWindows.includes("editor")) setOpenWindows(prev => [...prev, "editor"]);
+                       setActiveWindow("editor");
+                   }}
                  />;
         }
         return null;
@@ -2229,7 +2389,7 @@ const MainMenu: React.FC = () => {
     .filter(id => {
       // Only allow certain windows if not logged in
       if (!session) {
-        return ["editor", "settings", "battle", "problem", "privacy", "terms", "feedback"].includes(id);
+        return ["editor", "settings", "battle", "problem", "privacy", "terms", "feedback", "leaderboard"].includes(id);
       }
       return true;
     })
@@ -2294,13 +2454,14 @@ const MainMenu: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', pointerEvents: 'none' }}>
+      <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', pointerEvents: 'none' }}>
         <AnimatePresence>
           {[
             showLimitWarning && { id: 'limit', color: 'var(--accent)', content: <span>Maximum of 4 windows allowed.</span> },
             showWorkspaceWarning && { id: 'workspace', color: '#ff5555', content: <span>You need at least one workspace available.</span> },
             showWrongAnswerPopup && { id: 'wrong', color: '#ff5555', content: <span>Wrong Answer! Check your logic.</span> },
             showInviteSentPopup && { id: 'invite', color: 'var(--text-muted)', content: <span>Invite sent! Waiting for response...</span> },
+            isAcceptingInvite && { id: 'accepting', color: 'var(--accent)', content: <span>Loading problems...</span> },
 
             showOpponentFoundPopup && { id: 'opponent', color: '#50fa7b', content: <span>Opponent found!</span> },
             incomingInvite && {
@@ -2309,28 +2470,68 @@ const MainMenu: React.FC = () => {
               icon: <Sword size={18} color="var(--accent)" />,
               content: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <span><strong style={{ color: 'var(--accent)' }}>{incomingInvite.hostName}</strong> challenged you!</span>
+                  <span><strong style={{ color: 'var(--accent)' }}>{incomingInvite.hostName}</strong> challenged you to a {incomingInvite.gameMode} ({incomingInvite.unrated ? "Unrated" : "Rated"}) match!</span>
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
                     <button 
-                      onClick={() => {
-                        joinDuel(incomingInvite.pin);
-                        setOpenWindows(prev => {
-                           const next = prev.filter(w => w !== "battle");
-                           if (!next.includes("problem")) next.push("problem");
-                           if (!next.includes("editor")) next.unshift("editor");
-                           setWindowFlexes(next.map(w => w === "editor" ? 1.5 : 1));
-                           return next;
-                        });
-                        setActiveWindow("editor");
-                        setIncomingInvite(null);
+                      onClick={async () => {
+                        if (isAcceptingInvite) return;
+                        setIsAcceptingInvite(true);
+                        const myId = session?.user ? (session.user as any).id : (isGuest ? guestId : null);
+                        try {
+                          const res = await fetch("/api/duels", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              hostId: incomingInvite.hostId,
+                              guestId: myId,
+                              gameMode: incomingInvite.gameMode,
+                              unrated: incomingInvite.unrated
+                            })
+                          });
+                          const data = await res.json();
+                          if (res.ok && data.id) {
+                            setDuelPin(data.pin);
+                            socketRef.current?.emit("accept_invite", { hostId: incomingInvite.hostId, pin: data.pin, duel: data });
+                            
+                            const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
+                            startBattle(data.question, actualStart);
+                            setActiveDuel(data);
+
+                            setOpenWindows(prev => {
+                               const next = prev.filter(w => w !== "battle");
+                               if (!next.includes("problem")) next.push("problem");
+                               if (!next.includes("editor")) next.unshift("editor");
+                               setWindowFlexes(next.map(w => w === "editor" ? 1.5 : 1));
+                               return next;
+                            });
+                            setActiveWindow("editor");
+                            setIncomingInvite(null);
+                            setIsAcceptingInvite(false);
+                          } else {
+                            alert(data.error || "Failed to accept challenge.");
+                            setIsAcceptingInvite(false);
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          alert("Failed to accept challenge.");
+                          setIsAcceptingInvite(false);
+                        }
                       }} 
-                      style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '0.2rem', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem' }}
+                      disabled={isAcceptingInvite}
+                      style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '0.2rem', cursor: isAcceptingInvite ? 'not-allowed' : 'pointer', fontWeight: 800, fontSize: '0.8rem', opacity: isAcceptingInvite ? 0.6 : 1 }}
                     >
                       Accept
                     </button>
                     <button 
-                      onClick={() => setIncomingInvite(null)} 
-                      style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--line)', padding: '0.3rem 0.6rem', borderRadius: '0.2rem', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem' }}
+                      onClick={() => {
+                        if (isAcceptingInvite) return;
+                        if (incomingInvite) {
+                          socketRef.current?.emit("reject_invite", { pin: incomingInvite.pin });
+                        }
+                        setIncomingInvite(null);
+                      }} 
+                      disabled={isAcceptingInvite}
+                      style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--line)', padding: '0.3rem 0.6rem', borderRadius: '0.2rem', cursor: isAcceptingInvite ? 'not-allowed' : 'pointer', fontWeight: 800, fontSize: '0.8rem', opacity: isAcceptingInvite ? 0.6 : 1 }}
                     >
                       Reject
                     </button>
@@ -2468,10 +2669,8 @@ const MainMenu: React.FC = () => {
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{isGuest ? (guestName || "Guest") : (session?.user?.username || session?.user?.name)}</span>
                   {session?.user?.image ? (
                     <img src={session.user.image} alt="Profile" width={24} height={24} style={{ borderRadius: '50%', border: '1px solid var(--line)' }} />
-                  ) : isGuest ? (
-                    <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(guestName || "Guest Knight")}&rowColor=random`} alt="Guest Profile" width={24} height={24} style={{ borderRadius: '50%', border: '1px solid var(--line)' }} />
                   ) : (
-                    <User size={20} />
+                    <DefaultAvatar name={isGuest ? (guestName || "Guest Knight") : (session?.user?.username || session?.user?.name || "Knight")} size={24} />
                   )}
                 </button>
 
@@ -2491,6 +2690,30 @@ const MainMenu: React.FC = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={14} /><span style={{ fontSize: '0.85rem' }}>{t("profileOverview")}</span></div>
                               <ChevronRight size={12} />
                             </button>
+
+                            <button 
+                              onClick={() => { toggleWindow("leaderboard"); setIsProfileMenuOpen(false); }} 
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between', 
+                                padding: '0.5rem 0.75rem', 
+                                borderRadius: '0.4rem', 
+                                border: 'none', 
+                                color: 'inherit', 
+                                background: 'rgba(255,255,255,0.02)', 
+                                cursor: 'pointer', 
+                                textAlign: 'left', 
+                                width: '100%',
+                                marginTop: '0.25rem'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Trophy size={14} color="var(--accent)" />
+                                <span style={{ fontSize: '0.85rem' }}>Leaderboard</span>
+                              </div>
+                              <ChevronRight size={12} />
+                            </button>
                             
                             <button onClick={() => { 
                                 if (!openWindows.includes("tutorial")) setOpenWindows(prev => [...prev, "tutorial"]);
@@ -2500,10 +2723,54 @@ const MainMenu: React.FC = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={14} /><span style={{ fontSize: '0.85rem' }}>{t("tutorial")}</span></div>
                               <ChevronRight size={12} />
                             </button>
-
+                            
                             {session?.user?.isAdmin && (
-                              <button onClick={() => { toggleWindow("admin"); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'var(--accent)', background: 'rgba(122, 162, 247, 0.05)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                              <button onClick={() => { toggleWindow("admin"); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'var(--accent)', background: 'rgba(122, 162, 247, 0.05)', cursor: 'pointer', textAlign: 'left', width: '100%', marginTop: '0.25rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Database size={14} /><span style={{ fontSize: '0.85rem' }}>{t("admin")}</span></div>
+                                <ChevronRight size={12} />
+                              </button>
+                            )}
+
+                            {(session?.user as any)?.isRoyal ? (
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '0.4rem',
+                                color: '#ffd700',
+                                background: 'rgba(255, 215, 0, 0.08)',
+                                border: '1px solid rgba(255, 215, 0, 0.2)',
+                                marginTop: '0.25rem',
+                                fontWeight: 700,
+                              }}>
+                                <Crown size={14} fill="currentColor" />
+                                <span style={{ fontSize: '0.85rem' }}>Royal Member</span>
+                              </div>
+                            ) : (
+                              <button 
+                                onClick={() => { handleBuyRoyal(); setIsProfileMenuOpen(false); }} 
+                                style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'space-between', 
+                                  padding: '0.5rem 0.75rem', 
+                                  borderRadius: '0.4rem', 
+                                  border: '1px solid rgba(255, 215, 0, 0.3)', 
+                                  color: '#120824', 
+                                  background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)', 
+                                  cursor: 'pointer', 
+                                  textAlign: 'left', 
+                                  width: '100%', 
+                                  marginTop: '0.25rem',
+                                  fontWeight: 800,
+                                  boxShadow: '0 4px 12px rgba(255, 215, 0, 0.2)',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <Crown size={14} fill="currentColor" />
+                                  <span style={{ fontSize: '0.85rem' }}>Buy Royal</span>
+                                </div>
                                 <ChevronRight size={12} />
                               </button>
                             )}
@@ -2511,10 +2778,36 @@ const MainMenu: React.FC = () => {
                             )}
 
                             {isGuest && (
-                            <button onClick={() => { if (!openWindows.includes("battle")) toggleWindow("battle"); setShowSignInOptions(true); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'inherit', background: 'rgba(255,255,255,0.02)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LogIn size={14} /><span style={{ fontSize: '0.85rem' }}>{t("signIn")}</span></div>
-                            <ChevronRight size={12} />
-                            </button>
+                              <>
+                                <button 
+                                  onClick={() => { toggleWindow("leaderboard"); setIsProfileMenuOpen(false); }} 
+                                  style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between', 
+                                    padding: '0.5rem 0.75rem', 
+                                    borderRadius: '0.4rem', 
+                                    border: 'none', 
+                                    color: 'inherit', 
+                                    background: 'rgba(255,255,255,0.02)', 
+                                    cursor: 'pointer', 
+                                    textAlign: 'left', 
+                                    width: '100%',
+                                    marginBottom: '0.25rem'
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Trophy size={14} color="var(--accent)" />
+                                    <span style={{ fontSize: '0.85rem' }}>Leaderboard</span>
+                                  </div>
+                                  <ChevronRight size={12} />
+                                </button>
+
+                                <button onClick={() => { if (!openWindows.includes("battle")) toggleWindow("battle"); setShowSignInOptions(true); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'inherit', background: 'rgba(255,255,255,0.02)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LogIn size={14} /><span style={{ fontSize: '0.85rem' }}>{t("signIn")}</span></div>
+                                  <ChevronRight size={12} />
+                                </button>
+                              </>
                             )}
 
                             <button onClick={() => {
@@ -2704,6 +2997,212 @@ const MainMenu: React.FC = () => {
         </AnimatePresence>
       </motion.main>
       
+      {/* Game Mode Selection Modal */}
+      {showGameModeSelection && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '1rem',
+        }}>
+          <div style={{
+            background: 'var(--bg)',
+            border: '1px solid var(--line)',
+            borderRadius: '1rem',
+            padding: '2rem',
+            maxWidth: '640px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.5rem',
+            animation: 'fadeInScale 0.2s ease-out',
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 0.5rem 0' }}>
+                SELECT GAME MODE
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+                Choose the arena rules for your upcoming challenge
+              </p>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '1rem',
+              marginTop: '0.5rem',
+            }}>
+              {[
+                { 
+                  id: "CODEKNIGHTS", 
+                  title: "CODEKNIGHTS", 
+                  desc: "Algorithmic puzzles. Speed and correctness.", 
+                  status: "ACTIVE" 
+                },
+                { 
+                  id: "BUGHUNTER", 
+                  title: "BUG HUNTER", 
+                  desc: "Debugging. Repair failing test suites.", 
+                  status: "WIP" 
+                },
+                { 
+                  id: "HACKBOUNTY", 
+                  title: "HACK BOUNTY", 
+                  desc: "Cybersecurity. Find and exploit vulnerabilities.", 
+                  status: "WIP" 
+                },
+                { 
+                  id: "MLMAGES", 
+                  title: "ML MAGES", 
+                  desc: "Machine Learning. Train optimal AI agents.", 
+                  status: "WIP" 
+                },
+              ].map((mode) => {
+                const isActive = mode.status === "ACTIVE";
+                return (
+                  <div
+                    key={mode.id}
+                    onClick={() => {
+                      if (isActive) {
+                        if (activeGameModeCallback) {
+                          activeGameModeCallback(mode.id, modalIsUnrated);
+                        }
+                        setShowGameModeSelection(false);
+                        setActiveGameModeCallback(null);
+                        setModalIsUnrated(false);
+                      } else {
+                        alert(`${mode.title} is currently Work In Progress (WIP). Please select CODEKNIGHTS.`);
+                      }
+                    }}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '0.75rem',
+                      padding: '1.25rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      e.currentTarget.style.borderColor = isActive ? 'var(--accent)' : '#ffaa00';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                      e.currentTarget.style.borderColor = 'var(--line)';
+                      e.currentTarget.style.transform = 'none';
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong style={{ color: 'var(--text)', fontSize: '1rem', fontWeight: 800 }}>{mode.title}</strong>
+                      <span style={{
+                        fontSize: '0.6rem',
+                        fontWeight: 900,
+                        padding: '0.15rem 0.4rem',
+                        borderRadius: '0.25rem',
+                        background: isActive ? 'rgba(80, 250, 123, 0.15)' : 'rgba(255, 170, 0, 0.15)',
+                        color: isActive ? '#50fa7b' : '#ffaa00',
+                      }}>
+                        {mode.status}
+                      </span>
+                    </div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: '1.3' }}>
+                      {mode.desc}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Play Unrated Toggle */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--line)',
+              borderRadius: '0.75rem',
+              padding: '1rem',
+              marginTop: '0.5rem',
+            }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                color: 'var(--text)',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}>
+                <input 
+                  type="checkbox" 
+                  checked={modalIsUnrated} 
+                  onChange={(e) => setModalIsUnrated(e.target.checked)} 
+                  style={{ 
+                    cursor: 'pointer', 
+                    width: '18px', 
+                    height: '18px', 
+                    accentColor: 'var(--accent)' 
+                  }}
+                />
+                <span style={{ fontWeight: 700 }}>Play Unrated Match</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>(No Rating Changes)</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                onClick={() => {
+                  setShowGameModeSelection(false);
+                  setActiveGameModeCallback(null);
+                }}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--line)',
+                  color: 'var(--text-muted)',
+                  borderRadius: '0.4rem',
+                  padding: '0.6rem 1.2rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                  e.currentTarget.style.color = 'var(--text)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes fadeInScale {
+              from { opacity: 0; transform: scale(0.95); }
+              to { opacity: 1; transform: scale(1); }
+            }
+          `}</style>
+        </div>
+      )}
+
       {/* Username Prompt Modal */}
       <AnimatePresence>
         {showUsernamePrompt && (

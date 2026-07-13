@@ -7,6 +7,7 @@ import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQ
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
+import { DefaultAvatar } from "../DefaultAvatar";
 
 type CodeAnalysis = {
   timeComplexity?: string;
@@ -392,7 +393,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', width: '100%', maxWidth: '500px', marginBottom: '3rem' }}>
           <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
-            <div style={{ marginBottom: '1rem' }}>{activeDuel.host?.image ? <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(activeDuel.host?.username || activeDuel.host?.name || "Host")}&rowColor=random`} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} />}</div>
+            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+              {activeDuel.host?.image ? (
+                <img src={activeDuel.host.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)', objectFit: 'cover' }} />
+              ) : (
+                <DefaultAvatar name={activeDuel.host?.username || activeDuel.host?.name || "Host"} size={48} style={{ border: hostWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} />
+              )}
+            </div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
             <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
               Rating: {activeDuel.host?.rating ?? 1000}
@@ -406,7 +413,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           </div>
           <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
-            <div style={{ marginBottom: '1rem' }}>{activeDuel.guest?.image ? <img src={activeDuel.guest.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} /> : <img src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(activeDuel.guest?.username || activeDuel.guest?.name || "Guest")}&rowColor=random`} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} />}</div>
+            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+              {activeDuel.guest?.image ? (
+                <img src={activeDuel.guest.image} style={{ width: '48px', height: '48px', borderRadius: '50%', border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)', objectFit: 'cover' }} />
+              ) : (
+                <DefaultAvatar name={activeDuel.guest?.username || activeDuel.guest?.name || "Guest"} size={48} style={{ border: guestWin ? '2px solid #50fa7b' : '1px solid var(--line)' }} />
+              )}
+            </div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
             <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
               Rating: {activeDuel.guest?.rating ?? 1000}

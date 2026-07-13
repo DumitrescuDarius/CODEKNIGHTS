@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const { guestName, demoMode } = await req.json();
+  const { guestName, demoMode, hostId, guestId, gameMode, unrated } = await req.json().catch(() => ({}));
 
   let userId = session?.user ? (session.user as any).id : null;
   let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
 
   try {
-    if (!userId) {
+    if (!userId && !hostId) {
       const image = `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(userName)}&rowColor=random`;
       const newUser = await prisma.user.create({ data: { username: userName, rating: 1000, image } });
       userId = newUser.id;
@@ -36,6 +36,32 @@ export async function POST(req: NextRequest) {
     }
     
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
+
+    if (hostId && guestId) {
+      const duel = await prisma.duel.create({
+        data: {
+          pin,
+          questionId: targetQuestionId,
+          status: "ACTIVE",
+          hostId,
+          guestId,
+          gameMode: gameMode || "CODEKNIGHTS",
+          unrated: !!unrated,
+          startedAt: new Date(),
+          expiresAt: new Date(Date.now() + 30 * 60000),
+        },
+        include: {
+          question: true,
+          host: true,
+          guest: true
+        }
+      });
+      const safeDuel = { ...duel };
+      if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
+         (safeDuel.question as any).hiddenTestCases = null;
+      }
+      return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
+    }
 
     const duel = await prisma.duel.create({
       data: {

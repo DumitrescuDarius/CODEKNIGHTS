@@ -35,6 +35,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = user.id;
         (session.user as any).username = (user as any).username;
         (session.user as any).isAdmin = (user as any).isAdmin;
+        (session.user as any).isRoyal = (user as any).isRoyal;
         (session.user as any).battlesWon = (user as any).battlesWon;
         (session.user as any).battlesTotal = (user as any).battlesTotal;
         (session.user as any).themeIndex = (user as any).themeIndex;

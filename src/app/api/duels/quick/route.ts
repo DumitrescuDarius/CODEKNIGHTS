@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const { guestName } = await req.json().catch(() => ({}));
+  const { guestName, unrated } = await req.json().catch(() => ({}));
 
   let userId = session?.user ? (session.user as any).id : null;
   let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     // Try to find a waiting duel to join (not hosted by this user)
     const now = new Date();
     const waiting = await prisma.duel.findFirst({
-      where: { status: 'WAITING', hostId: { not: userId }, pin: { startsWith: 'QM-' }, expiresAt: { gt: now } },
+      where: { status: 'WAITING', hostId: { not: userId }, pin: { startsWith: 'QM-' }, expiresAt: { gt: now }, unrated: !!unrated },
       orderBy: { createdAt: 'asc' }
     });
 
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
         questionId: randomQuestionId,
         status: "WAITING",
         hostId: userId,
+        unrated: !!unrated,
         expiresAt: new Date(Date.now() + 30 * 60000),
       },
       include: {

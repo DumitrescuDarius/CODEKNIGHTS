@@ -793,7 +793,6 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           {/* Quick Battle Button */}
           <button 
             onClick={async () => {
-              if (activePath !== "codeknights") return;
               if (startQuickMatch) {
                 setIsQuickMatchMode(true);
                 try {
@@ -815,7 +814,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               borderRadius: '0.4rem', 
               fontWeight: 900, 
               fontSize: '1.1rem', 
-              cursor: activePath === "codeknights" ? 'pointer' : 'not-allowed', 
+              cursor: 'pointer', 
               letterSpacing: '0.1em',
               boxShadow: `0 0 25px ${themeColor}33`,
               display: 'flex',
@@ -823,10 +822,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               justifyContent: 'center',
               gap: '1rem',
               transition: 'all 0.2s ease',
-              opacity: activePath === "codeknights" ? 1 : 0.6
+              opacity: 1
             }}
-            onMouseEnter={(e) => { if (activePath === "codeknights") e.currentTarget.style.transform = 'translateY(-2px)' }}
-            onMouseLeave={(e) => { if (activePath === "codeknights") e.currentTarget.style.transform = 'translateY(0)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
           >
             <Sword size={22} fill="currentColor" /> {activePath === "bughunter" ? "START DEBUG MATCH" : activePath === "hackbounty" ? "START BOUNTY DUEL" : activePath === "mlmages" ? "START GENERATION MATCH" : t("startQuickBattle").toUpperCase()}
           </button>
@@ -834,10 +833,13 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           {/* Generate Uplink Button */}
           <button 
             onClick={async () => { 
-              if (activePath !== "codeknights") return;
               setIsCreating(true);
-              await createDuel(); 
-              setShowWaitingPopup(true);
+              try {
+                await createDuel();
+                setShowWaitingPopup(true);
+              } catch (e) {
+                console.error(e);
+              }
               setIsCreating(false);
             }}
             disabled={isCreating || isJoining}
@@ -850,17 +852,17 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               borderRadius: '0.4rem', 
               fontWeight: 900, 
               fontSize: '1.1rem', 
-              cursor: activePath === "codeknights" ? 'pointer' : 'not-allowed', 
+              cursor: 'pointer', 
               letterSpacing: '0.1em',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '1rem',
               transition: 'all 0.2s ease',
-              opacity: activePath === "codeknights" ? 1 : 0.6
+              opacity: 1
             }}
-            onMouseEnter={(e) => { if (activePath === "codeknights") e.currentTarget.style.transform = 'translateY(-2px)' }}
-            onMouseLeave={(e) => { if (activePath === "codeknights") e.currentTarget.style.transform = 'translateY(0)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
           >
             <Users size={22} /> {isCreating ? "GENERATING..." : t("createUplink").toUpperCase()}
           </button>

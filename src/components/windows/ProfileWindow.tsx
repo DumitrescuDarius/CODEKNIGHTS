@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { BarChart2, BookOpen, Clock, Code, Settings, Trophy, User as UserIcon, Users, FileText, Check, User, ShieldCheck, Loader2, Sword } from "lucide-react";
+import { BarChart2, BookOpen, Clock, Code, Settings, Trophy, User as UserIcon, Users, FileText, Check, User, ShieldCheck, Loader2, Sword, Crown } from "lucide-react";
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 import { TranslationKey } from "../../constants/translations";
 import Link from "next/link";
+import { DefaultAvatar } from "../DefaultAvatar";
 
 interface ProfileWindowProps {
   session: any;
@@ -23,9 +24,9 @@ interface ProfileWindowProps {
 export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session, userId, t, cachedProfile, onInviteDuel, isOnline, pendingInviteTargetId, onCancelInvite, addToEditor }) => {
   const [profile, setProfile] = useState<any>(cachedProfile || null);
   const [isLoading, setIsLoading] = useState(!cachedProfile);
-  const [daysRange, setDaysRange] = useState(180);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const daysRange = 365;
   const [expandedDuel, setExpandedDuel] = useState<string | null>(null);
+  const [selectedGameMode, setSelectedGameMode] = useState<"CODEKNIGHTS" | "BUGHUNTER" | "HACKBOUNTY" | "MLMAGES">("CODEKNIGHTS");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -79,16 +80,27 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
     }
   };
   const graphRef = useRef<HTMLDivElement>(null);
+  const ratingChartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (graphRef.current) {
-      setTimeout(() => {
-        if (graphRef.current) {
-          graphRef.current.scrollLeft = graphRef.current.scrollWidth + 1000;
-        }
-      }, 100);
-    }
-  }, [daysRange, profile]);
+    const scrollToRight = () => {
+      if (graphRef.current) {
+        graphRef.current.scrollLeft = graphRef.current.scrollWidth + 1000;
+      }
+      if (ratingChartRef.current) {
+        ratingChartRef.current.scrollLeft = ratingChartRef.current.scrollWidth + 1000;
+      }
+    };
+    scrollToRight();
+    const timer1 = setTimeout(scrollToRight, 100);
+    const timer2 = setTimeout(scrollToRight, 300);
+    const timer3 = setTimeout(scrollToRight, 600);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [selectedGameMode, profile, isLoading]);
 
   useEffect(() => {
     if (cachedProfile && (!userId || userId === session?.user?.id)) {
@@ -176,6 +188,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
   if (!profile) return <div style={{ padding: '1rem' }}>{t("profileNotFound")}</div>;
 
   const isAdmin = !!profile.isAdmin;
+  const isRoyal = !!profile.isRoyal;
   const rank = profile.rank || "Novice";
   const rating = profile.rating ?? 1000;
   const dailyWins = profile.dailyWins ? (typeof profile.dailyWins === 'string' ? JSON.parse(profile.dailyWins) : profile.dailyWins) : {};
@@ -190,10 +203,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
 
   const pastDuels = profile.pastDuels || [];
   
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - daysRange);
-  
-  const filteredDuels = pastDuels.filter((duel: any) => new Date(duel.createdAt) >= cutoffDate);
+  const filteredDuels = pastDuels;
   
   let currentIterRating = rating;
   const fullRatingHistory = [];
@@ -350,9 +360,9 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', display: 'flex' }}>
             {profile.image ? (
-              <img src={profile.image} alt="Profile" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--accent)' }} />
+              <img src={profile.image} alt="Profile" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--accent)', objectFit: 'cover' }} />
             ) : (
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={40} /></div>
+              <DefaultAvatar name={profile.username || profile.name || "Knight"} size={80} style={{ border: '2px solid var(--accent)' }} />
             )}
             {userId && userId !== session?.user?.id && (
               <span style={{ 
@@ -379,6 +389,12 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--accent)', color: '#000', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>
                   <ShieldCheck size={12} />
                   ADMIN
+                </div>
+              )}
+              {isRoyal && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)', color: '#120824', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', boxShadow: '0 0 10px rgba(255, 215, 0, 0.4)' }}>
+                  <Crown size={12} fill="currentColor" />
+                  ROYAL
                 </div>
               )}
               {userId && userId !== session?.user?.id && (
@@ -447,9 +463,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                     {finalImage || profile.image ? (
                         <img src={finalImage || profile.image} alt="Profile" style={{ width: 36, height: 36, borderRadius: '0.3rem', objectFit: 'cover' }} />
                     ) : (
-                        <div style={{ width: 36, height: 36, borderRadius: '0.3rem', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <UserIcon size={16} style={{ color: 'var(--text-muted)' }} />
-                        </div>
+                        <DefaultAvatar name={profile.username || profile.name || "Knight"} size={36} style={{ borderRadius: '0.3rem' }} />
                     )}
                     <label style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t("chooseNewPhoto")}</span>
@@ -536,237 +550,265 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
       <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text)', fontWeight: 800 }}>{t("historicalData") || "Historical Data"}</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-             <div style={{ position: 'relative' }}>
-                <button 
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  style={{
-                    background: 'rgba(255,255,255,0.02)', 
-                    color: 'var(--text)', 
-                    border: '1px solid var(--line)', 
-                    padding: '0.4rem 1rem', 
-                    borderRadius: '0.4rem', 
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    outline: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  Past {daysRange === 365 ? '1 Year' : `${daysRange} Days`}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
-                {isDropdownOpen && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: '0.5rem',
-                    background: 'var(--bg)',
-                    border: '1px solid var(--line)',
-                    borderRadius: '0.4rem',
-                    padding: '0.25rem',
-                    zIndex: 50,
-                    minWidth: '140px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-                  }}>
-                    {[90, 180, 365].map(days => (
-                      <div 
-                        key={days}
-                        onClick={() => { setDaysRange(days); setIsDropdownOpen(false); }}
-                        style={{
-                          padding: '0.4rem 0.8rem',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          borderRadius: '0.2rem',
-                          background: daysRange === days ? 'var(--line)' : 'transparent',
-                          color: 'var(--text)'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (daysRange !== days) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (daysRange !== days) e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        Past {days === 365 ? '1 Year' : `${days} Days`}
-                      </div>
-                    ))}
-                  </div>
-                )}
-             </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2rem' }}>
-          {/* Activity Grid */}
-          <div style={{ minWidth: 0 }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>{t("activityGraph") || "Activity Graph"}</h3>
           
-          <div ref={graphRef} style={{ display: 'flex', gap: '2.5rem', width: '100%', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-            {getLastMonths().map(month => (
-              <div key={month.label} style={{ display: 'flex', flexDirection: 'column', minWidth: 'max-content' }}>
-                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{month.label}</span>
-                 <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px', gridAutoFlow: 'column', gap: '4px', justifyContent: 'start', width: 'max-content' }}>
-                    {month.days.map((d, i) => {
-                       if (!d) return <div key={`empty-${i}`} style={{ width: '12px', height: '12px' }} />;
-                       const dateStr = d.toLocaleDateString('en-CA');
-                       const w = dailyWins[dateStr] || 0;
-                       return <div key={`day-${i}`} title={`${dateStr}: ${w} wins`} style={{ width: '12px', height: '12px', background: getSquareColor(w), borderRadius: '2px' }} />
-                    })}
-                 </div>
-              </div>
-            ))}
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Less
-            <div style={{ width: '12px', height: '12px', background: getSquareColor(0), borderRadius: '2px' }} />
-            <div style={{ width: '12px', height: '12px', background: getSquareColor(1), borderRadius: '2px' }} />
-            <div style={{ width: '12px', height: '12px', background: getSquareColor(3), borderRadius: '2px' }} />
-            <div style={{ width: '12px', height: '12px', background: getSquareColor(8), borderRadius: '2px' }} />
-            <div style={{ width: '12px', height: '12px', background: getSquareColor(15), borderRadius: '2px' }} />
-            More
-          </div>
-          </div>
-
-          {/* Rating Chart */}
-          <div style={{ minWidth: 0 }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>{t("ratingHistory") || "Rating History"}</h3>
-          {ratingHistory.length > 1 ? (
-            <div style={{ width: '100%', overflowX: 'auto', padding: '1rem 0' }}>
-                <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ minWidth: '400px', overflow: 'visible', display: 'block' }}>
-                    {/* Y-axis Labels & Horizontal Grid lines */}
-                    {[0, 0.5, 1].map(ratio => {
-                        const yPos = padding.top + chartHeight * ratio;
-                        const ratingVal = Math.round(paddedMax - range * ratio);
-                        return (
-                            <g key={ratio}>
-                                <text x={padding.left - 10} y={yPos} fill="var(--text-muted)" fontSize="10" textAnchor="end" dominantBaseline="middle">
-                                    {ratingVal}
-                                </text>
-                                <line x1={padding.left} y1={yPos} x2={width - padding.right} y2={yPos} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                            </g>
-                        );
-                    })}
-
-                    <polyline fill="none" stroke="var(--accent)" strokeWidth="3" points={points} style={{ strokeLinejoin: "round", strokeLinecap: "round" }} />
-                    
-                    {ratingHistory.map((d, i) => {
-                        const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + (i / (ratingHistory.length - 1)) * chartWidth;
-                        const y = padding.top + chartHeight - ((d.rating - paddedMin) / range) * chartHeight;
-                        
-                        return (
-                            <g key={i}>
-                                {d.showLabel && (
-                                    <text x={x} y={height - 5} fill="var(--text-muted)" fontSize="9" textAnchor="middle">
-                                        {d.name === 'Current' ? 'Now' : d.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                    </text>
-                                )}
-                                    <g style={{ transition: 'all 0.3s ease' }} className="chart-node">
-                                        <circle cx={x} cy={y} r="5" fill="var(--bg)" stroke="var(--accent)" strokeWidth="2" />
-                                        <circle cx={x} cy={y} r="12" fill="transparent" style={{ cursor: 'pointer' }}>
-                                            <title>{d.name}: {d.rating}</title>
-                                        </circle>
-                                    </g>
-                            </g>
-                        )
-                    })}
-                </svg>
-                <style>{`
-                  .chart-node:hover circle:first-child { r: 7px; fill: var(--accent); }
-                `}</style>
-            </div>
-          ) : (
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Not enough data for graph</div>
-          )}
-          </div>
-        </div>
-
-        {/* Past Battles */}
-        <div>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text)' }}>{t("pastBattles") || "Past Battles"}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {[...filteredDuels].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5).map((duel: any) => {
-              const isHost = duel.hostId === profile.id;
-              const change = isHost ? duel.hostRatingChange : duel.guestRatingChange;
-              const won = change > 0;
-              const isDraw = change === 0;
-              const opponent = isHost ? duel.guest : duel.host;
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {(["CODEKNIGHTS", "BUGHUNTER", "HACKBOUNTY", "MLMAGES"] as const).map((mode) => {
+              const isActive = selectedGameMode === mode;
+              const label = mode;
+              const isWip = mode !== "CODEKNIGHTS";
               
               return (
-                <div key={duel.id} style={{ display: 'flex', flexDirection: 'column', padding: '1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: '0.5rem', transition: 'transform 0.2s ease', cursor: 'pointer' }}
-                     onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(4px)'}
-                     onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
-                     onClick={() => setExpandedDuel(expandedDuel === duel.id ? null : duel.id)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem', color: 'var(--text)' }}>{duel.question?.title || "Unknown Problem"}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-                        vs 
-                        {opponent?.image && <img src={opponent.image} alt="opponent" style={{ width: '16px', height: '16px', borderRadius: '50%', objectFit: 'cover' }} />}
-                        <span style={{ color: 'var(--accent)' }}>{opponent?.username || opponent?.name || "Unknown"}</span>
-                      </div>
+                <button
+                  key={mode}
+                  onClick={() => setSelectedGameMode(mode)}
+                  style={{
+                    padding: '0.3rem 0.6rem',
+                    background: isActive ? 'var(--accent)' : 'rgba(255, 255, 255, 0.03)',
+                    color: isActive ? '#000' : 'var(--text-muted)',
+                    border: '1px solid ' + (isActive ? 'var(--accent)' : 'var(--line)'),
+                    borderRadius: '0.3rem',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    transition: 'all 0.15s ease',
+                    transform: isActive ? 'scale(1.02)' : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.color = 'var(--text)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                      e.currentTarget.style.color = 'var(--text-muted)';
+                    }
+                  }}
+                >
+                  {label}
+                  {isWip && (
+                    <span style={{ 
+                      fontSize: '0.5rem', 
+                      background: isActive ? 'rgba(0,0,0,0.15)' : 'rgba(255, 170, 0, 0.15)', 
+                      color: isActive ? '#000' : '#ffaa00', 
+                      padding: '0.05rem 0.25rem', 
+                      borderRadius: '0.15rem',
+                      fontWeight: 800,
+                    }}>
+                      WIP
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {selectedGameMode === "CODEKNIGHTS" ? (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              {/* Activity Grid */}
+              <div style={{ minWidth: 0 }}>
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>{t("activityGraph") || "Activity Graph"}</h3>
+              
+                <div ref={graphRef} style={{ display: 'flex', gap: '2.5rem', width: '100%', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                  {getLastMonths().map(month => (
+                    <div key={month.label} style={{ display: 'flex', flexDirection: 'column', minWidth: 'max-content' }}>
+                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{month.label}</span>
+                       <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px', gridAutoFlow: 'column', gap: '4px', justifyContent: 'start', width: 'max-content' }}>
+                          {month.days.map((d, i) => {
+                             if (!d) return <div key={`empty-${i}`} style={{ width: '12px', height: '12px' }} />;
+                             const dateStr = d.toLocaleDateString('en-CA');
+                             const w = dailyWins[dateStr] || 0;
+                             return <div key={`day-${i}`} title={`${dateStr}: ${w} wins`} style={{ width: '12px', height: '12px', background: getSquareColor(w), borderRadius: '2px' }} />
+                          })}
+                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 900, fontSize: '1.1rem', color: won ? '#50fa7b' : (isDraw ? 'var(--text-muted)' : '#ff5555') }}>
-                        {won ? "VICTORY" : (isDraw ? "DRAW" : "DEFEAT")}
-                      </div>
-                      {duel.finishReason && (
-                          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.1rem' }}>
-                              {duel.finishReason}
-                          </div>
-                      )}
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: change >= 0 ? '#50fa7b' : '#ff5555' }}>
-                        {change >= 0 ? `+${change}` : change}
-                      </div>
-                    </div>
+                  ))}
+                </div>
+              
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Less
+                  <div style={{ width: '12px', height: '12px', background: getSquareColor(0), borderRadius: '2px' }} />
+                  <div style={{ width: '12px', height: '12px', background: getSquareColor(1), borderRadius: '2px' }} />
+                  <div style={{ width: '12px', height: '12px', background: getSquareColor(3), borderRadius: '2px' }} />
+                  <div style={{ width: '12px', height: '12px', background: getSquareColor(8), borderRadius: '2px' }} />
+                  <div style={{ width: '12px', height: '12px', background: getSquareColor(15), borderRadius: '2px' }} />
+                  More
+                </div>
+              </div>
+
+              {/* Rating Chart */}
+              <div style={{ minWidth: 0 }}>
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>{t("ratingHistory") || "Rating History"}</h3>
+                {ratingHistory.length > 1 ? (
+                  <div ref={ratingChartRef} style={{ width: '100%', overflowX: 'auto', padding: '1rem 0' }}>
+                      <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ minWidth: '400px', overflow: 'visible', display: 'block' }}>
+                          {/* Y-axis Labels & Horizontal Grid lines */}
+                          {[0, 0.5, 1].map(ratio => {
+                              const yPos = padding.top + chartHeight * ratio;
+                              const ratingVal = Math.round(paddedMax - range * ratio);
+                              return (
+                                  <g key={ratio}>
+                                      <text x={padding.left - 10} y={yPos} fill="var(--text-muted)" fontSize="10" textAnchor="end" dominantBaseline="middle">
+                                          {ratingVal}
+                                      </text>
+                                      <line x1={padding.left} y1={yPos} x2={width - padding.right} y2={yPos} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                                  </g>
+                              );
+                          })}
+
+                          <polyline fill="none" stroke="var(--accent)" strokeWidth="3" points={points} style={{ strokeLinejoin: "round", strokeLinecap: "round" }} />
+                          
+                          {ratingHistory.map((d, i) => {
+                              const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + (i / (ratingHistory.length - 1)) * chartWidth;
+                              const y = padding.top + chartHeight * (1 - (d.rating - paddedMin) / range);
+                              
+                              return (
+                                  <g key={i} className="chart-node" style={{ cursor: 'pointer' }}>
+                                      <circle cx={x} cy={y} r="8" fill="transparent" />
+                                      <circle cx={x} cy={y} r="4" fill="var(--accent)" style={{ transition: 'all 0.2s ease' }} />
+                                      {d.showLabel && (
+                                          <text x={x} y={height - 5} fill="var(--text-muted)" fontSize="9" textAnchor="middle">
+                                              {d.name}
+                                          </text>
+                                      )}
+                                      <title>{`${d.name}: ${d.rating} ELO`}</title>
+                                  </g>
+                              );
+                          })}
+                      </svg>
+                      <style>{`
+                        .chart-node:hover circle:first-child { r: 7px; fill: var(--accent); }
+                      `}</style>
                   </div>
+                ) : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Not enough data for graph</div>
+                )}
+              </div>
+            </div>
+
+            {/* Past Battles */}
+            <div>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text)' }}>{t("pastBattles") || "Past Battles"}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {[...filteredDuels].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5).map((duel: any) => {
+                  const isHost = duel.hostId === profile.id;
+                  const change = isHost ? duel.hostRatingChange : duel.guestRatingChange;
+                  const won = change > 0;
+                  const isDraw = change === 0;
+                  const opponent = isHost ? duel.guest : duel.host;
                   
-                  {expandedDuel === duel.id && (
-                    <div style={{ marginTop: '1rem', borderTop: '1px dashed var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>Your Code</div>
-                                <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-                                  {isHost ? (duel.hostCode ? (
-                                      <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
-                                        <Code size={18} /> {t("addToEditor") || "Add to Editor"}
-                                      </button>
-                                  ) : <span style={{ color: 'var(--text-muted)' }}>{t("noCodeSubmitted") || "No code submitted"}</span>) : (duel.guestCode ? (
-                                      <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>
-                                        <Code size={18} /> {t("addToEditor") || "Add to Editor"}
-                                      </button>
-                                  ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>)}
+                  return (
+                    <div key={duel.id} style={{ display: 'flex', flexDirection: 'column', padding: '1rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: '0.5rem', transition: 'transform 0.2s ease', cursor: 'pointer' }}
+                         onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(4px)'}
+                         onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+                         onClick={() => setExpandedDuel(expandedDuel === duel.id ? null : duel.id)}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem', color: 'var(--text)' }}>{duel.question?.title || "Unknown Problem"}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+                            vs 
+                            {opponent?.image ? (
+                              <img src={opponent.image} alt="opponent" style={{ width: '16px', height: '16px', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                              <DefaultAvatar name={opponent?.username || opponent?.name || "Knight"} size={16} />
+                            )}
+                            <span style={{ color: 'var(--accent)' }}>{opponent?.username || opponent?.name || "Unknown"}</span>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 900, fontSize: '1.1rem', color: won ? '#50fa7b' : (isDraw ? 'var(--text-muted)' : '#ff5555') }}>
+                            {won ? "VICTORY" : (isDraw ? "DRAW" : "DEFEAT")}
+                          </div>
+                          {duel.finishReason && (
+                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.1rem' }}>
+                                  {duel.finishReason}
+                              </div>
+                          )}
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: change >= 0 ? '#50fa7b' : '#ff5555' }}>
+                            {change >= 0 ? `+${change}` : change}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {expandedDuel === duel.id && (
+                        <div style={{ marginTop: '1rem', borderTop: '1px dashed var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>Your Code</div>
+                                    <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+                                      {isHost ? (duel.hostCode ? (
+                                          <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
+                                            <Code size={18} /> {t("addToEditor") || "Add to Editor"}
+                                          </button>
+                                      ) : <span style={{ color: 'var(--text-muted)' }}>{t("noCodeSubmitted") || "No code submitted"}</span>) : (duel.guestCode ? (
+                                          <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>
+                                            <Code size={18} /> {t("addToEditor") || "Add to Editor"}
+                                          </button>
+                                      ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>)}
+                                    </div>
                                 </div>
-                            </div>
-                            <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{opponent?.username || opponent?.name || "Opponent"}&apos;s Code</div>
-                                <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-                                  {isHost ? (duel.guestCode ? (
-                                      <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>
-                                        <Code size={18} /> {t("addToEditor") || "Add to Editor"}
-                                      </button>
-                                  ) : <span style={{ color: 'var(--text-muted)' }}>{t("noCodeSubmitted") || "No code submitted"}</span>) : (duel.hostCode ? (
-                                      <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
-                                        <Code size={18} /> {t("addToEditor") || "Add to Editor"}
-                                      </button>
-                                  ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>)}
+                                <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{opponent?.username || opponent?.name || "Opponent"}&apos;s Code</div>
+                                    <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+                                      {isHost ? (duel.guestCode ? (
+                                          <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>
+                                            <Code size={18} /> {t("addToEditor") || "Add to Editor"}
+                                          </button>
+                                      ) : <span style={{ color: 'var(--text-muted)' }}>{t("noCodeSubmitted") || "No code submitted"}</span>) : (duel.hostCode ? (
+                                          <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
+                                            <Code size={18} /> {t("addToEditor") || "Add to Editor"}
+                                          </button>
+                                      ) : <span style={{ color: 'var(--text-muted)' }}>No code submitted</span>)}
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-            {filteredDuels.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>{t("noPastBattles") || "No past battles found in this timeframe."}</div>}
+                  );
+                })}
+                {filteredDuels.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>{t("noPastBattles") || "No past battles found."}</div>}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: '5rem 2rem', 
+            background: 'rgba(0,0,0,0.15)', 
+            border: '1px dashed var(--line)', 
+            borderRadius: '0.5rem',
+            color: 'var(--text-muted)',
+            textAlign: 'center',
+            gap: '0.75rem'
+          }}>
+            <div style={{ fontSize: '2.5rem', animation: 'spin 4s linear infinite' }} className="wip-gear">⚙️</div>
+            <div>
+              <strong style={{ color: 'var(--text)', display: 'block', marginBottom: '0.4rem', fontSize: '1.1rem' }}>
+                {selectedGameMode} Historical Data
+              </strong>
+              <span style={{ fontSize: '0.85rem' }}>This game mode is currently under development. Visual history graphs, activity graphs, and past battle records will appear here once the mode is fully released.</span>
+            </div>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+              .wip-gear {
+                display: inline-block;
+              }
+            `}</style>
           </div>
-        </div>
+        )}
       </div>
       </>
       )}
