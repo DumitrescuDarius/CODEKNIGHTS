@@ -50,6 +50,7 @@ model User {
   rank          String    @default("Novice")
   dailyWins     Json      @default("{}") // Stores {"YYYY-MM-DD": count}
   notesData     Json      @default("{\"nodes\":[],\"edges\":[]}")
+  createdAt     DateTime  @default(now())
   
   // Friend Request relations
   sentRequests     FriendRequest[] @relation("SentRequests")

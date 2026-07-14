@@ -7,6 +7,7 @@ import { TranslationKey } from "../../constants/translations";
 import { Brain, Code2, Sparkles, Loader2, History, Plus, X, MessageSquare, Trash2, Crown } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { WindowSpinner } from "../WindowSpinner";
 
 interface AgentWindowProps {
   t: (k: TranslationKey) => string;
@@ -336,7 +337,11 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
 
 
   if (!mounted) {
-    return <div style={{ height: '100%', background: 'var(--bg)' }} />;
+    return (
+      <div style={{ height: '100%', width: '100%', background: 'var(--bg)', position: 'relative' }}>
+        <WindowSpinner message={t("loading") || "LOADING..."} />
+      </div>
+    );
   }
 
   if (isBattleActive) {
@@ -475,7 +480,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
         ))}
         {isLoading && (
           <div style={{ alignSelf: 'flex-start', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px solid var(--line)' }}>
-            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} color="var(--accent)" /> {t("thinking")}...
+            <div className="loading-spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px' }} /> {t("thinking")}...
           </div>
         )}
       </div>

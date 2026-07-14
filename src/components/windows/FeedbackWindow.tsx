@@ -3,6 +3,7 @@ import { Send, CheckCircle, AlertTriangle, MessageSquareHeart } from 'lucide-rea
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { TranslationKey } from '../../constants/translations';
+import { WindowSpinner } from '../WindowSpinner';
 
 interface FeedbackWindowProps {
   t: (k: TranslationKey) => string;
@@ -60,6 +61,7 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session, t }) => {
       color: 'var(--text)',
       position: 'relative'
     }}>
+      {status === "loading" && <WindowSpinner message={t("sending") || "SENDING..."} />}
       {/* Decorative Glow */}
       <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '300px', height: '300px', background: 'var(--accent)', filter: 'blur(150px)', opacity: 0.15, borderRadius: '50%', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '-10%', left: '-10%', width: '200px', height: '200px', background: 'var(--accent)', filter: 'blur(120px)', opacity: 0.1, borderRadius: '50%', pointerEvents: 'none' }} />

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Crown, Check, ShieldCheck, Loader2, CreditCard, Lock, AlertTriangle } from "lucide-react";
+import { WindowSpinner } from "../WindowSpinner";
 import { TranslationKey } from "../../constants/translations";
 
 interface RoyalWindowProps {
@@ -20,6 +21,10 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
   const [cardCvc, setCardCvc] = useState("");
   const [validationError, setValidationError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
+
+  useEffect(() => {
+    setIsRoyal(!!(session?.user as any)?.isRoyal);
+  }, [session]);
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +145,9 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
         boxSizing: "border-box",
         background: "radial-gradient(circle at center, #1b0f30 0%, var(--bg) 100%)",
         overflowY: "auto",
+        position: "relative"
       }}>
+        {loading && <WindowSpinner message="Canceling membership..." />}
         <div style={{
           background: "rgba(15, 10, 25, 0.55)",
           backdropFilter: "blur(20px)",
@@ -364,7 +371,9 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
       boxSizing: "border-box",
       background: "radial-gradient(circle at center, #1b0f30 0%, var(--bg) 100%)",
       overflowY: "auto",
+      position: "relative"
     }}>
+      {loading && <WindowSpinner message="Processing payment..." />}
       {/* Central Glassmorphic Double-pane Container */}
       <div style={{
         background: "rgba(15, 10, 25, 0.55)",

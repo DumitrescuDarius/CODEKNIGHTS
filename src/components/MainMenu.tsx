@@ -166,7 +166,8 @@ const changeCodeIndentation = (
 
 const MainMenu: React.FC = () => {
   const { data: session, update: updateSession } = useSession();
-  const isRoyal = !!(session?.user as any)?.isRoyal;
+  const [fullProfile, setFullProfile] = useState<any>(null);
+  const isRoyal = !!(session?.user as any)?.isRoyal || !!fullProfile?.isRoyal;
   const maxWindows = isRoyal ? 999 : 5;
   const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
   const [newUsername, setNewUsername] = useState("");
@@ -344,7 +345,6 @@ const MainMenu: React.FC = () => {
   
   const [isTesting, setIsTesting] = useState(false);
   const [userStats, setUserStats] = useState<UserStats>({ battlesWon: 0, battlesTotal: 0 });
-  const [fullProfile, setFullProfile] = useState<any>(null);
   const [cachedFriends, setCachedFriends] = useState<any[] | null>(null);
   const [cachedRequests, setCachedRequests] = useState<any[] | null>(null);
   const [cachedLeaderboard, setCachedLeaderboard] = useState<any>(null);
@@ -697,6 +697,8 @@ const MainMenu: React.FC = () => {
           if (session.user) {
             (session.user as any).rating = data.rating;
             (session.user as any).dailyWins = data.dailyWins;
+            (session.user as any).isRoyal = !!data.isRoyal;
+            (session.user as any).isAdmin = !!data.isAdmin;
             
             if (data.battlesTotal === 0 && typeof localStorage !== 'undefined' && !localStorage.getItem("hasSeenTutorial")) {
               localStorage.setItem("hasSeenTutorial", "true");
@@ -2475,8 +2477,8 @@ const MainMenu: React.FC = () => {
               } catch (err) {
                 console.error("Failed to refresh profile stats:", err);
               }
-              if (session && session.user) {
-                (session.user as any).isRoyal = true;
+              if (updateSession) {
+                await updateSession();
               }
             }} 
           />

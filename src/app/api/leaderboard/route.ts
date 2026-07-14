@@ -6,12 +6,21 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  const { searchParams } = new URL(req.url);
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    console.error("Leaderboard session fetch error:", error);
+  }
+  
+  const { searchParams } = req.nextUrl;
   
   // Resolve current user ID from session or query param
-  const queryUserId = searchParams.get("userId");
-  const currentUserId = session?.user ? (session.user as any).id : queryUserId || undefined;
+  let queryUserId = searchParams.get("userId");
+  if (queryUserId === "undefined" || queryUserId === "null") {
+    queryUserId = null;
+  }
+  const currentUserId = session?.user ? (session.user as any).id : (queryUserId || undefined);
 
   try {
     // 1. Fetch top 100 users by rating

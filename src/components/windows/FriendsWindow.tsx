@@ -6,6 +6,7 @@ import { Search, UserPlus, UserCheck, Loader2, Users, Trophy, UserX, Check, User
 import { User } from "../../types";
 import { TranslationKey } from "../../constants/translations";
 import { DefaultAvatar } from "../DefaultAvatar";
+import { WindowSpinner } from "../WindowSpinner";
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -195,8 +196,11 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
     }
   };
 
+  const isInitialLoading = isLoading && friends.length === 0 && requests.length === 0;
+
   return (
-    <div className="friends-window">
+    <div className="friends-window" style={{ position: 'relative' }}>
+      {isInitialLoading && <WindowSpinner message={t("loading") || "LOADING..."} />}
       <div className="friends-header-info">
         <div className="friends-header-title">
           <Users size={18} style={{ color: "var(--accent)" }} />
@@ -229,9 +233,18 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
             <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("searchPlaceholder")} className="friends-search-input" />
             {isLoading && (
-              <div style={{ position: 'absolute', right: '1rem', top: '50%', marginTop: '-8px', height: '16px', width: '16px' }}>
-                <Loader2 size={16} style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
-              </div>
+              <div 
+                className="loading-spinner" 
+                style={{ 
+                  position: 'absolute', 
+                  right: '1rem', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  width: '14px', 
+                  height: '14px',
+                  borderWidth: '1.5px'
+                }} 
+              />
             )}
           </div>
         )}

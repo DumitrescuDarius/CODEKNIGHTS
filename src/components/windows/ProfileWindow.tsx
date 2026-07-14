@@ -8,6 +8,7 @@ import getCroppedImg from '@/lib/cropImage';
 import { TranslationKey } from "../../constants/translations";
 import Link from "next/link";
 import { DefaultAvatar } from "../DefaultAvatar";
+import { WindowSpinner } from "../WindowSpinner";
 
 interface ProfileWindowProps {
   session: any;
@@ -177,12 +178,8 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
   }, [userId, session, cachedProfile]);
 
   if (isLoading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem', color: 'var(--accent)' }}>
-      <Loader2 size={48} className="animate-spin" style={{ animation: 'spin 2s linear infinite' }} />
-      <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-      `}</style>
-      <div style={{ fontWeight: 600, letterSpacing: '0.1em' }}>{t("loadingProfile")}</div>
+    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      <WindowSpinner message={t("loadingProfile") || "Loading Profile..."} />
     </div>
   );
   if (!profile) return <div style={{ padding: '1rem' }}>{t("profileNotFound")}</div>;

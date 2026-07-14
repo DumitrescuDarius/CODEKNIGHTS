@@ -7,6 +7,7 @@ import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy,
 import { TranslationKey } from "../../constants/translations";
 import { motion, AnimatePresence } from "framer-motion";
 import { DefaultAvatar } from "../DefaultAvatar";
+import { WindowSpinner } from "../WindowSpinner";
 
 const FAKE_PLAYERS = [
   "ShadowKnight", "ByteSlayer", "NullPointer", "CodeWizard", "AlgoPro", 
@@ -1226,12 +1227,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
       </AnimatePresence>
 
       {(isCreating || isJoining) && (
-        <div style={{ position: 'absolute', inset: 0, background: 'var(--bg)', zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-          <div className="loading-spinner" style={{ width: '40px', height: '40px' }} />
-          <div style={{ color: 'var(--accent)', fontWeight: 800, letterSpacing: '0.1em' }}>
-            {isCreating ? "GENERATING..." : t("joining")}
-          </div>
-        </div>
+        <WindowSpinner message={isCreating ? "GENERATING..." : (t("joining") || "JOINING...")} />
       )}
       
       <div style={{ 

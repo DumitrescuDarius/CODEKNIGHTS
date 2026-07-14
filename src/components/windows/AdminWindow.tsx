@@ -295,9 +295,12 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
             <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--accent)' }}>
               <Users size={14} /> MANAGE USERS
             </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.75rem', minHeight: '100px' }}>
               {loadingUsers ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("loadingUsers")}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100px', gap: '0.75rem' }}>
+                  <div className="loading-spinner" style={{ width: '28px', height: '28px' }} />
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t("loadingUsers")?.toUpperCase() || "LOADING USERS..."}</div>
+                </div>
               ) : users.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noUsersFound")}</p>
               ) : (

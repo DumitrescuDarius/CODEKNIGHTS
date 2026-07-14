@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Trophy, Medal, Award, User, RefreshCw } from "lucide-react";
 import { DefaultAvatar } from "../DefaultAvatar";
+import { WindowSpinner } from "../WindowSpinner";
 
 interface LeaderboardWindowProps {
   t: any;
@@ -89,7 +90,9 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
         : "45px 1.5fr 80px 90px 100px");
 
   return (
-    <div ref={containerRef} style={{ padding: "1.25rem", display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", overflowX: "hidden", background: "rgba(0,0,0,0.1)", boxSizing: "border-box", width: "100%" }}>
+    <div ref={containerRef} style={{ position: "relative", padding: "1.25rem", display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", overflowX: "hidden", background: "rgba(0,0,0,0.1)", boxSizing: "border-box", width: "100%" }}>
+      {isLoading && <WindowSpinner message={t("loading") || "LOADING..."} />}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Trophy size={20} color="var(--accent)" />
@@ -122,15 +125,11 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
         </button>
       </div>
 
-      {isLoading ? (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flex: 1, height: "200px" }}>
-          <RefreshCw size={28} className="spin" style={{ color: "var(--accent)", animation: "spin 1s linear infinite" }} />
-        </div>
-      ) : error ? (
+      {error ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px", color: "#ff5555", fontSize: "0.85rem" }}>
           {error}
         </div>
-      ) : leaders.length === 0 ? (
+      ) : leaders.length === 0 && !isLoading ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px", color: "var(--text-muted)", fontSize: "0.85rem" }}>
           No active participants found.
         </div>

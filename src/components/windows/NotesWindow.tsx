@@ -6,6 +6,7 @@ import { Plus, Trash2, X, Move, Link, Sidebar as SidebarIcon, FileText, LayoutDa
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { TranslationKey } from "../../constants/translations";
+import { WindowSpinner } from "../WindowSpinner";
 
 
 // Global cache to prevent race conditions during rapid close/reopen
@@ -815,12 +816,8 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
 
   if (!isLoaded) {
     return (
-      <div className="window-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: '1rem', color: 'var(--text-muted)' }}>
-        <div style={{ width: '30px', height: '30px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <div style={{ fontSize: '0.9rem' }}>{t("loadingWorkspaces")}</div>
-        <style>{`
-          @keyframes spin { 100% { transform: rotate(360deg); } }
-        `}</style>
+      <div className="window-content" style={{ position: 'relative', height: '100%', width: '100%' }}>
+        <WindowSpinner message={t("loadingWorkspaces") || "Loading workspaces..."} />
       </div>
     );
   }
