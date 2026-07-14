@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Crown, Check, ShieldCheck, Loader2, CreditCard, Lock, AlertTriangle } from "lucide-react";
 import { WindowSpinner } from "../WindowSpinner";
 import { TranslationKey } from "../../constants/translations";
