@@ -46,12 +46,18 @@ async function executeWithPiston(code: string, language: string, stdin: string =
   const compiler = compilerMap[language];
   if (!compiler) throw { stderr: "Unsupported language for execution API" };
 
+  let processedCode = code;
+  if (language === "java") {
+    // Wandbox saves main code as prog.java. Renaming public class to class resolves the filename mismatch.
+    processedCode = code.replace(/\bpublic\s+class\s+/, "class ");
+  }
+
   const res = await fetch("https://wandbox.org/api/compile.json", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       compiler: compiler,
-      code: code,
+      code: processedCode,
       stdin: stdin
     })
   });

@@ -64,6 +64,23 @@ interface TestDetail {
   passed: boolean;
 }
 
+type SubmissionFeedback = {
+  message: string;
+  color: string;
+};
+
+function getSubmissionFeedback(passed: number, total: number): SubmissionFeedback {
+  const percentage = total > 0 ? (passed / total) * 100 : 0;
+
+  if (percentage === 100) return { message: "Perfect! All test cases passed.", color: "#50fa7b" };
+  if (percentage > 75) return { message: "Good enough! More than 75% of test cases passed.", color: "#8be9fd" };
+  if (percentage > 50) return { message: "Almost there! More than half of the test cases passed.", color: "#f1fa8c" };
+  if (percentage > 25) return { message: "Keep improving! A few more test cases need work.", color: "#ffb86c" };
+  if (percentage > 0) return { message: "A start! Review the failed test cases and try again.", color: "#ff79c6" };
+
+  return { message: "No test cases passed yet. Check your approach and try again.", color: "#ff5555" };
+}
+
 interface CompileError {
   line: number;
   column: number;
@@ -287,13 +304,15 @@ const MainMenu: React.FC = () => {
   const [terminalHeight, setTerminalHeight] = useState(180);
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [newQuestion, setNewQuestion] = useState<{ id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[] }>({ 
+  const [newQuestion, setNewQuestion] = useState<{ id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[]; timeLimit: number; memoryLimit: number }>({ 
     title: "", 
     description: "", 
     restrictions: "",
     difficulty: "Easy", 
     testCases: [{ input: "", output: "" }], 
-    hiddenTestCases: [] 
+    hiddenTestCases: [],
+    timeLimit: 5000,
+    memoryLimit: 256
   });
   const [adminError, setAdminError] = useState<string | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
@@ -302,6 +321,7 @@ const MainMenu: React.FC = () => {
   const [testResults, setTestResults] = useState<{ passed: number, total: number, details: TestDetail[] } | null>(null);
   const [problemTestResults, setProblemTestResults] = useState<Record<string, { passed: number; total: number; details: any[] }>>({});
   const [problemScores, setProblemScores] = useState<Record<string, number>>({});
+  const [problemWrongAttemptCounts, setProblemWrongAttemptCounts] = useState<Record<string, number>>({});
   const [totalPenalty, setTotalPenalty] = useState<number | null>(null);
   const [wrongAttemptCount, setWrongAttemptCount] = useState(0);
 
@@ -337,10 +357,31 @@ const MainMenu: React.FC = () => {
   }, []);
   const retryProblem = useCallback(() => {
     setTestResults(null);
-    setWrongAttemptCount(0);
+    if (activeQuestion) {
+      setProblemTestResults(prev => {
+        const next = { ...prev };
+        delete next[activeQuestion.id];
+        return next;
+      });
+      setProblemScores(prev => {
+        const next = { ...prev };
+        delete next[activeQuestion.id];
+        return next;
+      });
+    }
+    setSubmissionFeedback(null);
+    setWrongAttemptCount(activeQuestion ? (problemWrongAttemptCounts[activeQuestion.id] ?? 0) : 0);
     setTotalPenalty(null);
     setSolveTime(null);
     setBattleStartTime(Date.now());
+  }, [activeQuestion, problemWrongAttemptCounts]);
+
+  const recordWrongAttempt = useCallback((questionId: string) => {
+    setProblemWrongAttemptCounts(prev => {
+      const nextCount = (prev[questionId] ?? 0) + 1;
+      setWrongAttemptCount(nextCount);
+      return { ...prev, [questionId]: nextCount };
+    });
   }, []);
   
   const [isTesting, setIsTesting] = useState(false);
@@ -462,7 +503,7 @@ const MainMenu: React.FC = () => {
   const [clockOffset, setClockOffset] = useState<number>(0);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
   const [showWorkspaceWarning, setShowWorkspaceWarning] = useState(false);
-  const [showWrongAnswerPopup, setShowWrongAnswerPopup] = useState(false);
+  const [submissionFeedback, setSubmissionFeedback] = useState<SubmissionFeedback | null>(null);
   const [showAiDisabledWarning, setShowAiDisabledWarning] = useState(false);
   const [showDuelInBattleWarning, setShowDuelInBattleWarning] = useState(false);
   const [showDuelHasUplinkWarning, setShowDuelHasUplinkWarning] = useState(false);
@@ -542,11 +583,11 @@ const MainMenu: React.FC = () => {
   }, [showUplinkPendingWarning]);
 
   useEffect(() => {
-    if (showWrongAnswerPopup) {
-      const timer = setTimeout(() => setShowWrongAnswerPopup(false), 3000);
+    if (submissionFeedback) {
+      const timer = setTimeout(() => setSubmissionFeedback(null), 3000);
       return () => clearTimeout(timer);
     }
-  }, [showWrongAnswerPopup]);
+  }, [submissionFeedback]);
 
   // showWaitingPopup does NOT auto-hide because we need the PIN to stay visible.
   // It is manually cleared when an opponent is found or duel is cancelled.
@@ -757,7 +798,7 @@ const MainMenu: React.FC = () => {
     return () => window.removeEventListener("open_agent_window", handleOpenAgent);
   }, [setShowLimitWarning, maxWindows, setShowAiDisabledWarning]);
 
-  const createDuel = useCallback(async (demoMode: boolean = false) => {
+  const createDuel = useCallback(async (demoMode: boolean = false, options?: { problems?: string[]; unrated?: boolean }) => {
     if (pendingInviteTargetId !== null) {
       setShowUplinkPendingWarning(true);
       return;
@@ -766,7 +807,12 @@ const MainMenu: React.FC = () => {
       const res = await fetch("/api/duels", { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestName: isGuest ? guestName : undefined, demoMode })
+        body: JSON.stringify({ 
+          guestName: isGuest ? guestName : undefined, 
+          demoMode,
+          problems: options?.problems,
+          unrated: options?.unrated
+        })
       });
       const data = await res.json();
       if (res.ok) {
@@ -1023,7 +1069,7 @@ const MainMenu: React.FC = () => {
         const isHost = prev.hostId === userId;
         return {
             ...prev,
-            [isHost ? 'guestPenalty' : 'hostPenalty']: 999999999,
+            [isHost ? 'guestPenalty' : 'hostPenalty']: 0,
             status: "FINISHED"
         };
       });
@@ -1166,24 +1212,27 @@ const MainMenu: React.FC = () => {
       }
 
       const startTime = new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset;
+      const deadline = startTime + limit * 1000;
+      const updateTimeLeft = () => {
+        // Calculate from an absolute deadline so delayed intervals, tab throttling,
+        // and temporary browser pauses cannot make the clock drift.
+        const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        setTimeLeft(remaining);
+        return remaining > 0;
+      };
 
-      interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const remaining = limit - elapsed;
-        if (remaining <= 0) {
-          setTimeLeft(0);
-          clearInterval(interval);
-        } else {
-          setTimeLeft(remaining);
-        }
-      }, 1000);
+      if (updateTimeLeft()) {
+        interval = setInterval(() => {
+          if (!updateTimeLeft() && interval) clearInterval(interval);
+        }, 250);
+      }
     } else {
       setTimeLeft(null);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeDuel, session, guestId]);
+  }, [activeDuel, clockOffset]);
 
 
 
@@ -1443,7 +1492,9 @@ const MainMenu: React.FC = () => {
           restrictions: "",
           difficulty: "Easy", 
           testCases: [{ input: "", output: "" }], 
-          hiddenTestCases: [] 
+          hiddenTestCases: [],
+          timeLimit: 5000,
+          memoryLimit: 256
         });
         fetchQuestions();
         alert("Question published successfully!");
@@ -1477,7 +1528,9 @@ const MainMenu: React.FC = () => {
           restrictions: "",
           difficulty: "Easy", 
           testCases: [{ input: "", output: "" }], 
-          hiddenTestCases: [] 
+          hiddenTestCases: [],
+          timeLimit: 5000,
+          memoryLimit: 256
         });
         fetchQuestions();
         alert("Question updated successfully!");
@@ -1499,7 +1552,9 @@ const MainMenu: React.FC = () => {
       restrictions: q.restrictions || "",
       difficulty: q.difficulty,
       testCases: typeof q.testCases === 'string' ? JSON.parse(q.testCases) : q.testCases,
-      hiddenTestCases: q.hiddenTestCases ? (typeof q.hiddenTestCases === 'string' ? JSON.parse(q.hiddenTestCases) : q.hiddenTestCases) : []
+      hiddenTestCases: q.hiddenTestCases ? (typeof q.hiddenTestCases === 'string' ? JSON.parse(q.hiddenTestCases) : q.hiddenTestCases) : [],
+      timeLimit: q.timeLimit ?? 5000,
+      memoryLimit: q.memoryLimit ?? 256
     });
     
     setOpenWindows(prev => {
@@ -1534,6 +1589,7 @@ const MainMenu: React.FC = () => {
     setTestResults(null);
     setProblemTestResults({});
     setProblemScores({});
+    setProblemWrongAttemptCounts({});
     setWrongAttemptCount(0); // Reset
     setActiveQuestionIndex(0);
     problemCodesRef.current = {};
@@ -1576,7 +1632,8 @@ const MainMenu: React.FC = () => {
 
     const savedResults = problemTestResults[targetQ.id] || null;
     setTestResults(savedResults);
-  }, [activeDuel, activeQuestion, code, lang, problemTestResults]);
+    setWrongAttemptCount(problemWrongAttemptCounts[targetQ.id] ?? 0);
+  }, [activeDuel, activeQuestion, code, lang, problemTestResults, problemWrongAttemptCounts]);
 
   const startQuickMatch = useCallback(async (
     mode: 'create' | 'find' = 'find',
@@ -1646,6 +1703,7 @@ const MainMenu: React.FC = () => {
         } else {
           setTerminalOutput(`Error: ${errorData.error || 'Failed to run tests'}`);
         }
+        recordWrongAttempt(activeQuestion.id);
         setIsTesting(false);
         return;
       }
@@ -1655,12 +1713,14 @@ const MainMenu: React.FC = () => {
       if (data.compileErrors) {
         setCompileErrors(data.compileErrors);
         setTerminalOutput(`Compilation Error:\n${data.error}`);
+        recordWrongAttempt(activeQuestion.id);
         setIsTesting(false);
         return;
       }
 
       if (data.error) {
          setTerminalOutput(`Error:\n${data.error}`);
+         recordWrongAttempt(activeQuestion.id);
          setIsTesting(false);
          return;
       }
@@ -1670,12 +1730,22 @@ const MainMenu: React.FC = () => {
       
       const newResults = { passed, total: allTestsLength, details };
       setTestResults(newResults);
+      setSubmissionFeedback(getSubmissionFeedback(passed, allTestsLength));
+      if (data.timedOut && data.executionNotice) {
+        setTerminalOutput(`${data.executionNotice}\n\nPartial score awarded for ${passed} passed test${passed === 1 ? "" : "s"}.`);
+      }
 
       if (activeQuestion) {
         setProblemTestResults(prev => ({ ...prev, [activeQuestion.id]: newResults }));
-        
-        const currentProblemScore = passed * 50 + (passed > 0 ? (timeLeft || 0) : 0);
-        
+        const allTestsPassed = passed === allTestsLength && allTestsLength > 0;
+        // Award completed tests even if a later test times out. The time bonus
+        // applies only when at least one test passed; failed attempts use the
+        // capped per-problem penalty tiers.
+        const failedAttempts = (problemWrongAttemptCounts[activeQuestion.id] ?? 0) + (allTestsPassed ? 0 : 1);
+        const submissionPenalty = failedAttempts >= 3 ? 100 : failedAttempts >= 1 ? 50 : 0;
+        const remainingTimeBonus = passed > 0 ? Math.max(timeLeft ?? 0, 0) : 0;
+        const currentProblemScore = Math.max(0, passed * 50 + remainingTimeBonus - submissionPenalty);
+
         setProblemScores(prev => {
           const nextScores = { ...prev, [activeQuestion.id]: currentProblemScore };
           const totalScore = Object.values(nextScores).reduce((sum, v) => sum + v, 0);
@@ -1683,14 +1753,14 @@ const MainMenu: React.FC = () => {
 
           if (activeDuel && activeDuel.status === "ACTIVE") {
             const time = Math.floor((Date.now() - (battleStartTime || Date.now())) / 1000);
-            const totalComplexity = analysis?.scores ? 
-              (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) : 0;
-            
+            const totalComplexity = analysis?.scores
+              ? (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) : 0;
+
             fetch("/api/duels/submit", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ 
-                  duelId: activeDuel.id, 
+              body: JSON.stringify({
+                  duelId: activeDuel.id,
                   solveTime: time * 1000,
                   complexityScore: totalComplexity,
                   totalPenalty: totalScore,
@@ -1701,6 +1771,10 @@ const MainMenu: React.FC = () => {
           }
           return nextScores;
         });
+
+        if (!allTestsPassed) {
+          recordWrongAttempt(activeQuestion.id);
+        }
       }
 
       if (passed === allTestsLength) {
@@ -1713,8 +1787,7 @@ const MainMenu: React.FC = () => {
         analyzeCode(code, lang, activeQuestion);
         fetchUserStats();
       } else {
-        setWrongAttemptCount(prev => prev + 1); // Increment on fail
-        setShowWrongAnswerPopup(true);
+        // Failed test runs are recorded above per problem.
       }
     } catch (err: unknown) {
       setTerminalOutput(`Network Error: ${err instanceof Error ? err.message : "Failed to connect to execution server."}`);
@@ -1722,7 +1795,7 @@ const MainMenu: React.FC = () => {
     } finally {
       setIsTesting(false);
     }
-  }, [activeQuestion, code, lang, battleStartTime, analyzeCode, fetchUserStats, activeDuel, timeLeft, problemScores, guestId]);
+  }, [activeQuestion, code, lang, battleStartTime, analyzeCode, fetchUserStats, activeDuel, timeLeft, problemWrongAttemptCounts, guestId, recordWrongAttempt]);
 
   const runSingleTest = useCallback(async (input: string, index: number) => {
     setIsRunning(true);
@@ -2382,6 +2455,7 @@ const MainMenu: React.FC = () => {
             changeActiveQuestion={changeActiveQuestion}
             problemTestResults={problemTestResults}
             problemScores={problemScores}
+            problemWrongAttemptCounts={problemWrongAttemptCounts}
           />
         );
       case "profile":
@@ -2580,7 +2654,7 @@ const MainMenu: React.FC = () => {
           {[
             showLimitWarning && { id: 'limit', color: 'var(--accent)', content: <span>Maximum of {maxWindows} windows allowed.</span> },
             showWorkspaceWarning && { id: 'workspace', color: '#ff5555', content: <span>You need at least one workspace available.</span> },
-            showWrongAnswerPopup && { id: 'wrong', color: '#ff5555', content: <span>Wrong Answer! Check your logic.</span> },
+            submissionFeedback && { id: 'submission-feedback', color: submissionFeedback.color, content: <span>{submissionFeedback.message}</span> },
             showInviteSentPopup && { id: 'invite', color: 'var(--text-muted)', content: <span>Invite sent! Waiting for response...</span> },
             isAcceptingInvite && { id: 'accepting', color: 'var(--accent)', content: <span>Loading problems...</span> },
 

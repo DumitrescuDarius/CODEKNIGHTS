@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Question } from "../../types";
 import { signIn } from "next-auth/react";
-import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search, Flame, Github, ArrowLeft, Sparkles, Check, RotateCcw, Crown } from "lucide-react";
+import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search, Flame, Github, ArrowLeft, Sparkles, Check, RotateCcw, Crown, ChevronUp, ChevronDown } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
 import { motion, AnimatePresence } from "framer-motion";
 import { DefaultAvatar } from "../DefaultAvatar";
@@ -56,7 +56,7 @@ interface BattleWindowProps {
   t: (key: TranslationKey) => string;
   onDeleteQuestion?: (id: string) => void;
   onEditQuestion?: (q: Question) => void;
-  createDuel: () => void;
+  createDuel: (demoMode?: boolean, options?: { problems?: string[]; unrated?: boolean }) => Promise<void>;
   joinDuel: (pin: string) => void;
   activeDuel: any;
   setActiveDuel: (val: any) => void;
@@ -82,6 +82,32 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   const [showBubbles, setShowBubbles] = useState(false);
   const [isQuickMatchMode, setIsQuickMatchMode] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+
+  const [showUplinkConfigPanel, setShowUplinkConfigPanel] = useState(false);
+  const [uplinkProblems, setUplinkProblems] = useState<string[]>(["EASY"]);
+  const [uplinkIsRanked, setUplinkIsRanked] = useState(true);
+
+  const moveUplinkProblem = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === uplinkProblems.length - 1) return;
+    const nextIndex = direction === 'up' ? index - 1 : index + 1;
+    const updated = [...uplinkProblems];
+    const temp = updated[index];
+    updated[index] = updated[nextIndex];
+    updated[nextIndex] = temp;
+    setUplinkProblems(updated);
+  };
+
+  const moveSelectedProblem = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === selectedProblems.length - 1) return;
+    const nextIndex = direction === 'up' ? index - 1 : index + 1;
+    const updated = [...selectedProblems];
+    const temp = updated[index];
+    updated[index] = updated[nextIndex];
+    updated[nextIndex] = temp;
+    setSelectedProblems(updated);
+  };
 
   useEffect(() => {
     let timerId: any = null;
@@ -611,22 +637,63 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     <span style={{ fontWeight: 800, fontSize: '0.8rem', color: p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
                       {idx + 1}. {p} (+{p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
                     </span>
-                    <button
-                      onClick={() => {
-                        setSelectedProblems(prev => prev.filter((_, i) => i !== idx));
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#ff5555',
-                        fontWeight: 900,
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                        padding: '0.1rem 0.4rem'
-                      }}
-                    >
-                      REMOVE
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <button
+                        onClick={() => moveSelectedProblem(idx, 'up')}
+                        disabled={idx === 0}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: idx === 0 ? 'rgba(255,255,255,0.07)' : 'var(--accent)',
+                          cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.2rem',
+                          borderRadius: '0.25rem',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => moveSelectedProblem(idx, 'down')}
+                        disabled={idx === selectedProblems.length - 1}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: idx === selectedProblems.length - 1 ? 'rgba(255,255,255,0.07)' : 'var(--accent)',
+                          cursor: idx === selectedProblems.length - 1 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.2rem',
+                          borderRadius: '0.25rem',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedProblems(prev => prev.filter((_, i) => i !== idx));
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ff5555',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.2rem',
+                          borderRadius: '0.25rem'
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -638,7 +705,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>ADD PROBLEM BLOCK</label>
             <div style={{ display: 'flex', gap: '0.4rem' }}>
               <button
-                onClick={() => setSelectedProblems(prev => [...prev, 'EASY'])}
+                disabled={selectedProblems.length >= 5}
+                onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
                 style={{
                   flex: 1,
                   padding: '0.6rem 0.25rem',
@@ -648,16 +716,18 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   color: '#50fa7b',
                   fontWeight: 900,
                   fontSize: '0.75rem',
-                  cursor: 'pointer',
+                  cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                  opacity: selectedProblems.length >= 5 ? 0.3 : 1,
                   transition: 'background 0.2s'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
+                onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
+                onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
               >
                 + EASY (+5m)
               </button>
               <button
-                onClick={() => setSelectedProblems(prev => [...prev, 'MEDIUM'])}
+                disabled={selectedProblems.length >= 5}
+                onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
                 style={{
                   flex: 1,
                   padding: '0.6rem 0.25rem',
@@ -667,16 +737,18 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   color: '#ffb86c',
                   fontWeight: 900,
                   fontSize: '0.75rem',
-                  cursor: 'pointer',
+                  cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                  opacity: selectedProblems.length >= 5 ? 0.3 : 1,
                   transition: 'background 0.2s'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
+                onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
+                onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
               >
                 + MEDIUM (+9m)
               </button>
               <button
-                onClick={() => setSelectedProblems(prev => [...prev, 'HARD'])}
+                disabled={selectedProblems.length >= 5}
+                onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
                 style={{
                   flex: 1,
                   padding: '0.6rem 0.25rem',
@@ -686,11 +758,12 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   color: '#bd93f9',
                   fontWeight: 900,
                   fontSize: '0.75rem',
-                  cursor: 'pointer',
+                  cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                  opacity: selectedProblems.length >= 5 ? 0.3 : 1,
                   transition: 'background 0.2s'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
+                onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
+                onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
               >
                 + HARD (+14m)
               </button>
@@ -773,6 +846,251 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               }}
             >
               CREATE LOBBY
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  if (showUplinkConfigPanel) {
+    const calculatedUplinkTime = uplinkProblems.reduce((sum, diff) => sum + (diff === 'EASY' ? 5 : diff === 'MEDIUM' ? 9 : 14), 0);
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '2rem', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ width: '100%', maxWidth: '480px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', borderRadius: '0.8rem', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          
+          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, textAlign: 'center', color: 'var(--text)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            UPLINK CONFIGURATION
+          </h2>
+
+          {/* Added Problems List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>SELECTED PROBLEMS QUEUE</label>
+            {uplinkProblems.length === 0 ? (
+              <div style={{ padding: '1rem', border: '1px dashed var(--line)', borderRadius: '0.4rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No problems selected. Add some below!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                {uplinkProblems.map((p, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem' }}>
+                    <span style={{ fontWeight: 800, fontSize: '0.8rem', color: p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
+                      {idx + 1}. {p} (+{p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <button
+                        onClick={() => moveUplinkProblem(idx, 'up')}
+                        disabled={idx === 0}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: idx === 0 ? 'rgba(255,255,255,0.07)' : 'var(--accent)',
+                          cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.2rem',
+                          borderRadius: '0.25rem',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => moveUplinkProblem(idx, 'down')}
+                        disabled={idx === uplinkProblems.length - 1}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: idx === uplinkProblems.length - 1 ? 'rgba(255,255,255,0.07)' : 'var(--accent)',
+                          cursor: idx === uplinkProblems.length - 1 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.2rem',
+                          borderRadius: '0.25rem',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setUplinkProblems(prev => prev.filter((_, i) => i !== idx));
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ff5555',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.2rem',
+                          borderRadius: '0.25rem'
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add Problem Blocks Buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>ADD PROBLEM BLOCK</label>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button
+                disabled={uplinkProblems.length >= 5}
+                onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem 0.25rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid rgba(80, 250, 123, 0.3)',
+                  background: 'rgba(80, 250, 123, 0.05)',
+                  color: '#50fa7b',
+                  fontWeight: 900,
+                  fontSize: '0.75rem',
+                  cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                  opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
+                onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
+              >
+                + EASY (+5m)
+              </button>
+              <button
+                disabled={uplinkProblems.length >= 5}
+                onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem 0.25rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid rgba(255, 184, 108, 0.3)',
+                  background: 'rgba(255, 184, 108, 0.05)',
+                  color: '#ffb86c',
+                  fontWeight: 900,
+                  fontSize: '0.75rem',
+                  cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                  opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
+                onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
+              >
+                + MEDIUM (+9m)
+              </button>
+              <button
+                disabled={uplinkProblems.length >= 5}
+                onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem 0.25rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid rgba(189, 147, 249, 0.3)',
+                  background: 'rgba(189, 147, 249, 0.05)',
+                  color: '#bd93f9',
+                  fontWeight: 900,
+                  fontSize: '0.75rem',
+                  cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                  opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
+                onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
+              >
+                + HARD (+14m)
+              </button>
+            </div>
+          </div>
+
+          {/* Time & Type Summary Block */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', border: '1px solid var(--line)' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>TOTAL TIME:</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 900, color: themeColor }}>{calculatedUplinkTime} MINUTES</span>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginRight: 'auto' }}>MATCH TYPE</span>
+              {[
+                { label: 'RANKED', value: true },
+                { label: 'UNRATED', value: false }
+              ].map(opt => (
+                <button
+                  key={opt.label}
+                  onClick={() => setUplinkIsRanked(opt.value)}
+                  style={{
+                    padding: '0.4rem 0.8rem',
+                    borderRadius: '0.4rem',
+                    border: uplinkIsRanked === opt.value ? `2px solid ${themeColor}` : '1px solid var(--line)',
+                    background: uplinkIsRanked === opt.value ? `${themeColor}22` : 'rgba(0,0,0,0.2)',
+                    color: uplinkIsRanked === opt.value ? themeColor : 'var(--text)',
+                    fontWeight: 900,
+                    fontSize: '0.75rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Row */}
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+            <button
+              onClick={() => setShowUplinkConfigPanel(false)}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                borderRadius: '0.4rem',
+                border: '1px solid var(--line)',
+                background: 'rgba(255,255,255,0.05)',
+                color: 'var(--text)',
+                fontWeight: 900,
+                cursor: 'pointer'
+              }}
+            >
+              CANCEL
+            </button>
+            <button
+              disabled={uplinkProblems.length === 0}
+              onClick={async () => {
+                setShowUplinkConfigPanel(false);
+                setIsCreating(true);
+                try {
+                  await createDuel(false, {
+                    problems: uplinkProblems,
+                    unrated: !uplinkIsRanked
+                  });
+                  setShowWaitingPopup(true);
+                } catch (e) {
+                  console.error(e);
+                }
+                setIsCreating(false);
+              }}
+              style={{
+                flex: 2,
+                padding: '0.75rem',
+                borderRadius: '0.4rem',
+                border: 'none',
+                background: uplinkProblems.length === 0 ? 'var(--text-muted)' : themeColor,
+                color: '#000',
+                fontWeight: 900,
+                cursor: uplinkProblems.length === 0 ? 'not-allowed' : 'pointer',
+                boxShadow: uplinkProblems.length === 0 ? 'none' : `0 4px 15px ${themeColor}33`
+              }}
+            >
+              CREATE UPLINK
             </button>
           </div>
 
@@ -1030,6 +1348,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
   return (
     <div style={{ padding: '2.5rem 1.5rem', height: '100%', overflow: 'hidden', position: 'relative', containerType: 'inline-size' }}>
+
       {/* Top Left Path Selector Button */}
       {(!activeDuel || activeDuel.status !== 'ACTIVE') && !isCreating && !isJoining && (
         <button
@@ -1355,16 +1674,9 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             {/* Generate Uplink Button */}
             <div style={{ flex: 1, minWidth: '200px' }}>
               <button 
-                onClick={async () => { 
+                onClick={() => { 
                   if (isWaitingForResponse) return;
-                  setIsCreating(true);
-                  try {
-                    await createDuel();
-                    setShowWaitingPopup(true);
-                  } catch (e) {
-                    console.error(e);
-                  }
-                  setIsCreating(false);
+                  setShowUplinkConfigPanel(true);
                 }}
                 disabled={isCreating || isJoining || isWaitingForResponse}
                 style={{ 

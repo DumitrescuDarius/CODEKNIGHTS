@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, AlertCircle, Sword, Edit2, X, Users } from "lucide-react";
+import { Plus, Trash2, AlertCircle, Sword, Edit2, X, Users, Upload } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
 import { Question } from "../../types";
 
 interface AdminWindowProps {
-  newQuestion: { id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: any[]; hiddenTestCases: any[] };
+  newQuestion: { id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: any[]; hiddenTestCases: any[]; timeLimit: number; memoryLimit: number };
   setNewQuestion: (val: any) => void;
   handleAddQuestion: () => void;
   handleUpdateQuestion: () => void;
@@ -22,6 +22,15 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
 }) => {
   const [testCasesRaw, setTestCasesRaw] = useState(JSON.stringify(newQuestion.testCases, null, 2));
   const [hiddenTestCasesRaw, setHiddenTestCasesRaw] = useState(JSON.stringify(newQuestion.hiddenTestCases, null, 2));
+
+  const [inputMode, setInputMode] = useState<"json" | "raw" | "form">("form");
+  const [rawIn, setRawIn] = useState("");
+  const [rawOk, setRawOk] = useState("");
+  const [rawDelimiter, setRawDelimiter] = useState("===");
+
+  const [formTests, setFormTests] = useState<{ input: string; output: string; isPublic: boolean }[]>([
+    { input: "", output: "", isPublic: true }
+  ]);
 
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -65,26 +74,307 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
     if (newQuestion.id) {
       setTestCasesRaw(JSON.stringify(newQuestion.testCases, null, 2));
       setHiddenTestCasesRaw(JSON.stringify(newQuestion.hiddenTestCases, null, 2));
+      
+      const tc = newQuestion.testCases;
+      const htc = newQuestion.hiddenTestCases;
+      const targetList = Array.isArray(htc) && htc.length > 0 ? htc : (Array.isArray(tc) ? tc : []);
+      if (targetList.length > 0) {
+        setRawIn(targetList.map((c: any) => c.input).join("\n===\n"));
+        setRawOk(targetList.map((c: any) => c.output).join("\n===\n"));
+      } else {
+        setRawIn("");
+        setRawOk("");
+      }
+
+      const tcList = Array.isArray(tc) ? tc : [];
+      const htcList = Array.isArray(htc) ? htc : [];
+      const combined: { input: string; output: string; isPublic: boolean }[] = [];
+      htcList.forEach((c: any) => {
+        const isPub = tcList.some((p: any) => p.input === c.input && p.output === c.output);
+        combined.push({ input: c.input, output: c.output, isPublic: isPub });
+      });
+      if (combined.length === 0 && tcList.length > 0) {
+        tcList.forEach((c: any) => {
+          combined.push({ input: c.input, output: c.output, isPublic: true });
+        });
+      }
+      if (combined.length === 0) {
+        combined.push({ input: "", output: "", isPublic: true });
+      }
+      setFormTests(combined);
     }
   }, [newQuestion.id]);
 
   useEffect(() => {
-    try {
-      const parsed = JSON.parse(testCasesRaw);
-      if (Array.isArray(parsed)) {
-        setNewQuestion((prev: any) => ({ ...prev, testCases: parsed }));
-      }
-    } catch (e) {}
-  }, [testCasesRaw, setNewQuestion]);
+    if (inputMode === "json") {
+      try {
+        const parsed = JSON.parse(testCasesRaw);
+        if (Array.isArray(parsed)) {
+          setNewQuestion((prev: any) => ({ ...prev, testCases: parsed }));
+        }
+      } catch (e) {}
+    }
+  }, [testCasesRaw, setNewQuestion, inputMode]);
 
   useEffect(() => {
-    try {
-      const parsed = JSON.parse(hiddenTestCasesRaw);
-      if (Array.isArray(parsed)) {
-        setNewQuestion((prev: any) => ({ ...prev, hiddenTestCases: parsed }));
+    if (inputMode === "json") {
+      try {
+        const parsed = JSON.parse(hiddenTestCasesRaw);
+        if (Array.isArray(parsed)) {
+          setNewQuestion((prev: any) => ({ ...prev, hiddenTestCases: parsed }));
+        }
+      } catch (e) {}
+    }
+  }, [hiddenTestCasesRaw, setNewQuestion, inputMode]);
+
+  useEffect(() => {
+    if (inputMode === "raw") {
+      const delimiter = rawDelimiter || "===";
+      const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const delimiterRegex = new RegExp(`\\r?\\n\\s*${escapeRegExp(delimiter)}\\s*\\r?\\n`);
+      
+      const inputs = rawIn.split(delimiterRegex).map(s => s.trim());
+      const outputs = rawOk.split(delimiterRegex).map(s => s.trim());
+      
+      const parsedCases = [];
+      const count = Math.max(inputs.length, outputs.length);
+      
+      if (rawIn.trim() || rawOk.trim()) {
+        for (let i = 0; i < count; i++) {
+          parsedCases.push({
+            input: inputs[i] || "",
+            output: outputs[i] || ""
+          });
+        }
       }
-    } catch (e) {}
-  }, [hiddenTestCasesRaw, setNewQuestion]);
+      
+      setNewQuestion((prev: any) => ({
+        ...prev,
+        testCases: parsedCases.slice(0, 1),
+        hiddenTestCases: parsedCases
+      }));
+    }
+  }, [rawIn, rawOk, rawDelimiter, inputMode, setNewQuestion]);
+
+  useEffect(() => {
+    if (inputMode === "form") {
+      const tc = formTests.filter(t => t.isPublic).map(t => ({ input: t.input, output: t.output }));
+      const htc = formTests.map(t => ({ input: t.input, output: t.output }));
+      setNewQuestion((prev: any) => ({
+        ...prev,
+        testCases: tc,
+        hiddenTestCases: htc
+      }));
+    }
+  }, [formTests, inputMode, setNewQuestion]);
+
+  const handleFormTestsCountChange = (count: number) => {
+    setError(null);
+    if (count < 1) return;
+    setFormTests(prev => {
+      const next = [...prev];
+      if (count > next.length) {
+        while (next.length < count) {
+          next.push({ input: "", output: "", isPublic: false });
+        }
+      } else if (count < next.length) {
+        next.splice(count);
+      }
+      return next;
+    });
+  };
+
+  const handleAddFormTestCase = () => {
+    setError(null);
+    setFormTests(prev => [...prev, { input: "", output: "", isPublic: false }]);
+  };
+
+  const handleDeleteFormTestCase = (idx: number) => {
+    setError(null);
+    setFormTests(prev => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  const handleUpdateFormTestCase = (idx: number, field: "input" | "output" | "isPublic", val: any) => {
+    setError(null);
+    setFormTests(prev => prev.map((item, i) => i === idx ? { ...item, [field]: val } : item));
+  };
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const readFileAsText = (file: File): Promise<{ name: string; content: string }> => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          resolve({ name: file.name, content: event.target?.result as string || "" });
+        };
+        reader.readAsText(file, "UTF-8");
+      });
+    };
+
+    try {
+      const filePromises = Array.from(files).map(readFileAsText);
+      const readFiles = await Promise.all(filePromises);
+
+      let importedTitle = "";
+      let importedDesc = "";
+      let importedDifficulty = "";
+      let importedRestrictions = "";
+      let importedTimeLimit: number | null = null;
+      let importedMemoryLimit: number | null = null;
+
+      const testCasesMap: Record<number, { input?: string; output?: string }> = {};
+
+      let hasTestIn = false;
+      let hasTestOk = false;
+      let rawInContent = "";
+      let rawOkContent = "";
+
+      for (const file of readFiles) {
+        const name = file.name.trim();
+        const content = file.content;
+
+        if (name === "info.txt" || name === "problem.txt" || name === "title.txt") {
+          let hasKeys = false;
+          const lines = content.split(/\r?\n/);
+          for (const line of lines) {
+            if (line.includes(":")) {
+              const key = line.split(":")[0].trim().toLowerCase();
+              if (["title", "difficulty", "restrictions", "timelimit", "time_limit", "memorylimit", "memory_limit"].includes(key)) {
+                hasKeys = true;
+              }
+            }
+          }
+
+          if (hasKeys) {
+            for (const line of lines) {
+              if (line.includes(":")) {
+                const parts = line.split(":");
+                const key = parts[0].trim().toLowerCase();
+                const val = parts.slice(1).join(":").trim();
+                if (key === "title") {
+                  importedTitle = val;
+                } else if (key === "difficulty") {
+                  const capitalized = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+                  if (["Easy", "Medium", "Hard"].includes(capitalized)) {
+                    importedDifficulty = capitalized;
+                  }
+                } else if (key === "restrictions") {
+                  importedRestrictions = val;
+                } else if (key === "timelimit" || key === "time_limit") {
+                  const num = parseInt(val.replace(/ms/gi, "").trim());
+                  if (!isNaN(num)) importedTimeLimit = num;
+                } else if (key === "memorylimit" || key === "memory_limit") {
+                  const num = parseInt(val.replace(/mb/gi, "").trim());
+                  if (!isNaN(num)) importedMemoryLimit = num;
+                }
+              }
+            }
+          } else {
+            const firstLine = content.trim().split(/\r?\n/)[0];
+            if (firstLine) {
+              importedTitle = firstLine;
+            }
+          }
+        }
+        else if (name === "description.md") {
+          importedDesc = content.trim();
+        }
+        else if (name === "restrictions.txt") {
+          importedRestrictions = content.trim();
+        }
+        else if (name === "difficulty.txt") {
+          const capitalized = content.trim().charAt(0).toUpperCase() + content.trim().slice(1).toLowerCase();
+          if (["Easy", "Medium", "Hard"].includes(capitalized)) {
+            importedDifficulty = capitalized;
+          }
+        }
+        else if (name === "tests.in") {
+          hasTestIn = true;
+          rawInContent = content;
+        }
+        else if (name === "tests.ok") {
+          hasTestOk = true;
+          rawOkContent = content;
+        }
+        else {
+          const match = name.match(/^test(\d+)\.(in|ok)$/i);
+          if (match) {
+            const num = parseInt(match[1]);
+            const ext = match[2].toLowerCase();
+            if (!testCasesMap[num]) {
+              testCasesMap[num] = {};
+            }
+            if (ext === "in") {
+              testCasesMap[num].input = content.trim();
+            } else if (ext === "ok") {
+              testCasesMap[num].output = content.trim();
+            }
+          }
+        }
+      }
+
+      const sortedKeys = Object.keys(testCasesMap).map(Number).sort((a, b) => a - b);
+      const parsedCases: { input: string; output: string; isPublic: boolean }[] = [];
+
+      for (const num of sortedKeys) {
+        const item = testCasesMap[num];
+        if (item.input !== undefined || item.output !== undefined) {
+          parsedCases.push({
+            input: item.input || "",
+            output: item.output || "",
+            isPublic: parsedCases.length === 0
+          });
+        }
+      }
+
+      if (parsedCases.length === 0 && (hasTestIn || hasTestOk)) {
+        const delimiterRegex = /\r?\n\s*===\s*\r?\n/;
+        const inputs = rawInContent ? rawInContent.split(delimiterRegex).map(s => s.trim()) : [];
+        const outputs = rawOkContent ? rawOkContent.split(delimiterRegex).map(s => s.trim()) : [];
+
+        const count = Math.max(inputs.length, outputs.length);
+        for (let i = 0; i < count; i++) {
+          parsedCases.push({
+            input: inputs[i] || "",
+            output: outputs[i] || "",
+            isPublic: i === 0
+          });
+        }
+      }
+
+      setNewQuestion((prev: any) => {
+        const updated = { ...prev };
+        if (importedTitle) updated.title = importedTitle;
+        if (importedDesc) updated.description = importedDesc;
+        if (importedDifficulty) updated.difficulty = importedDifficulty;
+        if (importedRestrictions) updated.restrictions = importedRestrictions;
+        if (importedTimeLimit !== null) updated.timeLimit = importedTimeLimit;
+        if (importedMemoryLimit !== null) updated.memoryLimit = importedMemoryLimit;
+        return updated;
+      });
+
+      if (parsedCases.length > 0) {
+        setFormTests(parsedCases);
+        const targetList = parsedCases.map(c => ({ input: c.input, output: c.output }));
+        setRawIn(targetList.map(c => c.input).join("\n===\n"));
+        setRawOk(targetList.map(c => c.output).join("\n===\n"));
+        setTestCasesRaw(JSON.stringify(targetList.slice(0, 1), null, 2));
+        setHiddenTestCasesRaw(JSON.stringify(targetList, null, 2));
+      }
+
+      alert(`Successfully imported challenge data!\n- Parsed ${parsedCases.length} test case(s).${importedTitle ? `\n- Title: "${importedTitle}"` : ""}`);
+    } catch (e: any) {
+      console.error(e);
+      setError("Failed to parse imported files: " + e.message);
+    }
+    e.target.value = "";
+  };
 
   const handleTabKey = (e: React.KeyboardEvent<HTMLTextAreaElement>, setter: (val: string) => void) => {
     if (e.key === 'Tab') {
@@ -111,10 +401,41 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       restrictions: q.restrictions || "",
       difficulty: q.difficulty,
       testCases: tc,
-      hiddenTestCases: htc
+      hiddenTestCases: htc,
+      timeLimit: (q as any).timeLimit ?? 5000,
+      memoryLimit: (q as any).memoryLimit ?? 256
     });
     setTestCasesRaw(JSON.stringify(tc, null, 2));
     setHiddenTestCasesRaw(JSON.stringify(htc, null, 2));
+
+    const targetList = Array.isArray(htc) && htc.length > 0 ? htc : (Array.isArray(tc) ? tc : []);
+    if (targetList.length > 0) {
+      setRawIn(targetList.map((c: any) => c.input).join("\n===\n"));
+      setRawOk(targetList.map((c: any) => c.output).join("\n===\n"));
+    } else {
+      setRawIn("");
+      setRawOk("");
+    }
+
+    // Build formTests immediately to prevent the form-mode useEffect from
+    // overwriting newQuestion with stale (empty) formTests before the
+    // id-based useEffect has a chance to run.
+    const tcList = Array.isArray(tc) ? tc : [];
+    const htcList = Array.isArray(htc) ? htc : [];
+    const combined: { input: string; output: string; isPublic: boolean }[] = [];
+    htcList.forEach((c: any) => {
+      const isPub = tcList.some((p: any) => p.input === c.input && p.output === c.output);
+      combined.push({ input: c.input, output: c.output, isPublic: isPub });
+    });
+    if (combined.length === 0 && tcList.length > 0) {
+      tcList.forEach((c: any) => {
+        combined.push({ input: c.input, output: c.output, isPublic: true });
+      });
+    }
+    if (combined.length === 0) {
+      combined.push({ input: "", output: "", isPublic: true });
+    }
+    setFormTests(combined);
   };
 
   const cancelEditing = () => {
@@ -124,14 +445,19 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       restrictions: "",
       difficulty: "Easy",
       testCases: [{ input: "", output: "" }],
-      hiddenTestCases: []
+      hiddenTestCases: [],
+      timeLimit: 5000,
+      memoryLimit: 256
     });
     setTestCasesRaw(JSON.stringify([{ input: "", output: "" }], null, 2));
     setHiddenTestCasesRaw(JSON.stringify([], null, 2));
+    setRawIn("");
+    setRawOk("");
+    setFormTests([{ input: "", output: "", isPublic: true }]);
   };
 
   return (
-    <div style={{ padding: '2rem 1.5rem', height: '100%', overflow: 'auto' }}>
+    <div style={{ padding: '2rem 1.5rem', height: '100%', overflowY: 'auto', overflowX: 'hidden', width: '100%', position: 'relative' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>{t("admin")}</h2>
@@ -185,19 +511,52 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("restrictions")}</label>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("restrictions")} (Markdown)</label>
                 <textarea 
                   value={newQuestion.restrictions} 
                   onChange={(e) => { setError(null); setNewQuestion((prev: any) => ({ ...prev, restrictions: e.target.value })); }}
                   onKeyDown={(e) => handleTabKey(e, (val) => setNewQuestion((prev: any) => ({ ...prev, restrictions: val })))}
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.8rem 1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '80px', resize: 'vertical', outline: 'none', lineHeight: 1.5, fontSize: '0.85rem' }}
-                  placeholder="e.g., Time complexity O(N), Space complexity O(1)"
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.8rem 1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '80px', resize: 'vertical', outline: 'none', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'monospace' }}
+                  placeholder={`Supports **Markdown** formatting.\ne.g.:\n- Time complexity: \`O(N)\`\n- Space complexity: \`O(1)\``}
                 />
+                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Supports Markdown: **bold**, `code`, - lists, etc.</p>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+                <div style={{ flex: '1 1 200px' }}>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Time Limit (ms)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input 
+                      type="number" 
+                      min="500" 
+                      max="30000" 
+                      step="500"
+                      value={newQuestion.timeLimit} 
+                      onChange={(e) => { setError(null); setNewQuestion((prev: any) => ({ ...prev, timeLimit: parseInt(e.target.value) || 5000 })); }}
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', color: 'inherit', outline: 'none', fontSize: '0.85rem' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{(newQuestion.timeLimit / 1000).toFixed(1)}s</span>
+                  </div>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Per test case execution timeout (default: 5000ms)</p>
+                </div>
+                <div style={{ flex: '1 1 200px' }}>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Memory Limit (MB)</label>
+                  <input 
+                    type="number" 
+                    min="16" 
+                    max="1024" 
+                    step="16"
+                    value={newQuestion.memoryLimit} 
+                    onChange={(e) => { setError(null); setNewQuestion((prev: any) => ({ ...prev, memoryLimit: parseInt(e.target.value) || 256 })); }}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', color: 'inherit', outline: 'none', fontSize: '0.85rem' }}
+                  />
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Maximum memory per test case (default: 256MB)</p>
+                </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("difficultyLabel")}</label>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                   {[
                     { label: "Target Practice", value: "Easy" },
                     { label: "Trial Duel", value: "Medium" },
@@ -207,7 +566,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                       key={d.value}
                       onClick={() => setNewQuestion({ ...newQuestion, difficulty: d.value })}
                       className="btn"
-                      style={{ flex: 1, borderColor: newQuestion.difficulty === d.value ? 'var(--accent)' : 'var(--line)', color: newQuestion.difficulty === d.value ? 'var(--accent)' : 'inherit', height: '44px', fontWeight: newQuestion.difficulty === d.value ? 700 : 400, cursor: 'pointer', background: newQuestion.difficulty === d.value ? 'rgba(var(--accent-rgb), 0.05)' : 'transparent' }}
+                      style={{ flex: '1 1 140px', borderColor: newQuestion.difficulty === d.value ? 'var(--accent)' : 'var(--line)', color: newQuestion.difficulty === d.value ? 'var(--accent)' : 'inherit', height: '44px', fontWeight: newQuestion.difficulty === d.value ? 700 : 400, cursor: 'pointer', background: newQuestion.difficulty === d.value ? 'rgba(var(--accent-rgb), 0.05)' : 'transparent', minWidth: '120px' }}
                     >
                       {d.label}
                     </button>
@@ -215,26 +574,250 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Public Examples (JSON)</label>
-                  <textarea 
-                    value={testCasesRaw} 
-                    onChange={(e) => { setError(null); setTestCasesRaw(e.target.value); }}
-                    style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'vertical' }}
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Test Cases Input Mode</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setInputMode("form")}
+                    className="btn"
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '0.4rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      background: inputMode === "form" ? 'var(--accent)' : 'transparent',
+                      color: inputMode === "form" ? '#000' : 'var(--text-muted)',
+                      border: '1px solid var(--line)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    FORM FIELDS (INTERACTIVE)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputMode("raw")}
+                    className="btn"
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '0.4rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      background: inputMode === "raw" ? 'var(--accent)' : 'transparent',
+                      color: inputMode === "raw" ? '#000' : 'var(--text-muted)',
+                      border: '1px solid var(--line)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    RAW FILES (tests.in / tests.ok)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputMode("json")}
+                    className="btn"
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '0.4rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      background: inputMode === "json" ? 'var(--accent)' : 'transparent',
+                      color: inputMode === "json" ? '#000' : 'var(--text-muted)',
+                      border: '1px solid var(--line)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    JSON FORMAT
+                  </button>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Hidden Tests (JSON)</label>
-                  <textarea 
-                    value={hiddenTestCasesRaw} 
-                    onChange={(e) => { setError(null); setHiddenTestCasesRaw(e.target.value); }}
-                    style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'vertical' }}
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById("test-file-import")?.click()}
+                    className="btn"
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '0.4rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--accent)',
+                      border: '1px dashed var(--accent)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      marginLeft: 'auto'
+                    }}
+                  >
+                    <Upload size={14} />
+                    IMPORT FILES
+                  </button>
+                  <input
+                    type="file"
+                    id="test-file-import"
+                    multiple
+                    accept=".in,.ok,.txt,.md"
+                    style={{ display: 'none' }}
+                    onChange={handleFileImport}
                   />
                 </div>
               </div>
-              <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'center' }}>Format: {'[{"input": "10\\n20", "output": "30"}]'}</p>
+
+              {inputMode === "form" ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {/* Amount Selector */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.4rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Amount of Test Cases</label>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Configure or select total test cases</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleFormTestsCountChange(Math.max(1, formTests.length - 1))}
+                        style={{ width: '32px', height: '32px', borderRadius: '0.2rem', border: '1px solid var(--line)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={formTests.length}
+                        onChange={(e) => handleFormTestsCountChange(parseInt(e.target.value) || 1)}
+                        style={{ width: '60px', height: '32px', textAlign: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', color: 'inherit', borderRadius: '0.2rem', outline: 'none' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleFormTestsCountChange(formTests.length + 1)}
+                        style={{ width: '32px', height: '32px', borderRadius: '0.2rem', border: '1px solid var(--line)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* List of Test Cases */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {formTests.map((t, idx) => (
+                      <div key={idx} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent)' }}>TEST CASE #{idx + 1}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
+                              <input
+                                type="checkbox"
+                                checked={t.isPublic}
+                                onChange={(e) => handleUpdateFormTestCase(idx, "isPublic", e.target.checked)}
+                                style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
+                              />
+                              Public Example
+                            </label>
+                            {formTests.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteFormTestCase(idx)}
+                                className="twm-btn"
+                                style={{ color: '#ff5555', background: 'rgba(255,85,85,0.05)', border: '1px solid rgba(255,85,85,0.1)', padding: '0.2rem 0.4rem', fontSize: '0.7rem' }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                          <div style={{ flex: '1 1 200px' }}>
+                            <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase' }}>Input</label>
+                            <textarea
+                              value={t.input}
+                              onChange={(e) => handleUpdateFormTestCase(idx, "input", e.target.value)}
+                              style={{ width: '100%', minHeight: '60px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', padding: '0.5rem', borderRadius: '0.25rem', color: 'inherit', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'vertical' }}
+                              placeholder="e.g. 5"
+                            />
+                          </div>
+                          <div style={{ flex: '1 1 200px' }}>
+                            <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase' }}>Expected Output</label>
+                            <textarea
+                              value={t.output}
+                              onChange={(e) => handleUpdateFormTestCase(idx, "output", e.target.value)}
+                              style={{ width: '100%', minHeight: '60px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', padding: '0.5rem', borderRadius: '0.25rem', color: 'inherit', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'vertical' }}
+                              placeholder="e.g. 25"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddFormTestCase}
+                    className="btn"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed var(--line)', padding: '0.8rem', borderRadius: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', transition: 'all 0.2s ease' }}
+                  >
+                    + Add Test Case
+                  </button>
+                </div>
+              ) : inputMode === "json" ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+                  <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Public Examples (JSON)</label>
+                    <textarea 
+                      value={testCasesRaw} 
+                      onChange={(e) => { setError(null); setTestCasesRaw(e.target.value); }}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'vertical' }}
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Hidden Tests (JSON)</label>
+                    <textarea 
+                      value={hiddenTestCasesRaw} 
+                      onChange={(e) => { setError(null); setHiddenTestCasesRaw(e.target.value); }}
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'vertical' }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+                    <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>tests.in (Inputs)</label>
+                      <textarea 
+                        value={rawIn} 
+                        onChange={(e) => { setError(null); setRawIn(e.target.value); }}
+                        style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'vertical' }}
+                        placeholder={`Input 1\n===\nInput 2`}
+                      />
+                    </div>
+
+                    <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>tests.ok (Outputs)</label>
+                      <textarea 
+                        value={rawOk} 
+                        onChange={(e) => { setError(null); setRawOk(e.target.value); }}
+                        style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.8rem', outline: 'none', resize: 'vertical' }}
+                        placeholder={`Output 1\n===\nOutput 2`}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Delimiter / Separator</label>
+                    <input 
+                      type="text" 
+                      value={rawDelimiter} 
+                      onChange={(e) => { setError(null); setRawDelimiter(e.target.value); }}
+                      style={{ width: '100%', maxWidth: '200px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.5rem 0.8rem', borderRadius: '0.4rem', color: 'inherit', outline: 'none', fontSize: '0.85rem' }}
+                      placeholder="e.g. ==="
+                    />
+                    <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                      Enter a custom line delimiter to separate test cases. First parsed testcase will automatically be used as the public example.
+                    </p>
+                  </div>
+                </div>
+              )}
+              <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'center' }}>Test configuration synced automatically. Public Examples are shown to the user, and all tests verify the submissions.</p>
 
               <button 
                 onClick={newQuestion.id ? handleUpdateQuestion : handleAddQuestion}

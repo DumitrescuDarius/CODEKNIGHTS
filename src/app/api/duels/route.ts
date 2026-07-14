@@ -32,7 +32,7 @@ async function attachQuestionsToDuel(d: any) {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const { guestName, demoMode, hostId, guestId, gameMode, unrated } = await req.json().catch(() => ({}));
+  const { guestName, demoMode, hostId, guestId, gameMode, unrated, problems } = await req.json().catch(() => ({}));
 
   let userId = session?.user ? (session.user as any).id : null;
   let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
@@ -44,20 +44,59 @@ export async function POST(req: NextRequest) {
       userId = newUser.id;
     }
 
+    const parsedProblems = Array.isArray(problems) && problems.length > 0 ? problems : ["EASY"];
+    const parsedNumProblems = parsedProblems.length;
+    
+    let parsedTotalTime = 0;
+    parsedProblems.forEach(p => {
+      const uDiff = p.toUpperCase();
+      if (uDiff === "EASY") parsedTotalTime += 5;
+      else if (uDiff === "MEDIUM") parsedTotalTime += 9;
+      else if (uDiff === "HARD") parsedTotalTime += 14;
+      else parsedTotalTime += 8;
+    });
+
+    const chosenDifficulty = parsedProblems.length === 1 ? parsedProblems[0].toUpperCase() : "MIXED";
+    const isUnrated = unrated !== undefined ? !!unrated : false;
+
     let targetQuestionId = null;
+    let selectedIds: string[] = [];
+
     if (demoMode) {
       const demoQuestion = await prisma.question.findFirst({ where: { title: "Maximum Subarray Sum" }, select: { id: true } });
       if (demoQuestion) {
         targetQuestionId = demoQuestion.id;
+        selectedIds = [demoQuestion.id];
       }
     }
 
     if (!targetQuestionId) {
-      const questions = await prisma.question.findMany({ select: { id: true } });
-      if (questions.length === 0) {
-        return NextResponse.json({ error: "No questions available" }, { status: 400 });
+      for (const diff of parsedProblems) {
+        const uDiff = diff.toUpperCase();
+        const availableQuestions = await prisma.question.findMany({
+          where: { difficulty: uDiff },
+          select: { id: true }
+        });
+        
+        if (availableQuestions.length === 0) {
+          const fallbackQuestions = await prisma.question.findMany({
+            select: { id: true }
+          });
+          if (fallbackQuestions.length === 0) {
+            return NextResponse.json({ error: "No questions available in the database" }, { status: 400 });
+          }
+          const randQ = fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
+          selectedIds.push(randQ.id);
+        } else {
+          let candidates = availableQuestions.filter(q => !selectedIds.includes(q.id));
+          if (candidates.length === 0) {
+            candidates = availableQuestions;
+          }
+          const randQ = candidates[Math.floor(Math.random() * candidates.length)];
+          selectedIds.push(randQ.id);
+        }
       }
-      targetQuestionId = questions[Math.floor(Math.random() * questions.length)].id;
+      targetQuestionId = selectedIds[0];
     }
     
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
@@ -71,9 +110,13 @@ export async function POST(req: NextRequest) {
           hostId,
           guestId,
           gameMode: gameMode || "CODEKNIGHTS",
-          unrated: !!unrated,
+          unrated: isUnrated,
           startedAt: new Date(),
-          expiresAt: new Date(Date.now() + 30 * 60000),
+          expiresAt: new Date(Date.now() + parsedTotalTime * 60000 + 5 * 60000),
+          numProblems: parsedNumProblems,
+          totalTime: parsedTotalTime,
+          difficulty: chosenDifficulty,
+          questionIds: selectedIds,
         },
         include: {
           question: true,
@@ -91,7 +134,12 @@ export async function POST(req: NextRequest) {
         questionId: targetQuestionId,
         status: "WAITING",
         hostId: userId,
-        expiresAt: new Date(Date.now() + 30 * 60000),
+        expiresAt: new Date(Date.now() + parsedTotalTime * 60000 + 5 * 60000),
+        numProblems: parsedNumProblems,
+        totalTime: parsedTotalTime,
+        difficulty: chosenDifficulty,
+        unrated: isUnrated,
+        questionIds: selectedIds,
       },
       include: {
         question: true,

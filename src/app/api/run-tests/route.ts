@@ -27,12 +27,18 @@ async function executeWithPiston(code: string, language: string, stdin: string =
   const compiler = compilerMap[language];
   if (!compiler) throw { stderr: "Unsupported language for execution API" };
 
+  let processedCode = code;
+  if (language === "java") {
+    // Wandbox saves main code as prog.java. Renaming public class to class resolves the filename mismatch.
+    processedCode = code.replace(/\bpublic\s+class\s+/, "class ");
+  }
+
   const res = await fetch("https://wandbox.org/api/compile.json", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       compiler: compiler,
-      code: code,
+      code: processedCode,
       stdin: stdin
     })
   });
@@ -134,7 +140,7 @@ export async function POST(req: Request) {
 
     const question = await prisma.question.findUnique({
       where: { id: questionId },
-      select: { testCases: true, hiddenTestCases: true }
+      select: { testCases: true, hiddenTestCases: true, timeLimit: true, memoryLimit: true }
     });
 
     if (!question) {
@@ -147,6 +153,13 @@ export async function POST(req: Request) {
       : [];
       
     const allTests = [...publicTests, ...hiddenTests];
+    const timeLimitMs = question.timeLimit ?? 5000;
+    // The watchdog includes process/container startup and scheduling overhead,
+    // not only user-code runtime. Give near-limit solutions a small, bounded
+    // allowance while keeping every test execution strictly capped.
+    const executionGraceMs = Math.min(Math.max(Math.ceil(timeLimitMs * 0.2), 750), 2000);
+    const execTimeoutMs = timeLimitMs + executionGraceMs;
+    const memLimitMb = question.memoryLimit ?? 256;
     let passed = 0;
     const details = [];
 
@@ -266,8 +279,8 @@ export async function POST(req: Request) {
     const executeTest = async (stdin: string) => {
       const executeLocal = async () => {
         return new Promise<string>((resolve, reject) => {
-          const child = exec(runCmd, { timeout: 5000, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
-            if (error && (error as any).killed) reject({ stderr: "Execution timed out (5s)" });
+          const child = exec(runCmd, { timeout: execTimeoutMs, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
+            if (error && (error as any).killed) reject({ stderr: `Execution timed out (limit ${(timeLimitMs / 1000).toFixed(1)}s + ${(executionGraceMs / 1000).toFixed(1)}s grace)` });
             else if (error) reject({ stderr: stderr || error.message });
             else resolve(stdout + (stderr ? "\n" + stderr : ""));
           });
@@ -276,11 +289,11 @@ export async function POST(req: Request) {
       };
 
       const executeDocker = async () => {
-        const dockerArgs = `--rm --pull=never --network none --memory 512m --cpus 1.0 -v "${jobDir}:/app" -w /app`;
+        const dockerArgs = `--rm --pull=never --network none --memory ${memLimitMb}m --cpus 1.0 -v "${jobDir}:/app" -w /app`;
         const fullRunCmd = `docker run ${dockerArgs} ${dockerImage} sh -c "${runCmd}"`;
         return new Promise<string>((resolve, reject) => {
-          const child = exec(fullRunCmd, { timeout: 5000, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
-            if (error && (error as any).killed) reject({ stderr: "Execution timed out (5s)" });
+          const child = exec(fullRunCmd, { timeout: execTimeoutMs, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
+            if (error && (error as any).killed) reject({ stderr: `Execution timed out (limit ${(timeLimitMs / 1000).toFixed(1)}s + ${(executionGraceMs / 1000).toFixed(1)}s grace)` });
             else if (error) reject({ stderr: stderr || error.message });
             else resolve(stdout + (stderr ? "\n" + stderr : ""));
           });
@@ -328,7 +341,38 @@ export async function POST(req: Request) {
           });
         }
       } catch (err: any) {
-        return NextResponse.json({ error: err.stderr || err.message || String(err) });
+        const executionError = err.stderr || err.message || String(err);
+
+        // Preserve credit for earlier test cases when a later one times out.
+        // The timed-out run is still reported as a failed submission, but the
+        // client can award points for the tests that completed successfully.
+        if (executionError.includes("Execution timed out")) {
+          if (isHidden) {
+            details.push({
+              passed: false,
+              input: "HIDDEN TEST CASE",
+              expected: "HIDDEN",
+              actual: "HIDDEN"
+            });
+          } else {
+            details.push({
+              passed: false,
+              input: tc.input,
+              expected: tc.output,
+              actual: executionError
+            });
+          }
+
+          return NextResponse.json({
+            passed,
+            total: allTests.length,
+            details,
+            timedOut: true,
+            executionNotice: executionError
+          });
+        }
+
+        return NextResponse.json({ error: executionError });
       }
     }
 

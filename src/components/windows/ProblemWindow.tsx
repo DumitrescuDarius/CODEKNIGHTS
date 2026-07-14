@@ -127,6 +127,7 @@ interface ProblemWindowProps {
   changeActiveQuestion?: (index: number) => void;
   problemTestResults?: Record<string, { passed: number; total: number; details: any[] }>;
   problemScores?: Record<string, number>;
+  problemWrongAttemptCounts?: Record<string, number>;
 }
 
 export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
@@ -134,7 +135,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
   analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin,
-  onOpenUserProfile, activeQuestionIndex, changeActiveQuestion, problemTestResults = {}, problemScores = {}
+  onOpenUserProfile, activeQuestionIndex, changeActiveQuestion, problemTestResults = {}, problemScores = {}, problemWrongAttemptCounts = {}
 }) => {
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
   const isDuelFinished = activeDuel?.status === "FINISHED" || (activeDuel != null && timeLeft === 0);
@@ -142,6 +143,32 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   const isGuest = activeDuel?.guestId === userId;
   const userFinalized = isHost ? activeDuel?.hostFinalized : (isGuest ? activeDuel?.guestFinalized : false);
   const otherFinalized = isHost ? activeDuel?.guestFinalized : (isGuest ? activeDuel?.hostFinalized : false);
+
+  const renderProblemScoreCards = () => {
+    const duelQuestions = activeDuel?.questions || [];
+    if (duelQuestions.length === 0) return null;
+
+    return duelQuestions.map((q: any, idx: number) => {
+      const pScore = Math.max(0, problemScores[q.id] || 0);
+      const pRes = problemTestResults[q.id];
+      const passed = pRes?.passed ?? 0;
+      const failedAttempts = problemWrongAttemptCounts[q.id] ?? 0;
+      const submissionPenalty = failedAttempts >= 3 ? 100 : failedAttempts >= 1 ? 50 : 0;
+      const testScore = passed * 50;
+      const timeScore = passed > 0 ? Math.max(0, pScore + submissionPenalty - testScore) : 0;
+
+      return (
+        <div key={q.id} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Problem {idx + 1} Score</div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>{pScore} pts</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Passed: {passed}/{pRes?.total ?? 0} tests</div>
+          <div style={{ fontSize: '0.72rem', color: '#8be9fd', marginTop: '0.35rem' }}>Test score: +{testScore} pts</div>
+          <div style={{ fontSize: '0.72rem', color: '#f1fa8c', marginTop: '0.2rem' }}>Time score: +{timeScore} pts</div>
+          {submissionPenalty > 0 && <div style={{ fontSize: '0.72rem', color: '#ff5555', marginTop: '0.2rem' }}>Submission penalty: -{submissionPenalty} pts</div>}
+        </div>
+      );
+    });
+  };
 
   const SURRENDER_TIME = 999999999;
 
@@ -254,7 +281,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
       if (e.detail === "problem" && activeQuestion) {
         window.dispatchEvent(new CustomEvent('add_ai_context', {
           detail: {
-            id: `problem-${activeQuestion.id}`,
+            // id: `problem-${activeQuestion.id}`,
             title: `Problem: ${activeQuestion.title}`,
             content: `Problem Title: ${activeQuestion.title}\n\nDescription:\n${activeQuestion.description}\n\nRestrictions:\n${activeQuestion.restrictions || 'None'}`
           }
@@ -376,14 +403,24 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   };
 
   if (isDuelFinished) {
-    const hostSurrendered = (activeDuel.hostPenalty ?? 999999999) === 999999999;
-    const guestSurrendered = (activeDuel.guestPenalty ?? 999999999) === 999999999;
+    // Keep the result display consistent with the server: a higher battle score
+    // wins, while a score of zero represents a surrender/timeout.
+    const hostSurrendered = activeDuel.hostPenalty === 0;
+    const guestSurrendered = activeDuel.guestPenalty === 0;
+    const hostScore = activeDuel.hostPenalty ?? 0;
+    const guestScore = activeDuel.guestPenalty ?? 0;
+    const hasRatingDecision = activeDuel.hostRatingChange !== null
+      && activeDuel.hostRatingChange !== undefined
+      && activeDuel.guestRatingChange !== null
+      && activeDuel.guestRatingChange !== undefined
+      && activeDuel.hostRatingChange !== activeDuel.guestRatingChange;
 
-    const hostPenalty = activeDuel.hostPenalty ?? 999999999;
-    const guestPenalty = activeDuel.guestPenalty ?? 999999999;
-
-    const hostWin = !hostSurrendered && (guestSurrendered || (activeDuel.hostSolveTime !== null && (activeDuel.guestSolveTime === null || hostPenalty < guestPenalty || (hostPenalty === guestPenalty && activeDuel.hostSolveTime < activeDuel.guestSolveTime))));
-    const guestWin = !guestSurrendered && (hostSurrendered || (activeDuel.guestSolveTime !== null && (activeDuel.hostSolveTime === null || guestPenalty < hostPenalty || (hostPenalty === guestPenalty && activeDuel.guestSolveTime < activeDuel.hostSolveTime))));
+    const hostWin = hasRatingDecision
+      ? activeDuel.hostRatingChange! > activeDuel.guestRatingChange!
+      : !hostSurrendered && (guestSurrendered || hostScore > guestScore);
+    const guestWin = hasRatingDecision
+      ? activeDuel.guestRatingChange! > activeDuel.hostRatingChange!
+      : !guestSurrendered && (hostSurrendered || guestScore > hostScore);
     const draw = !hostWin && !guestWin;
 
     return (
@@ -397,6 +434,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', width: '100%', maxWidth: '500px', marginBottom: '3rem' }}>
           <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
+            {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
             <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
               <DefaultAvatar 
                 name={activeDuel.host?.username || activeDuel.host?.name || "Host"} 
@@ -415,10 +453,11 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                 </span>
               )}
             </div>
-            <div style={{ fontSize: hostSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : 'inherit') }}>{activeDuel.hostSolveTime ? formatTime(Math.floor(activeDuel.hostSolveTime/1000)) : "--:--"}</div>
+            <div style={{ fontSize: hostSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : 'inherit') }}>{hostSurrendered ? "SURRENDERED" : (activeDuel.hostSolveTime ? formatTime(Math.floor(activeDuel.hostSolveTime / 1000)) : "--:--")}</div>
           </div>
           <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
+            {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
             <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
               <DefaultAvatar 
                 name={activeDuel.guest?.username || activeDuel.guest?.name || "Guest"} 
@@ -437,9 +476,17 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                 </span>
               )}
             </div>
-            <div style={{ fontSize: guestSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : 'inherit') }}>{activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime/1000)) : "--:--"}</div>
+            <div style={{ fontSize: guestSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : 'inherit') }}>{guestSurrendered ? "SURRENDERED" : (activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime / 1000)) : "--:--")}</div>
           </div>
         </div>
+        {activeDuel?.questions?.length > 0 && (
+          <div style={{ width: '100%', maxWidth: '700px', marginBottom: '2rem' }}>
+            <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>Problem Scores</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              {renderProblemScoreCards()}
+            </div>
+          </div>
+        )}
         {draw && !hostSurrendered && !guestSurrendered && <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '2rem' }}>{t("fairDraw")}</p>}
         <button onClick={() => { setActiveDuel?.(null); setDuelPin?.(""); handleQuitBattle(); }} className="btn" style={{ width: '100%', maxWidth: '300px', background: 'var(--line)', border: 'none', padding: '1rem' }}>{t("backToArena")}</button>
       </div>
@@ -495,7 +542,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <h2 style={{ fontSize: '1.25rem', margin: 0 }}>
-              {activeQuestion?.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>}
+              {/* {activeQuestion?.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>} */}
               {activeQuestion?.title}
             </h2>
           </div>
@@ -546,8 +593,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div style={{ background: 'var(--accent)', color: '#000', padding: '1rem', borderRadius: '50%', marginBottom: '1.5rem', boxShadow: '0 0 30px var(--accent)' }}>
             <Trophy size={48} />
           </div>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>{t("battleVictorious")}</h2>
-          <p style={{ color: 'var(--text-muted)' }}>{t("battleVictorious") === "LUPTĂ CÂȘTIGATĂ" ? "Ai rezolvat cu succes toate provocările din arenă." : "You have successfully solved all challenges in the arena."}</p>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>ALL PERFECT!</h2>
+          <p style={{ color: 'var(--text-muted)' }}>You have achieved a perfect score on every problem.</p>
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
@@ -558,27 +605,9 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               </div>
             </div>
 
-            {activeDuel?.questions && activeDuel.questions.map((q: any, idx: number) => {
-              const pScore = problemScores[q.id] || 0;
-              const pRes = problemTestResults[q.id];
-              return (
-                <div key={q.id} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Problem {idx + 1} Score</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>{pScore} pts</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    Passed: {pRes?.passed ?? 0}/{pRes?.total ?? 0} tests
-                  </div>
-                </div>
-              );
-            })}
+            {renderProblemScoreCards()}
         </div>
 
-        <button 
-          onClick={retryProblem}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--line)', padding: '1rem', borderRadius: '0.5rem', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginBottom: '1rem' }}
-        >
-          {t("retry")}
-        </button>
       </div>
     );
   }
@@ -695,24 +724,6 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                     PROBLEM DONE! All test cases passed.
                   </span>
                 </div>
-                <button
-                  onClick={retryProblem}
-                  style={{
-                    background: 'rgba(80, 250, 123, 0.15)',
-                    color: '#50fa7b',
-                    border: '1px solid rgba(80, 250, 123, 0.3)',
-                    padding: '0.3rem 0.75rem',
-                    borderRadius: '0.4rem',
-                    fontWeight: 800,
-                    fontSize: '0.7rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#50fa7b'; e.currentTarget.style.color = '#000'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)'; e.currentTarget.style.color = '#50fa7b'; }}
-                >
-                  RETRY
-                </button>
               </div>
             )}
 
@@ -726,7 +737,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               letterSpacing: '-0.02em',
               textShadow: '0 2px 10px rgba(122, 162, 247, 0.2)'
             }}>
-              {activeQuestion.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>}
+              {/* {activeQuestion.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>} */}
               {activeQuestion.title}
             </h2>
           </div>
@@ -760,6 +771,35 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
                 {renderFormattedText(activeQuestion.restrictions)}
               </div>
+            </div>
+          )}
+
+          {((activeQuestion as any).timeLimit || (activeQuestion as any).memoryLimit) && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              {(activeQuestion as any).timeLimit && (
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  background: 'rgba(122, 162, 247, 0.08)', 
+                  border: '1px solid rgba(122, 162, 247, 0.15)',
+                  borderRadius: '0.5rem', 
+                  padding: '0.75rem 1.25rem'
+                }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Time Limit</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text)' }}>{((activeQuestion as any).timeLimit / 1000).toFixed(1)}s</span>
+                </div>
+              )}
+              {(activeQuestion as any).memoryLimit && (
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  background: 'rgba(122, 162, 247, 0.08)', 
+                  border: '1px solid rgba(122, 162, 247, 0.15)',
+                  borderRadius: '0.5rem', 
+                  padding: '0.75rem 1.25rem'
+                }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Memory Limit</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text)' }}>{(activeQuestion as any).memoryLimit} MB</span>
+                </div>
+              )}
             </div>
           )}
 

@@ -27,6 +27,8 @@ export interface Question {
   testCases: string | any[];
   hiddenTestCases?: string | any[];
   idealComplexity?: string;
+  timeLimit?: number;
+  memoryLimit?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

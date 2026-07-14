@@ -87,6 +87,8 @@ model Question {
   testCases   String   // JSON string of visible input/output pairs
   hiddenTestCases String? // JSON string of hidden input/output pairs
   idealComplexity String?
+  timeLimit   Int      @default(5000)  // Execution time limit per test in milliseconds
+  memoryLimit Int      @default(256)   // Memory limit in MB
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   submissions Submission[]

@@ -20,13 +20,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Duel not found" }, { status: 404 });
     }
 
-    // Dynamic Time Limit
+    // Match the client timer: use the duel's configured duration and the moment
+    // the duel actually started (waiting-lobby time must not count).
     const difficultyTimeLimits: Record<string, number> = {
         "Easy": 8 * 60 * 1000,
         "Medium": 12 * 60 * 1000,
         "Hard": 18 * 60 * 1000
     };
-    let limit = difficultyTimeLimits[duel.question?.difficulty] || 8 * 60 * 1000;
+    let limit = duel.totalTime > 0
+      ? duel.totalTime * 60 * 1000
+      : (difficultyTimeLimits[duel.question?.difficulty] || 8 * 60 * 1000);
     
     const isHost = duel.hostId === userId;
     const isGuest = duel.guestId === userId;
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest) {
         limit = Math.min(limit, opponentSolveTimeMs + 120 * 1000);
     }
 
-    const elapsed = Date.now() - new Date(duel.createdAt).getTime();
+    const elapsed = Date.now() - new Date(duel.startedAt || duel.createdAt).getTime();
     const isTimedOut = elapsed > limit;
 
 
