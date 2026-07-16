@@ -415,6 +415,11 @@ const MainMenu: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeDuel, setActiveDuel] = useState<any>(null);
   const activeDuelRef = useRef<any>(null);
+  const codeRef = useRef(code);
+  const testResultsRef = useRef(testResults);
+  const sessionRef = useRef(session);
+  const guestIdRef = useRef(guestId);
+  const pollDuelRef = useRef<() => void>(() => {});
   const wasSignedInRef = useRef(false);
 
   const handleSetThemeIndex = (idx: number) => {
@@ -492,6 +497,12 @@ const MainMenu: React.FC = () => {
   useEffect(() => {
     activeDuelRef.current = activeDuel;
   }, [activeDuel]);
+
+  // Keep refs in sync with latest state for stable interval/socket callbacks
+  useEffect(() => { codeRef.current = code; }, [code]);
+  useEffect(() => { testResultsRef.current = testResults; }, [testResults]);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { guestIdRef.current = guestId; }, [guestId]);
 
   const [duelPin, setDuelPin] = useState<string>("");
   const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>("none");
@@ -1029,13 +1040,16 @@ const MainMenu: React.FC = () => {
 
   const socketRef = useRef<Socket | null>(null);
 
+  // Keep pollDuelRef in sync so socket handlers always call the latest version
+  useEffect(() => { pollDuelRef.current = pollDuel; }, [pollDuel]);
+
   useEffect(() => {
     socketRef.current = io();
     
     socketRef.current.on("opponent_progress", (data) => {
       setActiveDuel(prev => {
         if (!prev || prev.id !== data.duelId) return prev;
-        const userId = session?.user ? (session.user as any).id : guestId;
+        const userId = sessionRef.current?.user ? (sessionRef.current.user as any).id : guestIdRef.current;
         const isHost = prev.hostId === userId;
         return {
           ...prev,
@@ -1059,13 +1073,13 @@ const MainMenu: React.FC = () => {
     });
 
     socketRef.current.on("duel_update", () => {
-      pollDuel();
+      pollDuelRef.current();
     });
 
     socketRef.current.on("opponent_surrendered", () => {
       setActiveDuel(prev => {
         if (!prev) return prev;
-        const userId = session?.user ? (session.user as any).id : guestId;
+        const userId = sessionRef.current?.user ? (sessionRef.current.user as any).id : guestIdRef.current;
         const isHost = prev.hostId === userId;
         return {
             ...prev,
@@ -1074,11 +1088,11 @@ const MainMenu: React.FC = () => {
         };
       });
       // Allow database to finish updating before polling for Elo changes
-      setTimeout(pollDuel, 500);
+      setTimeout(() => pollDuelRef.current(), 500);
     });
 
     socketRef.current.on("duel_invite", (data) => {
-      const userId = session?.user ? (session.user as any).id : (isGuest ? guestId : null);
+      const userId = sessionRef.current?.user ? (sessionRef.current.user as any).id : (isGuest ? guestIdRef.current : null);
       console.log("RECEIVED duel_invite. targetId:", data.targetId, "my userId:", userId, "data:", data);
       if (userId && data.targetId === userId) {
          setIncomingInvite(data);
@@ -1100,7 +1114,7 @@ const MainMenu: React.FC = () => {
     });
 
     socketRef.current.on("invite_accepted", (data) => {
-      const myId = session?.user ? (session.user as any).id : (isGuest ? guestId : null);
+      const myId = sessionRef.current?.user ? (sessionRef.current.user as any).id : (isGuest ? guestIdRef.current : null);
       if (myId && data.hostId === myId) {
          setDuelPin(data.pin);
          setShowInviteSentPopup(false);
@@ -1122,7 +1136,7 @@ const MainMenu: React.FC = () => {
         socketRef.current?.emit("join_duel", id);
       }
       
-      const userId = session?.user ? (session.user as any).id : (isGuest ? guestId : null);
+      const userId = sessionRef.current?.user ? (sessionRef.current.user as any).id : (isGuest ? guestIdRef.current : null);
       if (userId) {
         socketRef.current?.emit("identify", userId);
       }
@@ -1132,7 +1146,7 @@ const MainMenu: React.FC = () => {
       const id = e.detail || activeDuelRef.current?.id;
       if (id) {
         socketRef.current?.emit("duel_update", { duelId: id });
-        pollDuel();
+        pollDuelRef.current();
       }
     };
     window.addEventListener("duel_update_required", handleCustomDuelUpdate);
@@ -1141,7 +1155,8 @@ const MainMenu: React.FC = () => {
       window.removeEventListener("duel_update_required", handleCustomDuelUpdate);
       socketRef.current?.disconnect();
     };
-  }, [session, guestId, pollDuel]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest]);
 
   useEffect(() => {
     const id = activeDuel?.id;
@@ -1168,28 +1183,32 @@ const MainMenu: React.FC = () => {
     };
   }, [activeDuel?.status, pollDuel]);
 
-  // Send real-time progress updates to the server every 2 seconds during an active duel
+  // Send real-time progress updates to the server every 500ms during an active duel.
+  // Uses refs for volatile values (code, testResults) to avoid restarting the interval on every keystroke.
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
     if (activeDuel?.status === "ACTIVE") {
       interval = setInterval(() => {
         if (socketRef.current) {
+          const currentCode = codeRef.current;
+          const currentTestResults = testResultsRef.current;
           const body = {
-            duelId: activeDuel.id,
-            codeLength: code.length,
-            lineCount: code.split("\n").length,
-            testsPassed: testResults?.passed || 0,
-            testsTotal: testResults?.total || 0,
-            code: code,
+            duelId: activeDuelRef.current?.id,
+            codeLength: currentCode.length,
+            lineCount: currentCode.split("\n").length,
+            testsPassed: currentTestResults?.passed || 0,
+            testsTotal: currentTestResults?.total || 0,
+            code: currentCode,
           };
           socketRef.current.emit("progress_update", body);
         }
-      }, 500); // Super fast 100ms updates directly via WebSocket!
+      }, 500);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeDuel, code, testResults, session, guestId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDuel?.status]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
@@ -2541,16 +2560,8 @@ const MainMenu: React.FC = () => {
             session={session} 
             t={t} 
             onUpgradeSuccess={async () => {
+              // fetchUserStats already fetches /api/user/profile and sets fullProfile — no need to fetch again
               await fetchUserStats();
-              try {
-                const res = await fetch("/api/user/profile");
-                if (res.ok) {
-                  const data = await res.json();
-                  setFullProfile(data);
-                }
-              } catch (err) {
-                console.error("Failed to refresh profile stats:", err);
-              }
               if (updateSession) {
                 await updateSession();
               }
