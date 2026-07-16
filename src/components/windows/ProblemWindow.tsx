@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye } from "lucide-react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
@@ -331,7 +333,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     if (!text) return null;
     return (
       <ReactMarkdown 
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkMath, remarkGfm]}
+        rehypePlugins={[rehypeKatex]}
         components={{
           code({node, inline, className, children, ...props}: any) {
             return (
@@ -745,7 +748,6 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div style={{ 
             lineHeight: 1.8, 
             color: 'rgba(255,255,255,0.85)', 
-            whiteSpace: 'pre-wrap',
             fontSize: '1.05rem'
           }}>
             {renderFormattedText(activeQuestion.description)}

@@ -1,3 +1,4 @@
+import "katex/dist/katex.min.css";
 import "../styles/main-menu.css";
 import type { ReactNode } from "react";
 import { AuthProvider } from "../components/providers/AuthProvider";
