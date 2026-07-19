@@ -194,20 +194,33 @@ export async function POST(req: NextRequest) {
                         let dailyWins: Record<string, number> = {};
                         try { dailyWins = user?.dailyWins ? (typeof user.dailyWins === 'string' ? JSON.parse(user.dailyWins) : (user.dailyWins as any)) : {}; } catch (e) { dailyWins = {}; }
                         dailyWins[new Date().toLocaleDateString('en-CA')] = (dailyWins[new Date().toLocaleDateString('en-CA')] || 0) + 1;
-                        const newRating = (user?.rating || 1000) + absEloChange;
+                        
+                        const gameMode = updatedDuel.gameMode || "CODEKNIGHTS";
+                        const ratingKey = gameMode === "BUGHUNTER" ? "ratingBugHunter" : gameMode === "HACKBOUNTY" ? "ratingHackBounty" : gameMode === "MLMAGES" ? "ratingMlMages" : "rating";
+                        
+                        const newRating = ((user as any)[ratingKey] || 1000) + absEloChange;
+                        const updateData: any = { battlesWon: { increment: 1 }, battlesTotal: { increment: 1 }, rank: getRank(newRating), dailyWins: dailyWins };
+                        updateData[ratingKey] = newRating;
+
                         await prisma.user.update({
                             where: { id: winnerId },
-                            data: { battlesWon: { increment: 1 }, battlesTotal: { increment: 1 }, rating: newRating, rank: getRank(newRating), dailyWins: dailyWins }
+                            data: updateData
                         });
                     }
                 }
                 if (loserId) {
                     const user = await prisma.user.findUnique({ where: { id: loserId } });
                     if (user) {
-                        const newRating = Math.max(0, (user?.rating || 1000) - absEloChange);
+                        const gameMode = updatedDuel.gameMode || "CODEKNIGHTS";
+                        const ratingKey = gameMode === "BUGHUNTER" ? "ratingBugHunter" : gameMode === "HACKBOUNTY" ? "ratingHackBounty" : gameMode === "MLMAGES" ? "ratingMlMages" : "rating";
+                        
+                        const newRating = Math.max(0, ((user as any)[ratingKey] || 1000) - absEloChange);
+                        const updateData: any = { battlesTotal: { increment: 1 }, rank: getRank(newRating) };
+                        updateData[ratingKey] = newRating;
+
                         await prisma.user.update({
                             where: { id: loserId },
-                            data: { battlesTotal: { increment: 1 }, rating: newRating, rank: getRank(newRating) }
+                            data: updateData
                         });
                     }
                 }

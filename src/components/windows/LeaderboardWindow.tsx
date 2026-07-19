@@ -16,6 +16,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
   const [currentUser, setCurrentUser] = useState<any>(cachedLeaderboard?.currentUser || null);
   const [isLoading, setIsLoading] = useState(!cachedLeaderboard);
   const [error, setError] = useState<string | null>(null);
+  const [selectedGameMode, setSelectedGameMode] = useState<string>("CODEKNIGHTS");
 
   // ResizeObserver state to handle resizable panels
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,7 +37,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
     setIsLoading(true);
     setError(null);
     try {
-      const url = currentUserId ? `/api/leaderboard?userId=${currentUserId}` : "/api/leaderboard";
+      const url = currentUserId ? `/api/leaderboard?userId=${currentUserId}&gameMode=${selectedGameMode}` : `/api/leaderboard?gameMode=${selectedGameMode}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -54,6 +55,10 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [selectedGameMode]);
 
   useEffect(() => {
     if (!cachedLeaderboard) {
@@ -125,6 +130,33 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
         </button>
       </div>
 
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
+        {["CODEKNIGHTS", "BUGHUNTER"].map((mode) => {
+          const isActive = selectedGameMode === mode;
+          const label = mode === "CODEKNIGHTS" ? "Code Knights" : "Bug Hunter";
+          return (
+            <button
+              key={mode}
+              onClick={() => setSelectedGameMode(mode)}
+              style={{
+                padding: '0.3rem 0.8rem',
+                background: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
+                color: isActive ? '#000' : 'var(--text-muted)',
+                border: 'none',
+                borderRadius: '0.25rem',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {error ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px", color: "#ff5555", fontSize: "0.85rem" }}>
           {error}
@@ -186,7 +218,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
                     <span style={{ fontSize: "0.6rem", background: "var(--accent)", color: "#000", padding: "0.05rem 0.25rem", borderRadius: "0.2rem", fontWeight: 900, flexShrink: 0 }}>YOU</span>
                   </span>
                 </div>
-                <div style={{ textAlign: "right", fontWeight: 900, color: "var(--accent)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{currentUser.rating || 1000}</div>
+                <div style={{ textAlign: "right", fontWeight: 900, color: "var(--accent)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{currentUser[selectedGameMode === "BUGHUNTER" ? "ratingBugHunter" : "rating"] || 1000}</div>
                 {containerWidth >= 450 && (
                   <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{currentUser.rank || "Bronze"}</div>
                 )}
@@ -217,7 +249,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
           }}>
             <div>Rank</div>
             <div>Player</div>
-            <div style={{ textAlign: "right" }}>Rating</div>
+            <div style={{ textAlign: "right" }}>{selectedGameMode === "BUGHUNTER" ? "BHP" : "CKP"}</div>
             {containerWidth >= 450 && <div style={{ textAlign: "right" }}>Title</div>}
             {containerWidth >= 580 && <div style={{ textAlign: "right" }}>Win Rate</div>}
           </div>
@@ -271,7 +303,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
                     {isMe && <span style={{ fontSize: "0.55rem", background: "rgba(122, 162, 247, 0.2)", color: "var(--accent)", padding: "0.05rem 0.2rem", borderRadius: "0.2rem", fontWeight: 800, flexShrink: 0 }}>YOU</span>}
                   </span>
                 </div>
-                <div style={{ textAlign: "right", fontWeight: 850, color: "var(--accent)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{leader.rating || 1000}</div>
+                <div style={{ textAlign: "right", fontWeight: 900, color: isMe ? "var(--accent)" : "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{leader[selectedGameMode === "BUGHUNTER" ? "ratingBugHunter" : "rating"] || 1000}</div>
                 {containerWidth >= 450 && (
                   <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{leader.rank || "Bronze"}</div>
                 )}

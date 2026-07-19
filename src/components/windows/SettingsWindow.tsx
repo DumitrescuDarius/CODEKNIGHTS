@@ -442,8 +442,8 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
         <span className="settings-label">{t("navbarStyle")}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
           {[
-            { label: t("glass"), value: 'rgba(255, 255, 255, 0.02)' },
-            { label: t("solid"), value: 'var(--bg)' }
+            { label: t("solid"), value: 'var(--bg)' },
+            { label: t("glass"), value: 'rgba(255, 255, 255, 0.02)' }
           ].map((n) => (
             <button 
               key={n.value} 

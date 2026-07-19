@@ -47,6 +47,9 @@ model User {
   battlesWon    Int       @default(0)
   battlesTotal  Int       @default(0)
   rating        Int       @default(1000)
+  ratingBugHunter Int     @default(1000)
+  ratingHackBounty Int    @default(1000)
+  ratingMlMages Int       @default(1000)
   rank          String    @default("Novice")
   dailyWins     Json      @default("{}") // Stores {"YYYY-MM-DD": count}
   notesData     Json      @default("{\"nodes\":[],\"edges\":[]}")

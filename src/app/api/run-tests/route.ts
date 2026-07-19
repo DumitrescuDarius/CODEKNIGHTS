@@ -177,7 +177,8 @@ export async function POST(req: Request) {
     const hasDocker = shouldUseDocker();
 
     let fileName = "";
-    let runCmd = "";
+    let localRunCmd = "";
+    let dockerRunCmd = "";
     let compileCmd = "";
     let dockerImage = "";
 
@@ -185,27 +186,27 @@ export async function POST(req: Request) {
       case "c":
         fileName = "solution.c";
         compileCmd = `gcc -pipe -O0 "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, "solution")}"`;
-        runCmd = `"${path.join(jobDir, "solution")}"`;
-        if (hasDocker) { dockerImage = "gcc:latest"; runCmd = "./solution"; }
+        localRunCmd = `"${path.join(jobDir, "solution")}"`;
+        if (hasDocker) { dockerImage = "gcc:latest"; dockerRunCmd = "./solution"; }
         break;
       case "cpp":
         fileName = "solution.cpp";
         compileCmd = `g++ -pipe -O0 "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, "solution")}"`;
-        runCmd = `"${path.join(jobDir, "solution")}"`;
-        if (hasDocker) { dockerImage = "gcc:latest"; runCmd = "./solution"; }
+        localRunCmd = `"${path.join(jobDir, "solution")}"`;
+        if (hasDocker) { dockerImage = "gcc:latest"; dockerRunCmd = "./solution"; }
         break;
       case "python":
         fileName = "solution.py";
-        runCmd = `python3 "${path.join(jobDir, fileName)}"`;
-        if (hasDocker) { dockerImage = "python:3.11-slim"; runCmd = "python3 solution.py"; }
+        localRunCmd = `python3 "${path.join(jobDir, fileName)}"`;
+        if (hasDocker) { dockerImage = "python:3.11-slim"; dockerRunCmd = "python3 solution.py"; }
         break;
       case "java":
         const classMatch = code.match(/public\s+class\s+([a-zA-Z0-9_$]+)/) || code.match(/class\s+([a-zA-Z0-9_$]+)/);
         const className = classMatch ? classMatch[1] : "Solution";
         fileName = `${className}.java`;
         compileCmd = `javac "${path.join(jobDir, fileName)}"`;
-        runCmd = `java -XX:TieredStopAtLevel=1 -cp "${jobDir}" ${className}`;
-        if (hasDocker) { dockerImage = "openjdk:17-slim"; runCmd = `java -XX:TieredStopAtLevel=1 ${className}`; }
+        localRunCmd = `java -XX:TieredStopAtLevel=1 -cp "${jobDir}" ${className}`;
+        if (hasDocker) { dockerImage = "openjdk:17-slim"; dockerRunCmd = `java -XX:TieredStopAtLevel=1 ${className}`; }
         break;
       default:
         return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
@@ -279,7 +280,7 @@ export async function POST(req: Request) {
     const executeTest = async (stdin: string) => {
       const executeLocal = async () => {
         return new Promise<string>((resolve, reject) => {
-          const child = exec(runCmd, { timeout: execTimeoutMs, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
+          const child = exec(localRunCmd, { timeout: execTimeoutMs, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error && (error as any).killed) reject({ stderr: `Execution timed out (limit ${(timeLimitMs / 1000).toFixed(1)}s + ${(executionGraceMs / 1000).toFixed(1)}s grace)` });
             else if (error) reject({ stderr: stderr || error.message });
             else resolve(stdout + (stderr ? "\n" + stderr : ""));
@@ -290,7 +291,7 @@ export async function POST(req: Request) {
 
       const executeDocker = async () => {
         const dockerArgs = `--rm --pull=never --network none --memory ${memLimitMb}m --cpus 1.0 -v "${jobDir}:/app" -w /app`;
-        const fullRunCmd = `docker run ${dockerArgs} ${dockerImage} sh -c "${runCmd}"`;
+        const fullRunCmd = `docker run ${dockerArgs} ${dockerImage} sh -c "${dockerRunCmd}"`;
         return new Promise<string>((resolve, reject) => {
           const child = exec(fullRunCmd, { timeout: execTimeoutMs, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error && (error as any).killed) reject({ stderr: `Execution timed out (limit ${(timeLimitMs / 1000).toFixed(1)}s + ${(executionGraceMs / 1000).toFixed(1)}s grace)` });

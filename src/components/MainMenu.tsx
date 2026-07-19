@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag } from "lucide-react";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -33,6 +33,63 @@ import { TutorialWindow } from "./windows/TutorialWindow";
 import FeedbackWindow from "./windows/FeedbackWindow";
 import { LeaderboardWindow } from "./windows/LeaderboardWindow";
 import { Transition } from "framer-motion";
+
+const CodeKnightsLogo = ({ size = 28 }) => (
+  <svg 
+    viewBox="6 2 88 96" 
+    width={size} 
+    height={size} 
+    fill="none"
+  >
+    {/* Shield Base */}
+    <path 
+      d="M50 5 L90 20 V50 C90 80 50 95 50 95 C50 95 10 80 10 50 V20 Z" 
+      stroke="var(--text)" 
+      strokeWidth="6"
+      strokeLinejoin="round"
+    />
+    
+    {/* Pommel */}
+    <circle cx="50" cy="22" r="4" fill="var(--accent)" />
+    
+    {/* Handle */}
+    <path 
+      d="M50 26 V36" 
+      stroke="var(--accent)" 
+      strokeWidth="4" 
+    />
+    
+    {/* Crossguard */}
+    <path 
+      d="M38 36 H62" 
+      stroke="var(--accent)" 
+      strokeWidth="4" 
+      strokeLinecap="round" 
+    />
+    
+    {/* Blade */}
+    <path 
+      d="M46 38 V70 L50 85 L54 70 V38 Z" 
+      fill="var(--accent)" 
+    />
+    
+    {/* Code Brackets */}
+    <path 
+      d="M32 48 L22 58 L32 68" 
+      stroke="var(--text)" 
+      strokeWidth="5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+    />
+    <path 
+      d="M68 48 L78 58 L68 68" 
+      stroke="var(--text)" 
+      strokeWidth="5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+    />
+  </svg>
+);
 
 declare global {
   interface Window {
@@ -202,7 +259,7 @@ const changeCodeIndentation = (
 };
 
 const MainMenu: React.FC = () => {
-  const { data: session, update: updateSession } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const [fullProfile, setFullProfile] = useState<any>(null);
   const isRoyal = !!(session?.user as any)?.isRoyal || !!fullProfile?.isRoyal;
   const maxWindows = isRoyal ? 999 : 5;
@@ -533,7 +590,7 @@ const MainMenu: React.FC = () => {
   const [windowRadius, setWindowRadius] = useState<string>("0.4rem");
   const [windowGap, setWindowGap] = useState<string>("0.75rem");
   const [windowBorderThickness, setWindowBorderThickness] = useState<string>("1px");
-  const [navStyle, setNavStyle] = useState<string>("rgba(255, 255, 255, 0.02)");
+  const [navStyle, setNavStyle] = useState<string>("var(--bg)");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [clockOffset, setClockOffset] = useState<number>(0);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
@@ -888,7 +945,7 @@ const MainMenu: React.FC = () => {
           setActiveDuel(data);
           socketRef.current?.emit("duel_update", { duelId: data.id });
           const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-          startBattle(data.question, actualStart);
+          startBattle(data.question || (data.questions && data.questions[0]), actualStart);
         } else {
 
           alert(data.error || "Failed to join duel");
@@ -1019,7 +1076,7 @@ const MainMenu: React.FC = () => {
             setShowInviteSentPopup(false);
             setPendingInviteTargetId(null);
             const actualStart = new Date(updatedDuel.startedAt || updatedDuel.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-            startBattle(updatedDuel.question, actualStart);
+            startBattle(updatedDuel.question || (updatedDuel.questions && updatedDuel.questions[0]), actualStart);
           }
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           console.log("[CLIENT pollDuel] updatedDuel.questionIds:", updatedDuel.questionIds, "questions count:", updatedDuel.questions?.length);
@@ -1152,7 +1209,7 @@ const MainMenu: React.FC = () => {
          setPendingInviteTargetId(null);
          
          const actualStart = new Date(data.duel.startedAt || data.duel.createdAt).getTime() - (data.duel.serverTime ? data.duel.serverTime - Date.now() : clockOffset);
-         startBattle(data.duel.question, actualStart);
+         startBattle(data.duel.question || (data.duel.questions && data.duel.questions[0]), actualStart);
          setActiveDuel(data.duel);
       }
     });
@@ -1190,6 +1247,15 @@ const MainMenu: React.FC = () => {
   }, [isGuest]);
 
   useEffect(() => {
+    const handleProfileUpdate = () => {
+      fetchUserStats();
+      updateSession();
+    };
+    window.addEventListener("profile_update_required", handleProfileUpdate);
+    return () => window.removeEventListener("profile_update_required", handleProfileUpdate);
+  }, [fetchUserStats, updateSession]);
+
+  useEffect(() => {
     const id = activeDuel?.id;
     if (id && socketRef.current?.connected) {
       socketRef.current.emit("join_duel", id);
@@ -1224,14 +1290,25 @@ const MainMenu: React.FC = () => {
         if (socketRef.current) {
           const currentCode = codeRef.current;
           const currentTestResults = testResultsRef.current;
-          const body = {
+          
+          const currentUserId = sessionRef.current?.user ? (sessionRef.current.user as any).id : guestIdRef.current;
+          const isHostLocal = activeDuelRef.current?.hostId === currentUserId;
+          const opponentFinalized = isHostLocal ? (activeDuelRef.current as any)?.guestFinalized : (activeDuelRef.current as any)?.hostFinalized;
+
+          const body: any = {
             duelId: activeDuelRef.current?.id,
             codeLength: currentCode.length,
             lineCount: currentCode.split("\n").length,
             testsPassed: currentTestResults?.passed || 0,
             testsTotal: currentTestResults?.total || 0,
-            code: currentCode,
           };
+          
+          // Only transmit full source code over the socket if the opponent is spectating (finalized)
+          // This drastically reduces outbound network upload bandwidth.
+          if (opponentFinalized) {
+             body.code = currentCode;
+          }
+          
           socketRef.current.emit("progress_update", body);
         }
       }, 500);
@@ -1293,9 +1370,7 @@ const MainMenu: React.FC = () => {
     if (savedLang) setLang(savedLang);
     const savedCode = localStorage.getItem("ck-code");
     if (savedCode) setCode(savedCode);
-    const savedWindows = JSON.parse(localStorage.getItem("ck-windows") || '["editor"]');
     const savedTheme = localStorage.getItem("ck-theme-idx");
-    const savedFlexes = JSON.parse(localStorage.getItem("ck-flexes") || '[]');
     const savedFontSize = localStorage.getItem("ck-font-size");
     if (savedFontSize) setFontSize(parseInt(savedFontSize));
     const savedFontFamily = localStorage.getItem("ck-font-family");
@@ -1321,12 +1396,8 @@ const MainMenu: React.FC = () => {
     const tIdx = savedTheme !== null ? parseInt(savedTheme) : 0;
     setThemeIndex(tIdx);
     
-    const finalWindows = savedWindows.filter((w: string) => w !== "terminal" && w !== "results");
-    if (!finalWindows.includes("editor")) finalWindows.unshift("editor");
-    setOpenWindows(finalWindows);
-    
-    if (savedFlexes.length === finalWindows.length) setWindowFlexes(savedFlexes);
-    else setWindowFlexes(finalWindows.map(() => 1));
+    setOpenWindows(["editor"]);
+    setWindowFlexes([1]);
     
     setIsLoaded(true);
   }, []);
@@ -1338,8 +1409,6 @@ const MainMenu: React.FC = () => {
     const timeout = setTimeout(() => {
       localStorage.setItem("ck-lang", lang);
       localStorage.setItem("ck-code", code);
-      localStorage.setItem("ck-windows", JSON.stringify(openWindows));
-      localStorage.setItem("ck-flexes", JSON.stringify(windowFlexes));
       localStorage.setItem("ck-theme-idx", themeIndex.toString());
       localStorage.setItem("ck-font-size", fontSize.toString());
       localStorage.setItem("ck-font-family", fontFamily);
@@ -1437,29 +1506,28 @@ const MainMenu: React.FC = () => {
     if (isLoaded) {
       // Update dynamic favicon
       const theme = THEMES[themeIndex];
-      const img = new window.Image();
-      img.src = '/assets/logo_white.png';
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        // Force a very wide aspect ratio for the favicon
-        canvas.width = 256;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        
-        // Draw tinted version
-        ctx.fillStyle = theme.accent;
-        ctx.fillRect(0, 0, 256, 128);
-        ctx.globalCompositeOperation = 'destination-in';
-        
-        // Draw it to fill the width more aggressively
-        ctx.drawImage(img, 0, 0, 256, 128);
-        
-        const link = document.getElementById('dynamic-favicon') as HTMLLinkElement;
-        if (link) {
-          link.href = canvas.toDataURL("image/png");
-        }
-      };
+      const svg = `
+        <svg viewBox="6 2 88 96" width="100" height="100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <style>
+            .text-color { stroke: #FFF; }
+            @media (prefers-color-scheme: light) {
+              .text-color { stroke: #000; }
+            }
+          </style>
+          <path class="text-color" d="M50 5 L90 20 V50 C90 80 50 95 50 95 C50 95 10 80 10 50 V20 Z" stroke-width="6" stroke-linejoin="round"/>
+          <circle cx="50" cy="22" r="4" fill="${theme.accent}" />
+          <path d="M50 26 V36" stroke="${theme.accent}" stroke-width="4" />
+          <path d="M38 36 H62" stroke="${theme.accent}" stroke-width="4" stroke-linecap="round" />
+          <path d="M46 38 V70 L50 85 L54 70 V38 Z" fill="${theme.accent}" />
+          <path class="text-color" d="M32 48 L22 58 L32 68" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+          <path class="text-color" d="M68 48 L78 58 L68 68" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      `;
+      
+      const link = document.getElementById('dynamic-favicon') as HTMLLinkElement;
+      if (link) {
+        link.href = 'data:image/svg+xml;base64,' + btoa(svg);
+      }
     }
   }, [themeIndex, isLoaded]);
 
@@ -1635,7 +1703,52 @@ const MainMenu: React.FC = () => {
     }
   }, [fetchQuestions]);
 
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      const now = ctx.currentTime;
+      
+      // Play 3 rapid beeps
+      for (let i = 0; i < 3; i++) {
+        const startTime = now + i * 0.25; // 250ms interval between beeps
+        
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        osc1.type = 'sine';
+        osc2.type = 'triangle';
+        
+        // Play a pleasant "ding" chord (C5 + E5)
+        osc1.frequency.setValueAtTime(523.25, startTime);
+        osc2.frequency.setValueAtTime(659.25, startTime);
+
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.2);
+
+        osc1.start(startTime);
+        osc2.start(startTime);
+        osc1.stop(startTime + 0.2);
+        osc2.stop(startTime + 0.2);
+      }
+    } catch (e) {
+      console.error("Failed to play notification sound", e);
+    }
+  };
+
   const startBattle = useCallback((question?: Question, forceStartTime?: number) => {
+    if (document.visibilityState === 'hidden') {
+      playNotificationSound();
+    }
+    
     const q = question || (questions.length > 0 ? questions[Math.floor(Math.random() * questions.length)] : DEFAULT_QUESTION);
     if (!q) return;
     
@@ -1649,22 +1762,29 @@ const MainMenu: React.FC = () => {
     problemCodesRef.current = {};
     
     let initialLang = lang;
-    if (activeDuel?.gameMode === "BUGHUNTER" && q.difficulty) {
-      const parsedLang = q.difficulty.toLowerCase() as Language;
-      if (["c", "cpp", "python", "java"].includes(parsedLang)) {
-        initialLang = parsedLang;
-        setLang(parsedLang);
-      }
-    }
-
-    let initialCode = LANG_CONFIG[initialLang]?.defaultCode || "";
+    let initialCode = "";
     if (activeDuel?.gameMode === "BUGHUNTER" && q.brokenCode) {
       try {
         const parsed = JSON.parse(q.brokenCode);
-        initialCode = parsed[initialLang] || "";
+        const availableLangs = Object.keys(parsed);
+        if (availableLangs.length > 0) {
+          // If the difficulty matches a language, prioritize it, otherwise pick the first available
+          const diffLang = q.difficulty?.toLowerCase();
+          if (diffLang && availableLangs.includes(diffLang)) {
+            initialLang = diffLang as Language;
+          } else {
+            initialLang = availableLangs[0] as Language;
+          }
+          setLang(initialLang);
+          initialCode = parsed[initialLang] || "";
+        }
       } catch (e) {
         console.error("Failed to parse initial brokenCode", e);
       }
+    }
+    
+    if (!initialCode) {
+      initialCode = LANG_CONFIG[initialLang]?.defaultCode || "";
     }
     setCode(initialCode);
 
@@ -1700,27 +1820,32 @@ const MainMenu: React.FC = () => {
     const targetQ = currentDuel.questions[index];
     
     let targetLang = lang;
-    if (currentDuel.gameMode === "BUGHUNTER" && targetQ.difficulty) {
-      const parsedLang = targetQ.difficulty.toLowerCase() as Language;
-      if (["c", "cpp", "python", "java"].includes(parsedLang)) {
-        targetLang = parsedLang;
-        setLang(parsedLang);
+    let newCode = problemCodesRef.current[targetQ.id];
+    
+    if (currentDuel.gameMode === "BUGHUNTER" && targetQ.brokenCode) {
+      try {
+        const parsed = JSON.parse(targetQ.brokenCode);
+        const availableLangs = Object.keys(parsed);
+        if (availableLangs.length > 0) {
+          const diffLang = targetQ.difficulty?.toLowerCase();
+          if (diffLang && availableLangs.includes(diffLang)) {
+            targetLang = diffLang as Language;
+          } else {
+            targetLang = availableLangs[0] as Language;
+          }
+          setLang(targetLang);
+          
+          if (newCode === undefined) {
+             newCode = parsed[targetLang] || "";
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse brokenCode", e);
       }
     }
 
-    let newCode = problemCodesRef.current[targetQ.id];
     if (newCode === undefined) {
-      if (currentDuel.gameMode === "BUGHUNTER" && targetQ.brokenCode) {
-        try {
-          const parsed = JSON.parse(targetQ.brokenCode);
-          newCode = parsed[targetLang] || "";
-        } catch (e) {
-          console.error("Failed to parse brokenCode", e);
-          newCode = LANG_CONFIG[targetLang]?.defaultCode || "";
-        }
-      } else {
-        newCode = LANG_CONFIG[targetLang]?.defaultCode || "";
-      }
+      newCode = LANG_CONFIG[targetLang]?.defaultCode || "";
     }
     setCode(newCode);
     
@@ -1763,7 +1888,7 @@ const MainMenu: React.FC = () => {
             setShowWaitingPopup(false);
             setShowOpponentFoundPopup(true);
             const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-            startBattle(data.question, actualStart);
+            startBattle(data.question || (data.questions && data.questions[0]), actualStart);
           }
         }
       } else {
@@ -1849,8 +1974,13 @@ const MainMenu: React.FC = () => {
                 console.error("Failed to parse brokenCode", e);
               }
             }
-            const dist = levenshtein(broken, code);
-            currentProblemScore = Math.max(0, (timeLeft ?? 0) + Math.max(0, 200 - dist));
+            // Strip whitespace to prevent formatting from penalizing the score
+            const brokenClean = broken.replace(/\s+/g, '');
+            const codeClean = code.replace(/\s+/g, '');
+            const dist = levenshtein(brokenClean, codeClean);
+            
+            // Base score 1000 + time bonus. Penalize heavily (15 pts) per character diff.
+            currentProblemScore = Math.max(0, 1000 + (timeLeft ?? 0) - (dist * 15));
           } else {
             currentProblemScore = 0;
           }
@@ -2463,6 +2593,7 @@ const MainMenu: React.FC = () => {
             showSignInOptions={showSignInOptions} setShowSignInOptions={setShowSignInOptions}
             t={t} onDeleteQuestion={handleDeleteQuestion} onEditQuestion={onEditQuestion}
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
+            userStats={userStats}
             setActiveDuel={setActiveDuel} setDuelPin={setDuelPin}
             showCancelDuel={showCancelDuel} setShowCancelDuel={setShowCancelDuel}
             isWaitingForResponse={pendingInviteTargetId !== null}
@@ -2867,7 +2998,7 @@ const MainMenu: React.FC = () => {
                             socketRef.current?.emit("accept_invite", { hostId: incomingInvite.hostId, pin: data.pin, duel: data });
                             
                             const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-                            startBattle(data.question, actualStart);
+                            startBattle(data.question || (data.questions && data.questions[0]), actualStart);
                             if (isGuest && data.guestId) {
                                setGuestId(data.guestId);
                             }
@@ -2946,30 +3077,15 @@ const MainMenu: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div className={`loading-overlay ${isLoaded ? "loading-overlay--hidden" : ""}`}>
+      <div className={`loading-overlay ${(isLoaded && status !== "loading") ? "loading-overlay--hidden" : ""}`}>
         <div className="loading-spinner" />
         <div><span style={{ color: 'var(--accent)' }}>CODE</span>&nbsp;KNIGHTS</div>
       </div>
       <nav className="nav">
         <div className="nav-inner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Link href="/" className="brand" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 0 }}>
-              <div 
-                style={{ 
-                  height: '24px', 
-                  width: '28px',
-                  backgroundColor: 'var(--accent)',
-                  WebkitMaskImage: 'url(/assets/logo_white.png)',
-                  maskImage: 'url(/assets/logo_white.png)',
-                  WebkitMaskSize: 'contain',
-                  maskSize: 'contain',
-                  WebkitMaskRepeat: 'no-repeat',
-                  maskRepeat: 'no-repeat',
-                  WebkitMaskPosition: 'center',
-                  maskPosition: 'center',
-                  filter: 'drop-shadow(0 0 10px var(--accent))'
-                }}
-              />
+            <Link href="/" className="brand" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <CodeKnightsLogo size={32} />
               <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--accent)' }}>KNIGHTS</span></span>
             </Link>
 
@@ -3197,7 +3313,7 @@ const MainMenu: React.FC = () => {
                               </>
                             )}
 
-                            <button onClick={() => {
+                            <button onClick={async () => {
                               if (isGuest) {
                                 fetch('/api/auth/guest/delete', {
                                   method: 'POST',
@@ -3205,10 +3321,12 @@ const MainMenu: React.FC = () => {
                                   body: JSON.stringify({ guestName })
                                 }).catch(console.error).finally(() => {
                                   setIsGuest(false);
-                                  localStorage.removeItem(`guestName_${guestName}`); // optionally cleanup local storage
+                                  localStorage.removeItem(`guestName_${guestName}`);
+                                  window.location.href = '/';
                                 });
                               } else {
-                                signOut();
+                                await signOut({ redirect: false });
+                                window.location.href = '/';
                               }
                             }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: '#ff5555', background: 'rgba(255, 85, 85, 0.05)', cursor: 'pointer', textAlign: 'left' }}>
                             <LogOut size={14} /><span style={{ fontSize: '0.85rem' }}>{isGuest ? t("exitGuest") : t("signOut")}</span>
@@ -3239,9 +3357,10 @@ const MainMenu: React.FC = () => {
             if (id === 'agent') icon = <Brain size={16} />;
             if (id === 'feedback') icon = <MessageSquare size={16} />;
             if (id === 'royal') icon = <Crown size={16} color="#ffd700" fill="#ffd700" />;
+            if (id === 'leaderboard') icon = <Trophy size={16} />;
             if (id.startsWith('profile')) icon = <User size={16} />;
             const rawId = id.startsWith('profile_') ? 'profile' : id;
-            const displayId = navItem?.label || (rawId === 'editor' ? t("editorLabel") : rawId === 'admin' ? t("admin") : rawId === 'agent' ? t("agentsTitle") : rawId === 'problem' ? t("problem") : rawId === 'tutorial' ? t("tutorial") : rawId === 'profile' ? t("profileOverview") : rawId === 'tournaments' ? t("tournaments") : rawId === 'royal' ? "Royal Subscription" : rawId);
+            const displayId = navItem?.label || (rawId === 'editor' ? t("editorLabel") : rawId === 'admin' ? t("admin") : rawId === 'agent' ? t("agentsTitle") : rawId === 'problem' ? t("problem") : rawId === 'tutorial' ? t("tutorial") : rawId === 'profile' ? t("profileOverview") : rawId === 'tournaments' ? t("tournaments") : rawId === 'leaderboard' ? (t("leaderboardTitle") || "Leaderboard") : rawId === 'royal' ? "Royal Subscription" : rawId);
             const isMax = id === maximizedWindow;
             const originalIdx = openWindows.indexOf(id);
             const rwIdx = renderedWindows.indexOf(id);
@@ -3309,22 +3428,35 @@ const MainMenu: React.FC = () => {
                               onClick={(e) => { e.stopPropagation(); runTests(); }} 
                               disabled={isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)} 
                               style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)) ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)) ? 0.7 : 1 }}>
-                              {isTesting ? "..." : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? "SUBMITTED" : "SUBMIT")}
+                              {isTesting ? "..." : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? <><Check size={12} fill="currentColor" /> SUBMITTED</> : <><Send size={10} fill="currentColor" /> SUBMIT</>)}
                             </button>
-                            {activeDuel?.status === "ACTIVE" && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new Event("request_end_battle")); }} 
-                                style={{ background: '#50fa7b', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, marginLeft: '0.2rem' }}>
-                                END BATTLE
-                              </button>
-                            )}
                           </div>
                         )}
                         {id === 'notes' && (
                           <div id="notes-window-header-portal" style={{ display: 'flex', alignItems: 'center', height: '100%', paddingLeft: '1rem', borderLeft: '1px solid var(--line)' }} onMouseDown={(e) => e.stopPropagation()} />
                         )}
                       </div>
-                      <div className="twm-window-actions">
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {id === 'problem' && activeQuestion && activeDuel && (() => {
+                          const isFinished = activeDuel.status === "FINISHED";
+                          const allSolved = activeDuel.questions && activeDuel.questions.length > 0 && activeDuel.questions.every((q: any) => {
+                            const r = problemTestResults[q.id];
+                            return r && r.passed === r.total && r.total > 0;
+                          });
+                          const ended = isFinished || allSolved;
+                          return (
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (!ended) { window.dispatchEvent(new Event("request_end_battle")); } 
+                              }} 
+                              disabled={ended}
+                              style={{ background: '#50fa7b', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: ended ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: ended ? 0.7 : 1, marginRight: '0.5rem' }}>
+                              {ended ? <><Check size={12} fill="currentColor" /> FINISHED</> : <><Flag size={10} fill="currentColor" /> FINISH</>}
+                            </button>
+                          );
+                        })()}
+                        <div className="twm-window-actions">
                         <button type="button" className="twm-btn" onClick={() => toggleMaximize(id)} title={isMax ? t("restore" as any) : t("maximize" as any)}>
                           {isMax ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                         </button>
@@ -3355,6 +3487,7 @@ const MainMenu: React.FC = () => {
                         >
                           <X size={14} />
                         </button>
+                      </div>
                       </div>
                     </motion.div>
                   </div>

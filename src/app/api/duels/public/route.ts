@@ -9,6 +9,18 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const gameMode = searchParams.get("gameMode") || "CODEKNIGHTS";
 
+    // Randomly cleanup old guests (10% chance to avoid heavy load on every poll)
+    if (Math.random() < 0.1) {
+      prisma.user.deleteMany({
+        where: {
+          email: null,
+          createdAt: {
+            lt: new Date(Date.now() - 48 * 60 * 60 * 1000)
+          }
+        }
+      }).catch(console.error);
+    }
+
     const availableDuels = await prisma.duel.findMany({
       where: {
         status: 'WAITING',

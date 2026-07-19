@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Question } from "../../types";
 import { signIn } from "next-auth/react";
-import { LogIn, User, Sword, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search, Flame, Github, ArrowLeft, Sparkles, Check, RotateCcw, Crown, ChevronUp, ChevronDown } from "lucide-react";
+import { LogIn, User, Sword, Swords, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search, Flame, Github, ArrowLeft, Sparkles, Check, RotateCcw, Crown, ChevronUp, ChevronDown } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
 import { motion, AnimatePresence } from "framer-motion";
 import { DefaultAvatar } from "../DefaultAvatar";
@@ -28,14 +28,16 @@ const BUBBLE_OPTIONS = [
     name: "HACKBOUNTY",
     description: "High-stakes battles. Win matches within the ideal time complexity constraints to collect bonus rating bounties.",
     color: "#ffb86c",
-    icon: <i className="nf nf-fa-coins"></i>
+    icon: <i className="nf nf-fa-coins"></i>,
+    isWip: true
   },
   {
     id: "mlmages",
     name: "MLMAGES",
     description: "Cast code generation spells. Harness AI-powered snippets to solve complex algorithms at lightning speed.",
     color: "#bd93f9",
-    icon: <i className="nf nf-fa-hat_wizard"></i>
+    icon: <i className="nf nf-fa-hat_wizard"></i>,
+    isWip: true
   },
   {
     id: "codeknights",
@@ -142,7 +144,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   const [publicMatches, setPublicMatches] = useState<any[]>([]);
   const [isFetchingMatches, setIsFetchingMatches] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-  const [selectedProblems, setSelectedProblems] = useState<string[]>(['EASY']);
+  const [selectedProblems, setSelectedProblems] = useState<string[]>([]);
   const [isRanked, setIsRanked] = useState(true);
   const [pendingChallengeMatch, setPendingChallengeMatch] = useState<any>(null);
 
@@ -162,9 +164,14 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   }, [activePath]);
 
   useEffect(() => {
+    let interval: any;
     if (isBrowsingPublicMatches) {
       fetchPublicMatches();
+      interval = setInterval(fetchPublicMatches, 60000);
     }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isBrowsingPublicMatches, fetchPublicMatches]);
 
   const isAdmin = !!session?.user?.isAdmin;
@@ -172,7 +179,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
   useEffect(() => {
     const isBughunter = activePath === "bughunter";
-    setSelectedProblems(["EASY"]);
+    setSelectedProblems([]);
     setUplinkProblems([]);
   }, [activePath]);
 
@@ -185,198 +192,114 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   }, [activeDuel, setActiveDuel, setDuelPin]);
 
   if (!session && !isGuest) {
-    if (showSignInOptions) {
-      return (
-        <div 
-          style={{ padding: '2rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
-        >
-          <div 
-            style={{ 
-              background: 'rgba(122, 162, 247, 0.1)', 
-              color: 'var(--accent)', 
-              padding: '1.5rem', 
-              borderRadius: '50%', 
-              marginBottom: '2rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <LogIn size={56} strokeWidth={2} />
-          </div>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--text)' }}>
-            {t("signIn").toUpperCase()}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '380px', marginBottom: '3rem', lineHeight: 1.5 }}>
-            {t("authRequired") === "Autentificare Necesară" 
-              ? "Alegeți o metodă de conectare pentru a continua și a vă salva progresul." 
-              : "Choose a sign-in method to continue and save your progress."}
-          </p>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '320px' }}>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', width: '100%' }}>
-              <button 
-                onClick={() => signIn("github", { callbackUrl: "/" })}
-                title="Sign in with GitHub"
-                style={{ 
-                  width: '64px',
-                  height: '64px', 
-                  background: 'var(--text)', 
-                  color: 'var(--bg)', 
-                  border: 'none', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  cursor: 'pointer',
-                  borderRadius: '0.4rem',
-                  transition: 'background-color 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--text-muted)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--text)';
-                }}
-              >
-                <Github size={32} />
-              </button>
-              
-              <button 
-                onClick={() => signIn("google", { callbackUrl: "/" })}
-                title="Sign in with Google"
-                style={{ 
-                  width: '64px',
-                  height: '64px', 
-                  background: 'transparent', 
-                  color: 'var(--text)', 
-                  border: '1px solid var(--line)', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  cursor: 'pointer',
-                  borderRadius: '0.4rem',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-              </button>
-            </div>
-            
-            <button 
-              onClick={() => setShowSignInOptions(false)}
-              style={{ 
-                marginTop: '1rem',
-                background: 'transparent', 
-                color: 'var(--text-muted)', 
-                border: 'none', 
-                padding: '1rem', 
-                fontWeight: 700, 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: '0.5rem', 
-                fontSize: '0.9rem',
-                transition: 'color 0.15s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-            >
-              <ArrowLeft size={16} /> Back
-            </button>
-          </div>
-        </div>
-      );
-    }
-
     return (
-      <div style={{ padding: '2rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-        <div style={{ 
-          background: 'rgba(122, 162, 247, 0.1)', 
-          color: 'var(--accent)', 
-          padding: '1.5rem', 
-          borderRadius: '50%', 
-          marginBottom: '2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Shield size={56} strokeWidth={2} />
+      <div style={{ 
+        padding: '2.5rem', 
+        height: '100%', 
+        overflowY: 'auto',
+        overflowX: 'hidden', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        background: 'var(--bg)', 
+        color: 'var(--text)',
+        position: 'relative'
+      }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', zIndex: 1, color: 'var(--accent)' }}>
+          {showSignInOptions ? <LogIn size={32} /> : <Shield size={32} />}
+          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text)', margin: 0 }}>
+            {showSignInOptions ? t("signIn") : t("authRequired")}
+          </h2>
         </div>
-        <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--text)' }}>
-          {t("authRequired").toUpperCase()}
-        </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '380px', marginBottom: '3rem', lineHeight: 1.5 }}>
-          {t("authRequired") === "Autentificare Necesară" 
-            ? "Trebuie să fii autentificat sau să joci ca invitat pentru a intra în Arena de Luptă." 
-            : "You must be signed in or playing as a guest to enter the Battle Arena."}
+
+        <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem', fontSize: '0.95rem', lineHeight: 1.6, maxWidth: '400px', zIndex: 1 }}>
+          {showSignInOptions
+            ? (t("signIn") === "Conectare" 
+                ? "Conectați-vă la cont pentru a vă salva progresul, a acumula puncte și a urca în clasament. De asemenea, veți avea acces la mai multe funcționalități." 
+                : "Connect your account to save your progress, earn points, and climb the leaderboards. You'll also gain access to advanced features.")
+            : (t("authRequired") === "Autentificare Necesară" 
+                ? "Bun venit pe CodeKnights! Platforma supremă de programare competitivă unde te poți duela 1 la 1 în timp real, poți rezolva probleme de algoritmică și poți urca în clasament. Alege o opțiune de conectare mai jos pentru a-ți salva progresul și a intra în Arena de Luptă." 
+                : "Welcome to CodeKnights! The ultimate competitive programming platform where you can duel 1v1 in real-time, solve algorithm problems, and climb the leaderboard. Choose a sign-in option below to save your progress and enter the Battle Arena.")
+          }
         </p>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '320px' }}>
-          <button 
-            onClick={() => setShowSignInOptions(true)}
+
+        <div style={{ zIndex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '320px' }}>
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => signIn("google", { callbackUrl: "/" })} 
             style={{ 
-              background: 'var(--accent)', 
-              color: '#000', 
-              border: 'none', 
-              height: '48px', 
-              borderRadius: '0.4rem', 
-              fontWeight: 800, 
-              cursor: 'pointer', 
               display: 'flex', 
               alignItems: 'center', 
-              justifyContent: 'center', 
-              gap: '0.75rem', 
+              justifyContent: 'center',
+              gap: '0.75rem',
+              padding: '1rem', 
+              background: 'rgba(255,255,255,0.05)', 
+              color: '#fff', 
+              border: '1px solid rgba(255,255,255,0.1)', 
+              borderRadius: '0.75rem', 
+              fontWeight: 600,
               fontSize: '1rem',
-              transition: 'background-color 0.15s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--accent-hover, #5a8cf5)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--accent)';
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
             }}
           >
-            <LogIn size={20} /> {t("signIn").toUpperCase()}
-          </button>
-          
-          <button 
-            onClick={handlePlayAsGuest}
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+          </motion.button>
+
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => signIn("github", { callbackUrl: "/" })} 
             style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: '0.75rem',
+              padding: '1rem', 
+              background: '#24292e', 
+              color: '#fff', 
+              border: 'none', 
+              borderRadius: '0.75rem', 
+              fontWeight: 600,
+              fontSize: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+            }}
+          >
+            <Github size={20} /> Continue with GitHub
+          </motion.button>
+          
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handlePlayAsGuest} 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: '0.75rem',
+              padding: '1rem', 
               background: 'transparent', 
               color: 'var(--text)', 
-              border: '1px solid var(--line)', 
-              height: '48px', 
-              borderRadius: '0.4rem', 
-              fontWeight: 700, 
-              cursor: 'pointer',
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              gap: '0.75rem', 
+              border: '1px solid rgba(255,255,255,0.2)', 
+              borderRadius: '0.75rem', 
+              fontWeight: 700,
               fontSize: '1rem',
-              transition: 'background-color 0.15s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
+              cursor: 'pointer'
             }}
           >
-            <User size={20} /> {t("playAsGuest").toUpperCase()}
-          </button>
+            <User size={18} /> {t("playAsGuest")}
+          </motion.button>
         </div>
       </div>
     );
@@ -522,47 +445,41 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
-        <div style={{ position: 'relative', width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ position: 'relative', width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+          {/* Outer Dashed Ring */}
           <motion.div
-            animate={{ 
-              scale: [1, 2, 2.5],
-              opacity: [0.8, 0.4, 0],
-              borderWidth: ['2px', '4px', '1px']
-            }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: "easeOut"
-            }}
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
             style={{
               position: 'absolute',
               inset: 0,
               borderRadius: '50%',
-              borderColor: 'var(--accent)',
-              borderStyle: 'solid'
+              border: '3px dashed var(--accent)',
+              opacity: 0.3
             }}
           />
+          {/* Inner Fast Ring */}
           <motion.div
-            animate={{ 
-              scale: [1, 2.5, 3],
-              opacity: [0.6, 0.2, 0],
-              borderWidth: ['2px', '4px', '1px']
-            }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: "easeOut",
-              delay: 0.5
-            }}
+            animate={{ rotate: -360 }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
             style={{
               position: 'absolute',
-              inset: 0,
+              inset: 15,
               borderRadius: '50%',
-              borderColor: 'var(--accent)',
-              borderStyle: 'solid'
+              border: '3px solid transparent',
+              borderTopColor: 'var(--accent)',
+              borderBottomColor: 'var(--accent)',
+              opacity: 0.8
             }}
           />
-          <Search size={32} color="var(--accent)" />
+          {/* Pulsing Core Icon */}
+          <motion.div
+            animate={{ scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Swords size={40} color="var(--accent)" />
+          </motion.div>
         </div>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '0.1em', color: 'var(--text)', textTransform: 'uppercase' }}>
           WAITING FOR OPPONENT TO RESPOND
@@ -643,7 +560,36 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', paddingRight: '0.25rem' }}>
                 {selectedProblems.map((p, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem' }}>
+                  <div 
+                    key={idx} 
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedProblemIndex(idx);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', idx.toString());
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedProblemIndex !== null && draggedProblemIndex !== idx) {
+                        const updated = [...selectedProblems];
+                        const [moved] = updated.splice(draggedProblemIndex, 1);
+                        updated.splice(idx, 0, moved);
+                        setSelectedProblems(updated);
+                      }
+                      setDraggedProblemIndex(null);
+                    }}
+                    onDragEnd={() => setDraggedProblemIndex(null)}
+                    style={{ 
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                      background: draggedProblemIndex === idx ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)', 
+                      border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem',
+                      cursor: 'grab', opacity: draggedProblemIndex === idx ? 0.5 : 1
+                    }}
+                  >
                     <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? '#50fa7b' : p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
                       {idx + 1}. {p} (+{activePath === 'bughunter' ? 8 : p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
                     </span>
@@ -927,7 +873,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     onDragStart={(e) => {
                       setDraggedProblemIndex(idx);
                       e.dataTransfer.effectAllowed = 'move';
-                      // e.dataTransfer.setData('text/plain', idx.toString()); // optional
+                      e.dataTransfer.setData('text/plain', idx.toString());
                     }}
                     onDragOver={(e) => {
                       e.preventDefault(); // necessary to allow drop
@@ -1339,36 +1285,40 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             }}
             title="Refresh list"
           >
-            <RotateCcw size={16} />
+            <motion.div animate={isFetchingMatches ? { rotate: -360 } : { rotate: 0 }} transition={isFetchingMatches ? { repeat: Infinity, duration: 1, ease: "linear" } : { duration: 0 }}>
+              <RotateCcw size={16} />
+            </motion.div>
           </button>
         </div>
 
         {/* Matches List Container */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem', justifyContent: isFetchingMatches || publicMatches.length === 0 ? 'center' : 'flex-start', alignItems: isFetchingMatches || publicMatches.length === 0 ? 'center' : 'stretch' }}>
-          {isFetchingMatches ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  border: '3px solid rgba(255, 255, 255, 0.05)',
-                  borderTopColor: 'var(--accent)',
-                  boxShadow: '0 0 15px rgba(122, 162, 247, 0.2)'
-                }}
-              />
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                LOOKING FOR AVAILABLE MATCHES...
-              </span>
-            </div>
-          ) : publicMatches.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.6 }}>
-              <Users size={48} style={{ marginBottom: '1rem', color: 'var(--accent)', opacity: 0.5 }} />
-              <div style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.25rem' }}>NO ACTIVE MATCHES FOUND</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Create a coding match to invite other challengers!</div>
-            </div>
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem', justifyContent: publicMatches.length === 0 ? 'center' : 'flex-start', alignItems: publicMatches.length === 0 ? 'center' : 'stretch' }}>
+          {publicMatches.length === 0 ? (
+            isFetchingMatches ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    border: '3px solid rgba(255, 255, 255, 0.05)',
+                    borderTopColor: 'var(--accent)',
+                    boxShadow: '0 0 15px rgba(122, 162, 247, 0.2)'
+                  }}
+                />
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  LOOKING FOR AVAILABLE MATCHES...
+                </span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.6 }}>
+                <Users size={48} style={{ marginBottom: '1rem', color: 'var(--accent)', opacity: 0.5 }} />
+                <div style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.25rem' }}>NO ACTIVE MATCHES FOUND</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Create a coding match to invite other challengers!</div>
+              </div>
+            )
           ) : (
             publicMatches.map((match: any) => {
               const hostName = match.host?.username || match.host?.name || "Host";
@@ -1421,6 +1371,19 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   {/* Right Column: CTA */}
                   <button
                     onClick={() => {
+                      const hostElo = match.host?.rating ?? 1000;
+                      const userElo = userStats?.rating ?? 1000;
+                      
+                      if (userElo - hostElo > 250) {
+                        alert("Find someone closer to your level (You are too strong for them!)");
+                        return;
+                      }
+                      
+                      if (hostElo - userElo > 250) {
+                        const confirmed = window.confirm("Are you sure you want to fight them? There is a very large Elo gap and they might be much stronger than you!");
+                        if (!confirmed) return;
+                      }
+
                       setPendingChallengeMatch(match);
                     }}
                     disabled={isJoining}
@@ -1635,9 +1598,25 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                       color: hoveredOption?.color,
                       fontSize: '0.9rem',
                       fontWeight: 900,
-                      letterSpacing: '0.05em'
+                      letterSpacing: '0.05em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
                     }}>
                       {hoveredOption?.name}
+                      {(hoveredOption as any)?.isWip && (
+                        <span style={{ 
+                          fontSize: '0.55rem', 
+                          background: 'rgba(255, 170, 0, 0.15)', 
+                          color: '#ffaa00', 
+                          padding: '0.1rem 0.3rem', 
+                          borderRadius: '0.2rem',
+                          fontWeight: 800,
+                          textTransform: 'uppercase'
+                        }}>
+                          WIP
+                        </span>
+                      )}
                     </h4>
                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.4 }}>
                       {hoveredOption?.description}

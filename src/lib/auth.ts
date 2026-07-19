@@ -8,8 +8,8 @@ export const authOptions: NextAuthOptions = {
   adapter: {
     ...PrismaAdapter(prisma),
     createUser: async (data) => {
-      const seed = data.email || Math.random().toString();
-      const identiconUrl = `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(seed)}&rowColor=random`;
+      const seed = Math.random().toString(36).substring(7);
+      const identiconUrl = `https://api.dicebear.com/9.x/bottts/svg?seed=${seed}`;
       return prisma.user.create({
         data: {
           ...data,
@@ -39,6 +39,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).battlesWon = (user as any).battlesWon;
         (session.user as any).battlesTotal = (user as any).battlesTotal;
         (session.user as any).themeIndex = (user as any).themeIndex;
+        (session.user as any).image = user.image;
       }
       return session;
     },

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, X, Move, Link, Sidebar as SidebarIcon, FileText, LayoutDashboard, Edit, Eye, Brain, Check, Code2 } from "lucide-react";
+import { Plus, Minus, Trash2, X, Move, Link, Sidebar as SidebarIcon, FileText, LayoutDashboard, Edit, Eye, Brain, Check, Code2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { TranslationKey } from "../../constants/translations";
@@ -967,10 +967,57 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
             <input 
               value={workspaces.find(w => w.id === activeWorkspaceId)?.name || ""}
               onChange={(e) => setWorkspaces(prev => prev.map(w => w.id === activeWorkspaceId ? { ...w, name: e.target.value } : w))}
+              onBlur={(e) => {
+                if (!e.target.value.trim()) {
+                  setWorkspaces(prev => prev.map(w => w.id === activeWorkspaceId ? { ...w, name: "Workspace" } : w));
+                }
+              }}
               style={{
                 background: 'rgba(15,15,20,0.8)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text)', fontSize: '1.05rem', fontWeight: 600, outline: 'none', padding: '0.4rem 0.8rem', borderRadius: '0.5rem', backdropFilter: 'blur(10px)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', width: '200px'
               }}
             />
+          </div>
+        </div>
+
+        {/* Zoom Controls - Top Right */}
+        <div style={{
+          position: 'absolute',
+          top: '1rem',
+          right: '1rem',
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <div style={{
+            display: 'flex',
+            background: 'rgba(15,15,20,0.8)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '0.5rem',
+            overflow: 'hidden',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+          }}>
+            <button 
+              onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
+              style={{ background: 'transparent', border: 'none', padding: '0.5rem 0.8rem', color: 'var(--text)', cursor: 'pointer', borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Zoom Out"
+            >
+              <Minus size={16} strokeWidth={3} />
+            </button>
+            <button 
+              onClick={() => { setZoom(1); setPan({x:0, y:0}); }}
+              style={{ background: 'transparent', border: 'none', padding: '0.5rem 0.8rem', color: 'var(--text)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, minWidth: '60px', borderRight: '1px solid rgba(255,255,255,0.1)' }}
+              title="Reset View"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button 
+              onClick={() => setZoom(Math.min(3, zoom + 0.1))}
+              style={{ background: 'transparent', border: 'none', padding: '0.5rem 0.8rem', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Zoom In"
+            >
+              <Plus size={16} strokeWidth={3} />
+            </button>
           </div>
         </div>
 
@@ -980,6 +1027,9 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
           bottom: '1.5rem',
           right: '1.5rem',
           zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem'
         }}>
           <button 
             onClick={handleAddNode} 
@@ -1138,6 +1188,8 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
                   padding: '0.6rem 0.8rem', 
                   background: 'rgba(0,0,0,0.2)', 
                   borderBottom: '1px solid var(--line)',
+                  borderTopLeftRadius: '0.35rem',
+                  borderTopRightRadius: '0.35rem',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -1153,6 +1205,11 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
                     type="text"
                     value={node.title || ""}
                     onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, title: e.target.value } : n))}
+                    onBlur={(e) => {
+                      if (!e.target.value.trim()) {
+                        setNodes(nodes.map(n => n.id === node.id ? { ...n, title: "Untitled Note" } : n));
+                      }
+                    }}
                     onMouseDown={(e) => e.stopPropagation()}
                     placeholder={t("titlePlaceholder")}
                     style={{

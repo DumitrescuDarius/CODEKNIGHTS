@@ -38,6 +38,7 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
   const [finalImage, setFinalImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [chartWidthState, setChartWidthState] = useState(600);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -84,24 +85,15 @@ export const ProfileWindow: React.FC<ProfileWindowProps> = React.memo(({ session
   const ratingChartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const scrollToRight = () => {
-      if (graphRef.current) {
-        graphRef.current.scrollLeft = graphRef.current.scrollWidth + 1000;
+    if (!ratingChartRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      for (let entry of entries) {
+         setChartWidthState(Math.max(300, entry.contentRect.width));
       }
-      if (ratingChartRef.current) {
-        ratingChartRef.current.scrollLeft = ratingChartRef.current.scrollWidth + 1000;
-      }
-    };
-    scrollToRight();
-    const timer1 = setTimeout(scrollToRight, 100);
-    const timer2 = setTimeout(scrollToRight, 300);
-    const timer3 = setTimeout(scrollToRight, 600);
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
-  }, [selectedGameMode, profile, isLoading]);
+    });
+    observer.observe(ratingChartRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (cachedProfile && (!userId || userId === session?.user?.id)) {
@@ -187,8 +179,9 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
   const isAdmin = !!profile.isAdmin;
   const isRoyal = !!profile.isRoyal;
   const rank = profile.rank || "Novice";
-  const rating = profile.rating ?? 1000;
-  const dailyWins = profile.dailyWins ? (typeof profile.dailyWins === 'string' ? JSON.parse(profile.dailyWins) : profile.dailyWins) : {};
+  const ratingKey = selectedGameMode === "BUGHUNTER" ? "ratingBugHunter" : selectedGameMode === "HACKBOUNTY" ? "ratingHackBounty" : selectedGameMode === "MLMAGES" ? "ratingMlMages" : "rating";
+  const rating = profile[ratingKey] ?? 1000;
+  const baseDailyWins = profile.dailyWins ? (typeof profile.dailyWins === 'string' ? JSON.parse(profile.dailyWins) : profile.dailyWins) : {};
 
   const getSquareColor = (wins: number) => {
     if (wins === 0) return 'rgba(255,255,255,0.05)';
@@ -200,7 +193,20 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
 
   const pastDuels = profile.pastDuels || [];
   
-  const filteredDuels = pastDuels;
+  const filteredDuels = pastDuels.filter((d: any) => (d.gameMode || 'CODEKNIGHTS') === selectedGameMode);
+
+  let displayDailyWins = baseDailyWins;
+  if (selectedGameMode !== 'CODEKNIGHTS') {
+      displayDailyWins = {};
+      for (const duel of filteredDuels) {
+          const isHost = duel.hostId === profile.id;
+          const change = isHost ? duel.hostRatingChange : duel.guestRatingChange;
+          if (change > 0) {
+              const dateStr = new Date(duel.createdAt).toLocaleDateString('en-CA');
+              displayDailyWins[dateStr] = (displayDailyWins[dateStr] || 0) + 1;
+          }
+      }
+  }
   
   let currentIterRating = rating;
   const fullRatingHistory = [];
@@ -209,42 +215,42 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
      const isHost = duel.hostId === profile.id;
      const change = isHost ? duel.hostRatingChange : duel.guestRatingChange;
      
+     if (change === null || change === undefined) continue;
+
      fullRatingHistory.push({ 
          rating: currentIterRating, 
          name: new Date(duel.createdAt).toLocaleDateString(), 
          date: new Date(duel.createdAt),
-         hideNode: change === 0 || change === null || change === undefined
+         gameMode: duel.gameMode || 'CODEKNIGHTS',
+         hideNode: false
      });
 
-     if (change !== null && change !== undefined) {
-         currentIterRating -= change;
-     }
+     currentIterRating -= change;
   }
   
-  let rawHistory = fullRatingHistory.filter(d => !d.hideNode).reverse();
-  let ratingHistory: any[] = [];
-  const seenDays = new Set();
-  
-  for (let i = rawHistory.length - 1; i >= 0; i--) {
-      const d = rawHistory[i];
-      const dayString = d.date.toLocaleDateString();
-      if (!seenDays.has(dayString)) {
-          seenDays.add(dayString);
-          ratingHistory.unshift(d);
-      }
+  // Add the starting rating (before the oldest recorded duel in this list)
+  if (pastDuels.length > 0) {
+      fullRatingHistory.push({
+          rating: currentIterRating,
+          name: "Start",
+          date: new Date(new Date(pastDuels[pastDuels.length - 1].createdAt).getTime() - 86400000),
+          hideNode: false
+      });
   }
+  
+  let ratingHistory = fullRatingHistory.reverse().filter(d => !d.gameMode || d.gameMode === selectedGameMode);
   
   if (ratingHistory.length === 0) {
       ratingHistory.push({ rating: rating, name: 'Start', date: new Date(Date.now() - 86400000), hideNode: false });
       ratingHistory.push({ rating: rating, name: 'Current', date: new Date(), hideNode: false });
   } else if (ratingHistory.length === 1) {
-      ratingHistory.unshift({ rating: ratingHistory[0].rating, name: 'Start', date: new Date(ratingHistory[0].date.getTime() - 86400000), hideNode: false });
+      ratingHistory.unshift({ rating: currentIterRating, name: 'Start', date: new Date(ratingHistory[0].date.getTime() - 86400000), hideNode: false });
   }
 
   // Define padding and inner chart dimensions
   const padding = { top: 15, right: 15, bottom: 25, left: 45 };
-  const width = 600;
-  const height = 180;
+  const width = chartWidthState;
+  const height = 160; // Make height slightly smaller to use space more efficiently
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -256,26 +262,29 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
   const paddedMax = maxRating + 20;
   const range = (paddedMax - paddedMin) || 100;
   
+  const minTime = ratingHistory.length > 0 ? ratingHistory[0].date.getTime() : 0;
+  const maxTime = ratingHistory.length > 0 ? ratingHistory[ratingHistory.length - 1].date.getTime() : 0;
+  const timeRange = maxTime - minTime || 1;
+  
   const points = ratingHistory.map((d, i) => {
-     const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + (i / (ratingHistory.length - 1)) * chartWidth;
+     const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + ((d.date.getTime() - minTime) / timeRange) * chartWidth;
      const y = padding.top + chartHeight - ((d.rating - paddedMin) / range) * chartHeight;
      return `${x},${y}`;
   }).join(' ');
 
-  let lastLabelX = -100;
-  ratingHistory.forEach((d, i) => {
-    const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + (i / (ratingHistory.length - 1)) * chartWidth;
-    if (!d.hideNode) {
-      if (x - lastLabelX > 60 || i === ratingHistory.length - 1) {
-        d.showLabel = true;
-        lastLabelX = x;
-      } else {
-        d.showLabel = false;
-      }
-    } else {
-      d.showLabel = false;
-    }
-  });
+  const isSameDay = new Date(minTime).toLocaleDateString() === new Date(maxTime).toLocaleDateString();
+  const numTicks = Math.max(2, Math.floor(chartWidth / 100)); // One label every ~100px
+  const xTicks = [];
+  for (let i = 0; i < numTicks; i++) {
+    const ratio = i / (numTicks - 1);
+    const xPos = padding.left + ratio * chartWidth;
+    const timeVal = minTime + timeRange * ratio;
+    const d = new Date(timeVal);
+    const label = isSameDay 
+       ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+       : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    xTicks.push({ x: xPos, label });
+  }
 
   const getLastMonths = () => {
     const today = new Date();
@@ -404,7 +413,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                   <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '1.1rem' }}>{rank}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Rating</span>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{selectedGameMode === "BUGHUNTER" ? "BHP" : "CKP"}</span>
                   <span style={{ color: '#f1fa8c', fontWeight: 700, fontSize: '1.1rem' }}>{rating}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -477,6 +486,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                    if (res.ok) {
                       setSaveSuccess(true);
                       window.dispatchEvent(new Event("duel_update_required")); // triggers a re-fetch
+                      window.dispatchEvent(new Event("profile_update_required")); // trigger NextAuth session update
                       setTimeout(() => {
                          setSaveSuccess(false);
                          setIsEditingProfile(false);
@@ -541,7 +551,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
             {(["CODEKNIGHTS", "BUGHUNTER", "HACKBOUNTY", "MLMAGES"] as const).map((mode) => {
               const isActive = selectedGameMode === mode;
               const label = mode;
-              const isWip = mode !== "CODEKNIGHTS";
+              const isWip = mode === "HACKBOUNTY" || mode === "MLMAGES";
               
               return (
                 <button
@@ -594,28 +604,33 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
           </div>
         </div>
 
-        {selectedGameMode === "CODEKNIGHTS" ? (
+        {selectedGameMode === "CODEKNIGHTS" || selectedGameMode === "BUGHUNTER" ? (
           <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               {/* Activity Grid */}
               <div style={{ minWidth: 0 }}>
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>{t("activityGraph") || "Activity Graph"}</h3>
               
-                <div ref={graphRef} style={{ display: 'flex', gap: '2.5rem', width: '100%', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                  {getLastMonths().map(month => (
-                    <div key={month.label} style={{ display: 'flex', flexDirection: 'column', minWidth: 'max-content' }}>
+                <div className="activity-calendar" ref={graphRef} style={{ display: 'flex', gap: '2.5rem', width: '100%', overflowX: 'auto', paddingBottom: '0.5rem', direction: 'rtl', scrollbarWidth: 'none' }}>
+                  {getLastMonths().slice().reverse().map(month => (
+                    <div key={month.label} style={{ display: 'flex', flexDirection: 'column', minWidth: 'max-content', direction: 'ltr' }}>
                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{month.label}</span>
                        <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px', gridAutoFlow: 'column', gap: '4px', justifyContent: 'start', width: 'max-content' }}>
                           {month.days.map((d, i) => {
                              if (!d) return <div key={`empty-${i}`} style={{ width: '12px', height: '12px' }} />;
                              const dateStr = d.toLocaleDateString('en-CA');
-                             const w = dailyWins[dateStr] || 0;
+                             const w = displayDailyWins[dateStr] || 0;
                              return <div key={`day-${i}`} title={`${dateStr}: ${w} wins`} style={{ width: '12px', height: '12px', background: getSquareColor(w), borderRadius: '2px' }} />
                           })}
                        </div>
                     </div>
                   ))}
                 </div>
+                <style>{`
+                  .activity-calendar::-webkit-scrollbar {
+                    display: none;
+                  }
+                `}</style>
               
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Less
@@ -632,8 +647,8 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
               <div style={{ minWidth: 0 }}>
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text)' }}>{t("ratingHistory") || "Rating History"}</h3>
                 {ratingHistory.length > 1 ? (
-                  <div ref={ratingChartRef} style={{ width: '100%', overflowX: 'auto', padding: '1rem 0' }}>
-                      <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ minWidth: '400px', overflow: 'visible', display: 'block' }}>
+                  <div ref={ratingChartRef} style={{ width: '100%', padding: '1rem 0' }}>
+                      <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible', display: 'block' }}>
                           {/* Y-axis Labels & Horizontal Grid lines */}
                           {[0, 0.5, 1].map(ratio => {
                               const yPos = padding.top + chartHeight * ratio;
@@ -643,33 +658,37 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                                       <text x={padding.left - 10} y={yPos} fill="var(--text-muted)" fontSize="10" textAnchor="end" dominantBaseline="middle">
                                           {ratingVal}
                                       </text>
-                                      <line x1={padding.left} y1={yPos} x2={width - padding.right} y2={yPos} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                                      <line x1={padding.left} y1={yPos} x2={width - padding.right} y2={yPos} stroke="rgba(255,255,255,0.05)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                                   </g>
                               );
                           })}
 
-                          <polyline fill="none" stroke="var(--accent)" strokeWidth="3" points={points} style={{ strokeLinejoin: "round", strokeLinecap: "round" }} />
+                          {/* X-axis Labels */}
+                          {xTicks.map((tick, i) => (
+                              <text key={i} x={tick.x} y={height - 5} fill="var(--text-muted)" fontSize="9" textAnchor="middle">
+                                  {tick.label}
+                              </text>
+                          ))}
+
+                          <polyline fill="none" stroke="var(--accent)" strokeWidth="3" points={points} vectorEffect="non-scaling-stroke" style={{ strokeLinejoin: "round", strokeLinecap: "round" }} />
                           
                           {ratingHistory.map((d, i) => {
-                              const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + (i / (ratingHistory.length - 1)) * chartWidth;
+                              const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + ((d.date.getTime() - minTime) / timeRange) * chartWidth;
                               const y = padding.top + chartHeight * (1 - (d.rating - paddedMin) / range);
+                              const isPeak = d.rating === maxRating;
+                              const dotColor = isPeak ? '#ff5555' : 'var(--accent)';
                               
                               return (
                                   <g key={i} className="chart-node" style={{ cursor: 'pointer' }}>
                                       <circle cx={x} cy={y} r="8" fill="transparent" />
-                                      <circle cx={x} cy={y} r="4" fill="var(--accent)" style={{ transition: 'all 0.2s ease' }} />
-                                      {d.showLabel && (
-                                          <text x={x} y={height - 5} fill="var(--text-muted)" fontSize="9" textAnchor="middle">
-                                              {d.name}
-                                          </text>
-                                      )}
-                                      <title>{`${d.name}: ${d.rating} ELO`}</title>
+                                      <circle cx={x} cy={y} r={isPeak ? "5" : "4"} fill={dotColor} vectorEffect="non-scaling-stroke" style={{ transition: 'all 0.2s ease' }} />
+                                      <title>{`${d.name}: ${d.rating} ${selectedGameMode === "BUGHUNTER" ? "BHP" : "CKP"} ${isPeak ? '(Peak)' : ''}`}</title>
                                   </g>
                               );
                           })}
                       </svg>
                       <style>{`
-                        .chart-node:hover circle:first-child { r: 7px; fill: var(--accent); }
+                        .chart-node:hover circle:nth-child(2) { r: 7px; fill: var(--accent); }
                       `}</style>
                   </div>
                 ) : (
@@ -696,7 +715,9 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                          onClick={() => setExpandedDuel(expandedDuel === duel.id ? null : duel.id)}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem', color: 'var(--text)' }}>{duel.question?.title || "Unknown Problem"}</div>
+                          <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem', color: 'var(--text)' }}>
+                              {duel.question?.title || "Unknown Problem"}
+                          </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
                             vs 
                             <DefaultAvatar 

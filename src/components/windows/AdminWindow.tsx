@@ -969,10 +969,12 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
               <Sword size={14} /> MANAGE ARENA CHALLENGES
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {questions.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noQuestionsFound")}</p>
-              ) : (
-                questions.map((q) => (
+              {(() => {
+                const filteredQuestions = questions.filter(q => gameModeSelection === "BUGHUNTER" ? !!q.brokenCode : !q.brokenCode);
+                if (filteredQuestions.length === 0) {
+                  return <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noQuestionsFound")}</p>;
+                }
+                return filteredQuestions.map((q) => (
                   <div key={q.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
@@ -1002,8 +1004,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                       </button>
                     </div>
                   </div>
-                ))
-              )}
+                ));
+              })()}
             </div>
           </div>
 

@@ -22,11 +22,15 @@ export async function GET(req: NextRequest) {
   }
   const currentUserId = session?.user ? (session.user as any).id : (queryUserId || undefined);
 
+  const gameMode = searchParams.get("gameMode") || "CODEKNIGHTS";
+  const ratingKey = gameMode === "BUGHUNTER" ? "ratingBugHunter" : gameMode === "HACKBOUNTY" ? "ratingHackBounty" : gameMode === "MLMAGES" ? "ratingMlMages" : "rating";
+
   try {
-    // 1. Fetch top 100 users by rating
+    // 1. Fetch top 100 users by rating (excluding guests who have null email)
     const topUsers = await prisma.user.findMany({
+      where: { email: { not: null } },
       orderBy: {
-        rating: "desc",
+        [ratingKey]: "desc",
       },
       select: {
         id: true,
@@ -34,6 +38,9 @@ export async function GET(req: NextRequest) {
         username: true,
         image: true,
         rating: true,
+        ratingBugHunter: true,
+        ratingHackBounty: true,
+        ratingMlMages: true,
         rank: true,
         battlesWon: true,
         battlesTotal: true,
@@ -53,6 +60,9 @@ export async function GET(req: NextRequest) {
           username: true,
           image: true,
           rating: true,
+          ratingBugHunter: true,
+          ratingHackBounty: true,
+          ratingMlMages: true,
           rank: true,
           battlesWon: true,
           battlesTotal: true,
@@ -61,7 +71,10 @@ export async function GET(req: NextRequest) {
       });
       if (user) {
         const higherRatedCount = await prisma.user.count({
-          where: { rating: { gt: user.rating } }
+          where: { 
+            [ratingKey]: { gt: (user as any)[ratingKey] },
+            email: { not: null }
+          }
         });
         currentUserRow = {
           ...user,

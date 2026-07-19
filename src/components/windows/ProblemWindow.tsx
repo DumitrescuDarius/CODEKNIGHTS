@@ -210,7 +210,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     const isCurrentUserHost = activeDuel.hostId === userId;
     const opponent = isCurrentUserHost ? activeDuel.guest : activeDuel.host;
     const opponentName = isCurrentUserHost ? (activeDuel.guest?.username || activeDuel.guest?.name || "Guest") : (activeDuel.host?.username || activeDuel.host?.name || "Host");
-    const opponentAvatar = opponent?.image || `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(opponentName)}&rowColor=random`;
+    const opponentAvatar = opponent?.image || `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(opponentName)}`;
 
     const opponentCodeLength = isCurrentUserHost ? activeDuel.guestCodeLength : activeDuel.hostCodeLength;
     const opponentLineCount = isCurrentUserHost ? activeDuel.guestLineCount : activeDuel.hostLineCount;
@@ -343,6 +343,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
       if (allProblemsSolved) {
         handleFinalSubmit();
       } else {
+        if (activeDuel?.gameMode === "BUGHUNTER") {
+          alert(t("bugHunterMustPassAll") || "In BugHunter mode, you must pass all tests to submit and end the battle!");
+          return;
+        }
         setShowFinalizeConfirmation(true);
       }
     };
@@ -470,7 +474,12 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
             {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
-            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+            <div 
+              style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
+              onClick={() => { if (activeDuel.hostId) onOpenUserProfile?.(activeDuel.hostId); }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
               <DefaultAvatar 
                 name={activeDuel.host?.username || activeDuel.host?.name || "Host"} 
                 size={48} 
@@ -493,7 +502,12 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
             {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
             {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
-            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+            <div 
+              style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
+              onClick={() => { if (activeDuel.guestId) onOpenUserProfile?.(activeDuel.guestId); }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
               <DefaultAvatar 
                 name={activeDuel.guest?.username || activeDuel.guest?.name || "Guest"} 
                 size={48} 
@@ -884,7 +898,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                         {t("addToStdin")}
                       </button>
                       <button 
-                        onClick={() => runSingleTest(tc.input, i)}
+                        onClick={() => { setStdin(tc.input); runSingleTest(tc.input, i); }}
                         style={{ 
                           fontSize: '0.75rem', padding: '0.4rem 1rem', cursor: 'pointer',
                           background: 'var(--accent)', color: '#000',
