@@ -6,12 +6,16 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const now = new Date();
+    const { searchParams } = new URL(req.url);
+    const gameMode = searchParams.get("gameMode") || "CODEKNIGHTS";
+
     const availableDuels = await prisma.duel.findMany({
       where: {
         status: 'WAITING',
         pin: { startsWith: 'QM-' },
         expiresAt: { gt: now },
-        guestId: null
+        guestId: null,
+        gameMode
       },
       include: {
         host: {

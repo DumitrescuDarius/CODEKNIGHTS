@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const { guestName, unrated, forceCreate, findOnly, problems } = await req.json().catch(() => ({}));
+  const { guestName, unrated, forceCreate, findOnly, problems, gameMode } = await req.json().catch(() => ({}));
 
   let userId = session?.user ? (session.user as any).id : null;
   let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
@@ -63,11 +63,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Try to find a waiting duel to join (not hosted by this user) if not forcing creation
     let waiting = null;
     if (!forceCreate) {
       waiting = await prisma.duel.findFirst({
-        where: { status: 'WAITING', hostId: { not: userId }, pin: { startsWith: 'QM-' }, expiresAt: { gt: now }, unrated: !!unrated },
+        where: {
+          status: 'WAITING',
+          hostId: { not: userId },
+          pin: { startsWith: 'QM-' },
+          expiresAt: { gt: now },
+          unrated: !!unrated,
+          gameMode: gameMode || 'CODEKNIGHTS'
+        },
         orderBy: { createdAt: 'asc' }
       });
     }
@@ -107,22 +113,30 @@ export async function POST(req: NextRequest) {
     // Select distinct questions for each block difficulty
     const questionIds: string[] = [];
     for (const diff of problemList) {
-      const formattedDiff = formatDifficulty(diff);
+      const formattedDiff = gameMode === "BUGHUNTER" ? diff.toUpperCase() : formatDifficulty(diff);
+      const queryCond: any = { difficulty: formattedDiff, id: { notIn: questionIds } };
+      if (gameMode === "BUGHUNTER") {
+        queryCond.brokenCode = { not: null };
+      }
       let pool = await prisma.question.findMany({
-        where: {
-          difficulty: formattedDiff,
-          id: { notIn: questionIds }
-        },
+        where: queryCond,
         select: { id: true }
       });
       if (pool.length === 0) {
+        const fallbackCond: any = { difficulty: formattedDiff };
+        if (gameMode === "BUGHUNTER") {
+          fallbackCond.brokenCode = { not: null };
+        }
         pool = await prisma.question.findMany({
-          where: { difficulty: formattedDiff },
+          where: fallbackCond,
           select: { id: true }
         });
       }
       if (pool.length === 0) {
-        pool = await prisma.question.findMany({ select: { id: true } });
+        pool = await prisma.question.findMany({
+          where: gameMode === "BUGHUNTER" ? { brokenCode: { not: null } } : {},
+          select: { id: true }
+        });
       }
       if (pool.length > 0) {
         const picked = pool[Math.floor(Math.random() * pool.length)];
@@ -145,6 +159,7 @@ export async function POST(req: NextRequest) {
         status: "WAITING",
         hostId: userId,
         unrated: !!unrated,
+        gameMode: gameMode || 'CODEKNIGHTS',
         expiresAt: new Date(Date.now() + 30 * 60000),
         numProblems: problemList.length,
         totalTime: calculatedTotalTime,

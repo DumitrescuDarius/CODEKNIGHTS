@@ -29,6 +29,7 @@ export interface Question {
   idealComplexity?: string;
   timeLimit?: number;
   memoryLimit?: number;
+  brokenCode?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

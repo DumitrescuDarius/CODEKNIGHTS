@@ -91,6 +91,7 @@ model Question {
   memoryLimit Int      @default(256)   // Memory limit in MB
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  brokenCode  String?
   submissions Submission[]
   duels       Duel[]
 }

@@ -72,14 +72,19 @@ export async function POST(req: NextRequest) {
 
     if (!targetQuestionId) {
       for (const diff of parsedProblems) {
-        const uDiff = diff.toUpperCase();
+        const formattedDiff = diff.charAt(0).toUpperCase() + diff.slice(1).toLowerCase();
+        const queryCond: any = { difficulty: formattedDiff };
+        if (gameMode === "BUGHUNTER") {
+          queryCond.brokenCode = { not: null };
+        }
         const availableQuestions = await prisma.question.findMany({
-          where: { difficulty: uDiff },
+          where: queryCond,
           select: { id: true }
         });
         
         if (availableQuestions.length === 0) {
           const fallbackQuestions = await prisma.question.findMany({
+            where: gameMode === "BUGHUNTER" ? { brokenCode: { not: null } } : {},
             select: { id: true }
           });
           if (fallbackQuestions.length === 0) {
@@ -134,6 +139,7 @@ export async function POST(req: NextRequest) {
         questionId: targetQuestionId,
         status: "WAITING",
         hostId: userId,
+        gameMode: gameMode || "CODEKNIGHTS",
         expiresAt: new Date(Date.now() + parsedTotalTime * 60000 + 5 * 60000),
         numProblems: parsedNumProblems,
         totalTime: parsedTotalTime,

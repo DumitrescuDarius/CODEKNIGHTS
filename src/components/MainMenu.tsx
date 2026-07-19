@@ -69,6 +69,26 @@ type SubmissionFeedback = {
   color: string;
 };
 
+function levenshtein(a: string, b: string): number {
+  const tmp: number[][] = [];
+  for (let i = 0; i <= a.length; i++) {
+    tmp[i] = [i];
+  }
+  for (let j = 0; j <= b.length; j++) {
+    tmp[0][j] = j;
+  }
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      tmp[i][j] = Math.min(
+        tmp[i - 1][j] + 1,
+        tmp[i][j - 1] + 1,
+        tmp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+  }
+  return tmp[a.length][b.length];
+}
+
 function getSubmissionFeedback(passed: number, total: number): SubmissionFeedback {
   const percentage = total > 0 ? (passed / total) * 100 : 0;
 
@@ -304,7 +324,7 @@ const MainMenu: React.FC = () => {
   const [terminalHeight, setTerminalHeight] = useState(180);
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [newQuestion, setNewQuestion] = useState<{ id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[]; timeLimit: number; memoryLimit: number }>({ 
+  const [newQuestion, setNewQuestion] = useState<{ id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[]; timeLimit: number; memoryLimit: number; brokenCode?: string }>({ 
     title: "", 
     description: "", 
     restrictions: "",
@@ -312,7 +332,8 @@ const MainMenu: React.FC = () => {
     testCases: [{ input: "", output: "" }], 
     hiddenTestCases: [],
     timeLimit: 5000,
-    memoryLimit: 256
+    memoryLimit: 256,
+    brokenCode: ""
   });
   const [adminError, setAdminError] = useState<string | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
@@ -496,6 +517,9 @@ const MainMenu: React.FC = () => {
   
   useEffect(() => {
     activeDuelRef.current = activeDuel;
+    if (!activeDuel) {
+      setOpenWindows(prev => prev.filter(w => w !== 'problem'));
+    }
   }, [activeDuel]);
 
   // Keep refs in sync with latest state for stable interval/socket callbacks
@@ -809,7 +833,7 @@ const MainMenu: React.FC = () => {
     return () => window.removeEventListener("open_agent_window", handleOpenAgent);
   }, [setShowLimitWarning, maxWindows, setShowAiDisabledWarning]);
 
-  const createDuel = useCallback(async (demoMode: boolean = false, options?: { problems?: string[]; unrated?: boolean }) => {
+  const createDuel = useCallback(async (demoMode: boolean = false, options?: { problems?: string[]; unrated?: boolean; gameMode?: string }) => {
     if (pendingInviteTargetId !== null) {
       setShowUplinkPendingWarning(true);
       return;
@@ -822,7 +846,8 @@ const MainMenu: React.FC = () => {
           guestName: isGuest ? guestName : undefined, 
           demoMode,
           problems: options?.problems,
-          unrated: options?.unrated
+          unrated: options?.unrated,
+          gameMode: options?.gameMode
         })
       });
       const data = await res.json();
@@ -1044,7 +1069,13 @@ const MainMenu: React.FC = () => {
   useEffect(() => { pollDuelRef.current = pollDuel; }, [pollDuel]);
 
   useEffect(() => {
-    socketRef.current = io();
+    const isDev = process.env.NODE_ENV === "development";
+    socketRef.current = io({
+      transports: isDev ? ["polling", "websocket"] : ["websocket"], // Prevent HTTP long-polling fallback on Vercel
+      reconnectionAttempts: 5,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 30000,
+    });
     
     socketRef.current.on("opponent_progress", (data) => {
       setActiveDuel(prev => {
@@ -1170,18 +1201,19 @@ const MainMenu: React.FC = () => {
     };
   }, [activeDuel?.id]);
 
+  // Fallback polling for WAITING duels to ensure the host starts when a guest joins,
+  // especially on platforms where Socket.io WebSockets might be unavailable (e.g. Vercel).
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
-    if (activeDuel?.status === "ACTIVE" || activeDuel?.status === "WAITING") {
-      // Fallback polling in case of missed WebSocket events or serverless environments
+    if (activeDuel?.status === "WAITING") {
       interval = setInterval(() => {
-        pollDuel();
-      }, 3000); // Polling every 3 seconds
+        pollDuelRef.current();
+      }, 3000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeDuel?.status, pollDuel]);
+  }, [activeDuel?.status]);
 
   // Send real-time progress updates to the server every 500ms during an active duel.
   // Uses refs for volatile values (code, testResults) to avoid restarting the interval on every keystroke.
@@ -1296,7 +1328,7 @@ const MainMenu: React.FC = () => {
     if (savedFlexes.length === finalWindows.length) setWindowFlexes(savedFlexes);
     else setWindowFlexes(finalWindows.map(() => 1));
     
-    setTimeout(() => setIsLoaded(true), 2500);
+    setIsLoaded(true);
   }, []);
 
   // PERSISTENCE EFFECT
@@ -1513,7 +1545,8 @@ const MainMenu: React.FC = () => {
           testCases: [{ input: "", output: "" }], 
           hiddenTestCases: [],
           timeLimit: 5000,
-          memoryLimit: 256
+          memoryLimit: 256,
+          brokenCode: ""
         });
         fetchQuestions();
         alert("Question published successfully!");
@@ -1549,7 +1582,8 @@ const MainMenu: React.FC = () => {
           testCases: [{ input: "", output: "" }], 
           hiddenTestCases: [],
           timeLimit: 5000,
-          memoryLimit: 256
+          memoryLimit: 256,
+          brokenCode: ""
         });
         fetchQuestions();
         alert("Question updated successfully!");
@@ -1573,7 +1607,8 @@ const MainMenu: React.FC = () => {
       testCases: typeof q.testCases === 'string' ? JSON.parse(q.testCases) : q.testCases,
       hiddenTestCases: q.hiddenTestCases ? (typeof q.hiddenTestCases === 'string' ? JSON.parse(q.hiddenTestCases) : q.hiddenTestCases) : [],
       timeLimit: q.timeLimit ?? 5000,
-      memoryLimit: q.memoryLimit ?? 256
+      memoryLimit: q.memoryLimit ?? 256,
+      brokenCode: q.brokenCode || ""
     });
     
     setOpenWindows(prev => {
@@ -1613,6 +1648,26 @@ const MainMenu: React.FC = () => {
     setActiveQuestionIndex(0);
     problemCodesRef.current = {};
     
+    let initialLang = lang;
+    if (activeDuel?.gameMode === "BUGHUNTER" && q.difficulty) {
+      const parsedLang = q.difficulty.toLowerCase() as Language;
+      if (["c", "cpp", "python", "java"].includes(parsedLang)) {
+        initialLang = parsedLang;
+        setLang(parsedLang);
+      }
+    }
+
+    let initialCode = LANG_CONFIG[initialLang]?.defaultCode || "";
+    if (activeDuel?.gameMode === "BUGHUNTER" && q.brokenCode) {
+      try {
+        const parsed = JSON.parse(q.brokenCode);
+        initialCode = parsed[initialLang] || "";
+      } catch (e) {
+        console.error("Failed to parse initial brokenCode", e);
+      }
+    }
+    setCode(initialCode);
+
     // If it's a duel, use startedAt as the start time, otherwise now.
     const startTime = forceStartTime || (activeDuel ? new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset : Date.now());
     setBattleStartTime(startTime);
@@ -1630,7 +1685,7 @@ const MainMenu: React.FC = () => {
       return next;
     });
     setActiveWindow("editor");
-  }, [questions, maximizedWindow, activeDuel]);
+  }, [questions, maximizedWindow, activeDuel, lang, setLang]);
 
   const changeActiveQuestion = useCallback((index: number) => {
     const currentDuel = activeDuel;
@@ -1643,7 +1698,30 @@ const MainMenu: React.FC = () => {
     
     // Load new code
     const targetQ = currentDuel.questions[index];
-    const newCode = problemCodesRef.current[targetQ.id] || LANG_CONFIG[lang]?.defaultCode || "";
+    
+    let targetLang = lang;
+    if (currentDuel.gameMode === "BUGHUNTER" && targetQ.difficulty) {
+      const parsedLang = targetQ.difficulty.toLowerCase() as Language;
+      if (["c", "cpp", "python", "java"].includes(parsedLang)) {
+        targetLang = parsedLang;
+        setLang(parsedLang);
+      }
+    }
+
+    let newCode = problemCodesRef.current[targetQ.id];
+    if (newCode === undefined) {
+      if (currentDuel.gameMode === "BUGHUNTER" && targetQ.brokenCode) {
+        try {
+          const parsed = JSON.parse(targetQ.brokenCode);
+          newCode = parsed[targetLang] || "";
+        } catch (e) {
+          console.error("Failed to parse brokenCode", e);
+          newCode = LANG_CONFIG[targetLang]?.defaultCode || "";
+        }
+      } else {
+        newCode = LANG_CONFIG[targetLang]?.defaultCode || "";
+      }
+    }
     setCode(newCode);
     
     setActiveQuestionIndex(index);
@@ -1652,11 +1730,11 @@ const MainMenu: React.FC = () => {
     const savedResults = problemTestResults[targetQ.id] || null;
     setTestResults(savedResults);
     setWrongAttemptCount(problemWrongAttemptCounts[targetQ.id] ?? 0);
-  }, [activeDuel, activeQuestion, code, lang, problemTestResults, problemWrongAttemptCounts]);
+  }, [activeDuel, activeQuestion, code, lang, problemTestResults, problemWrongAttemptCounts, setLang]);
 
   const startQuickMatch = useCallback(async (
     mode: 'create' | 'find' = 'find',
-    settings?: { problems?: string[]; isRanked?: boolean }
+    settings?: { problems?: string[]; isRanked?: boolean; gameMode?: string }
   ) => {
     try {
       const res = await fetch('/api/duels/quick', {
@@ -1667,7 +1745,8 @@ const MainMenu: React.FC = () => {
           forceCreate: mode === 'create',
           findOnly: mode === 'find',
           problems: settings?.problems,
-          unrated: settings?.isRanked === false
+          unrated: settings?.isRanked === false,
+          gameMode: settings?.gameMode
         })
       });
       if (res.ok) {
@@ -1757,13 +1836,33 @@ const MainMenu: React.FC = () => {
       if (activeQuestion) {
         setProblemTestResults(prev => ({ ...prev, [activeQuestion.id]: newResults }));
         const allTestsPassed = passed === allTestsLength && allTestsLength > 0;
-        // Award completed tests even if a later test times out. The time bonus
-        // applies only when at least one test passed; failed attempts use the
-        // capped per-problem penalty tiers.
-        const failedAttempts = (problemWrongAttemptCounts[activeQuestion.id] ?? 0) + (allTestsPassed ? 0 : 1);
-        const submissionPenalty = failedAttempts >= 3 ? 100 : failedAttempts >= 1 ? 50 : 0;
-        const remainingTimeBonus = passed > 0 ? Math.max(timeLeft ?? 0, 0) : 0;
-        const currentProblemScore = Math.max(0, passed * 50 + remainingTimeBonus - submissionPenalty);
+        
+        let currentProblemScore = 0;
+        if (activeDuel && activeDuel.gameMode === "BUGHUNTER") {
+          if (allTestsPassed) {
+            let broken = "";
+            if (activeQuestion.brokenCode) {
+              try {
+                const parsed = JSON.parse(activeQuestion.brokenCode);
+                broken = parsed[lang] || "";
+              } catch (e) {
+                console.error("Failed to parse brokenCode", e);
+              }
+            }
+            const dist = levenshtein(broken, code);
+            currentProblemScore = Math.max(0, (timeLeft ?? 0) + Math.max(0, 200 - dist));
+          } else {
+            currentProblemScore = 0;
+          }
+        } else {
+          // Award completed tests even if a later test times out. The time bonus
+          // applies only when at least one test passed; failed attempts use the
+          // capped per-problem penalty tiers.
+          const failedAttempts = (problemWrongAttemptCounts[activeQuestion.id] ?? 0) + (allTestsPassed ? 0 : 1);
+          const submissionPenalty = failedAttempts >= 3 ? 100 : failedAttempts >= 1 ? 50 : 0;
+          const remainingTimeBonus = passed > 0 ? Math.max(timeLeft ?? 0, 0) : 0;
+          currentProblemScore = Math.max(0, passed * 50 + remainingTimeBonus - submissionPenalty);
+        }
 
         setProblemScores(prev => {
           const nextScores = { ...prev, [activeQuestion.id]: currentProblemScore };
@@ -1839,7 +1938,17 @@ const MainMenu: React.FC = () => {
 
   const handleRevert = () => {
     if (confirm("Revert to default code for this language?")) {
-      setCode(LANG_CONFIG[lang].defaultCode);
+      if (activeDuel?.gameMode === "BUGHUNTER" && activeQuestion?.brokenCode) {
+        try {
+          const parsed = JSON.parse(activeQuestion.brokenCode);
+          setCode(parsed[lang] || "");
+        } catch (e) {
+          console.error("Failed to revert to broken code", e);
+          setCode(LANG_CONFIG[lang].defaultCode);
+        }
+      } else {
+        setCode(LANG_CONFIG[lang].defaultCode);
+      }
     }
   };
 
@@ -2057,10 +2166,23 @@ const MainMenu: React.FC = () => {
           setShowLimitWarning(true);
           return prev;
         }
-        setWindowFlexes(flexes => [...flexes, 1]);
+        
+        const activeIdx = prev.indexOf(activeWindow);
+        const insertIdx = activeIdx !== -1 ? activeIdx + 1 : prev.length;
+
+        setWindowFlexes(flexes => {
+          const nextFlexes = [...flexes];
+          const flexInsertIdx = Math.min(insertIdx, nextFlexes.length);
+          nextFlexes.splice(flexInsertIdx, 0, 1);
+          return nextFlexes;
+        });
+        
         if (maximizedWindow) setMaximizedWindow(null);
         setActiveWindow(id);
-        const nextWindows = [...prev, id];
+        
+        const nextWindows = [...prev];
+        nextWindows.splice(insertIdx, 0, id);
+        
         if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
         return nextWindows;
       }
@@ -2082,10 +2204,23 @@ const MainMenu: React.FC = () => {
         setShowLimitWarning(true);
         return prev;
       }
-      setWindowFlexes(flexes => [...flexes, 1]);
+
+      const activeIdx = prev.indexOf(activeWindow);
+      const insertIdx = activeIdx !== -1 ? activeIdx + 1 : prev.length;
+
+      setWindowFlexes(flexes => {
+        const nextFlexes = [...flexes];
+        const flexInsertIdx = Math.min(insertIdx, nextFlexes.length);
+        nextFlexes.splice(flexInsertIdx, 0, 1);
+        return nextFlexes;
+      });
+
       if (maximizedWindow) setMaximizedWindow(null);
       setActiveWindow("agent");
-      const nextWindows: WindowId[] = [...prev, "agent"];
+      
+      const nextWindows = [...prev];
+      nextWindows.splice(insertIdx, 0, "agent");
+      
       if (!nextWindows.includes("editor")) nextWindows.unshift("editor");
       return nextWindows;
     });
@@ -2283,6 +2418,8 @@ const MainMenu: React.FC = () => {
             insertSpaces={insertSpaces}
             setFontSize={setFontSize}
             setTerminalFontSize={setTerminalFontSize}
+            activeQuestionId={activeQuestion?.id}
+            isLangLocked={!!activeDuel && activeDuel.gameMode === "BUGHUNTER"}
           />
         );
       case "settings":
@@ -2384,6 +2521,7 @@ const MainMenu: React.FC = () => {
             calculatePenalty={calculatePenalty}
             analysis={analysis}
             retryProblem={retryProblem}
+            setCode={setCode}
             showQuitConfirmation={showQuitConfirmation}
             setShowQuitConfirmation={setShowQuitConfirmation}
             onOpenUserProfile={(userId) => {
@@ -2516,10 +2654,22 @@ const MainMenu: React.FC = () => {
                   setShowLimitWarning(true);
                   return prev;
                 }
-                setWindowFlexes(flexes => [...flexes, 1]);
+                const activeIdx = prev.indexOf(activeWindow);
+                const insertIdx = activeIdx !== -1 ? activeIdx + 1 : prev.length;
+
+                setWindowFlexes(flexes => {
+                  const nextFlexes = [...flexes];
+                  const flexInsertIdx = Math.min(insertIdx, nextFlexes.length);
+                  nextFlexes.splice(flexInsertIdx, 0, 1);
+                  return nextFlexes;
+                });
+
                 if (maximizedWindow) setMaximizedWindow(null);
                 setActiveWindow(winId);
-                return [...prev, winId];
+
+                const nextWindows = [...prev];
+                nextWindows.splice(insertIdx, 0, winId);
+                return nextWindows;
               });
             }} 
           />
@@ -2538,10 +2688,22 @@ const MainMenu: React.FC = () => {
                 setShowLimitWarning(true);
                 return prev;
               }
-              setWindowFlexes(flexes => [...flexes, 1]);
+              const activeIdx = prev.indexOf(activeWindow);
+              const insertIdx = activeIdx !== -1 ? activeIdx + 1 : prev.length;
+
+              setWindowFlexes(flexes => {
+                const nextFlexes = [...flexes];
+                const flexInsertIdx = Math.min(insertIdx, nextFlexes.length);
+                nextFlexes.splice(flexInsertIdx, 0, 1);
+                return nextFlexes;
+              });
+
               if (maximizedWindow) setMaximizedWindow(null);
               setActiveWindow(winId);
-              return [...prev, winId];
+
+              const nextWindows = [...prev];
+              nextWindows.splice(insertIdx, 0, winId);
+              return nextWindows;
             });
           }} 
           cachedFriends={cachedFriends || undefined}
@@ -2848,7 +3010,7 @@ const MainMenu: React.FC = () => {
           </div>
           <ul className="nav-links">
             {navLinks.map(link => {
-              const isDisabled = link.id === "battle" && activeQuestion;
+              const isDisabled = link.id === "battle" && activeDuel && activeDuel.status === "ACTIVE";
               return (
                 <li key={link.id}>
                   <button 
@@ -3149,6 +3311,13 @@ const MainMenu: React.FC = () => {
                               style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)) ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)) ? 0.7 : 1 }}>
                               {isTesting ? "..." : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? "SUBMITTED" : "SUBMIT")}
                             </button>
+                            {activeDuel?.status === "ACTIVE" && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new Event("request_end_battle")); }} 
+                                style={{ background: '#50fa7b', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, marginLeft: '0.2rem' }}>
+                                END BATTLE
+                              </button>
+                            )}
                           </div>
                         )}
                         {id === 'notes' && (

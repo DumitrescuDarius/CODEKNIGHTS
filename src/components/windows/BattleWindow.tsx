@@ -48,7 +48,7 @@ const BUBBLE_OPTIONS = [
 
 interface BattleWindowProps {
   startBattle: (q?: any) => void;
-  startQuickMatch?: (mode: 'create' | 'find', settings?: { problems?: string[]; isRanked?: boolean }) => Promise<void>;
+  startQuickMatch?: (mode: 'create' | 'find', settings?: { problems?: string[]; isRanked?: boolean; gameMode?: string }) => Promise<void>;
   questions: Question[];
   session: any;
   isGuest: boolean;
@@ -56,7 +56,7 @@ interface BattleWindowProps {
   t: (key: TranslationKey) => string;
   onDeleteQuestion?: (id: string) => void;
   onEditQuestion?: (q: Question) => void;
-  createDuel: (demoMode?: boolean, options?: { problems?: string[]; unrated?: boolean }) => Promise<void>;
+  createDuel: (demoMode?: boolean, options?: { problems?: string[]; unrated?: boolean; gameMode?: string }) => Promise<void>;
   joinDuel: (pin: string) => void;
   activeDuel: any;
   setActiveDuel: (val: any) => void;
@@ -84,8 +84,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   const [elapsedTime, setElapsedTime] = useState(0);
 
   const [showUplinkConfigPanel, setShowUplinkConfigPanel] = useState(false);
-  const [uplinkProblems, setUplinkProblems] = useState<string[]>(["EASY"]);
+  const [uplinkProblems, setUplinkProblems] = useState<string[]>([]);
   const [uplinkIsRanked, setUplinkIsRanked] = useState(true);
+
+  const [draggedProblemIndex, setDraggedProblemIndex] = useState<number | null>(null);
 
   const moveUplinkProblem = (index: number, direction: 'up' | 'down') => {
     if (direction === 'up' && index === 0) return;
@@ -147,7 +149,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   const fetchPublicMatches = React.useCallback(async () => {
     setIsFetchingMatches(true);
     try {
-      const res = await fetch("/api/duels/public");
+      const mode = activePath === "bughunter" ? "BUGHUNTER" : "CODEKNIGHTS";
+      const res = await fetch(`/api/duels/public?gameMode=${mode}`);
       if (res.ok) {
         const data = await res.json();
         setPublicMatches(data);
@@ -156,18 +159,22 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
       console.error(err);
     }
     setIsFetchingMatches(false);
-  }, []);
+  }, [activePath]);
 
   useEffect(() => {
     if (isBrowsingPublicMatches) {
       fetchPublicMatches();
-      const interval = setInterval(fetchPublicMatches, 4000);
-      return () => clearInterval(interval);
     }
   }, [isBrowsingPublicMatches, fetchPublicMatches]);
 
   const isAdmin = !!session?.user?.isAdmin;
   const themeColor = activePath === "bughunter" ? "#50fa7b" : activePath === "hackbounty" ? "#ffb86c" : activePath === "mlmages" ? "#bd93f9" : "#38bdf8";
+
+  useEffect(() => {
+    const isBughunter = activePath === "bughunter";
+    setSelectedProblems(["EASY"]);
+    setUplinkProblems([]);
+  }, [activePath]);
 
   // Automatically reset if duel finishes
   useEffect(() => {
@@ -613,7 +620,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   }
 
   if (showSettingsPanel) {
-    const calculatedTime = selectedProblems.reduce((sum, diff) => sum + (diff === 'EASY' ? 5 : diff === 'MEDIUM' ? 9 : 14), 0);
+    const calculatedTime = selectedProblems.reduce((sum, diff) => {
+      if (activePath === 'bughunter') return sum + 8;
+      return sum + (diff === 'EASY' ? 5 : diff === 'MEDIUM' ? 9 : 14);
+    }, 0);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '2rem', justifyContent: 'center', alignItems: 'center' }}>
@@ -634,8 +644,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', paddingRight: '0.25rem' }}>
                 {selectedProblems.map((p, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem' }}>
-                    <span style={{ fontWeight: 800, fontSize: '0.8rem', color: p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
-                      {idx + 1}. {p} (+{p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
+                    <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? '#50fa7b' : p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
+                      {idx + 1}. {p} (+{activePath === 'bughunter' ? 8 : p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <button
@@ -703,70 +713,99 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           {/* Add Problem Blocks Buttons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>ADD PROBLEM BLOCK</label>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <button
-                disabled={selectedProblems.length >= 5}
-                onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
-                style={{
-                  flex: 1,
-                  padding: '0.6rem 0.25rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid rgba(80, 250, 123, 0.3)',
-                  background: 'rgba(80, 250, 123, 0.05)',
-                  color: '#50fa7b',
-                  fontWeight: 900,
-                  fontSize: '0.75rem',
-                  cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                  opacity: selectedProblems.length >= 5 ? 0.3 : 1,
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
-                onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
-              >
-                + EASY (+5m)
-              </button>
-              <button
-                disabled={selectedProblems.length >= 5}
-                onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
-                style={{
-                  flex: 1,
-                  padding: '0.6rem 0.25rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid rgba(255, 184, 108, 0.3)',
-                  background: 'rgba(255, 184, 108, 0.05)',
-                  color: '#ffb86c',
-                  fontWeight: 900,
-                  fontSize: '0.75rem',
-                  cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                  opacity: selectedProblems.length >= 5 ? 0.3 : 1,
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
-                onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
-              >
-                + MEDIUM (+9m)
-              </button>
-              <button
-                disabled={selectedProblems.length >= 5}
-                onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
-                style={{
-                  flex: 1,
-                  padding: '0.6rem 0.25rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid rgba(189, 147, 249, 0.3)',
-                  background: 'rgba(189, 147, 249, 0.05)',
-                  color: '#bd93f9',
-                  fontWeight: 900,
-                  fontSize: '0.75rem',
-                  cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                  opacity: selectedProblems.length >= 5 ? 0.3 : 1,
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
-                onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
-              >
-                + HARD (+14m)
-              </button>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {activePath === "bughunter" ? (
+                (["PYTHON", "CPP", "C", "JAVA"] as string[]).map(l => (
+                  <button
+                    key={l}
+                    disabled={selectedProblems.length >= 5}
+                    onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, l] : prev)}
+                    style={{
+                      flex: '1 1 90px',
+                      padding: '0.6rem 0.25rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(80, 250, 123, 0.3)',
+                      background: 'rgba(80, 250, 123, 0.05)',
+                      color: '#50fa7b',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                      opacity: selectedProblems.length >= 5 ? 0.3 : 1,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
+                    onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
+                  >
+                    + {l} (+8m)
+                  </button>
+                ))
+              ) : (
+                <>
+                  <button
+                    disabled={selectedProblems.length >= 5}
+                    onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem 0.25rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(80, 250, 123, 0.3)',
+                      background: 'rgba(80, 250, 123, 0.05)',
+                      color: '#50fa7b',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                      opacity: selectedProblems.length >= 5 ? 0.3 : 1,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
+                    onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
+                  >
+                    + EASY (+5m)
+                  </button>
+                  <button
+                    disabled={selectedProblems.length >= 5}
+                    onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem 0.25rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(255, 184, 108, 0.3)',
+                      background: 'rgba(255, 184, 108, 0.05)',
+                      color: '#ffb86c',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                      opacity: selectedProblems.length >= 5 ? 0.3 : 1,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
+                    onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
+                  >
+                    + MEDIUM (+9m)
+                  </button>
+                  <button
+                    disabled={selectedProblems.length >= 5}
+                    onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem 0.25rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(189, 147, 249, 0.3)',
+                      background: 'rgba(189, 147, 249, 0.05)',
+                      color: '#bd93f9',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                      opacity: selectedProblems.length >= 5 ? 0.3 : 1,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
+                    onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
+                  >
+                    + HARD (+14m)
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -827,7 +866,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 if (startQuickMatch) {
                   setIsQuickMatchMode(true);
                   try {
-                    await startQuickMatch('create', { problems: selectedProblems, isRanked });
+                    await startQuickMatch('create', {
+                      problems: selectedProblems,
+                      isRanked,
+                      gameMode: activePath === "bughunter" ? "BUGHUNTER" : "CODEKNIGHTS"
+                    });
                   } catch (e) {
                     setIsQuickMatchMode(false);
                   }
@@ -855,7 +898,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   }
 
   if (showUplinkConfigPanel) {
-    const calculatedUplinkTime = uplinkProblems.reduce((sum, diff) => sum + (diff === 'EASY' ? 5 : diff === 'MEDIUM' ? 9 : 14), 0);
+    const calculatedUplinkTime = uplinkProblems.reduce((sum, diff) => {
+      if (activePath === 'bughunter') return sum + 8;
+      return sum + (diff === 'EASY' ? 5 : diff === 'MEDIUM' ? 9 : 14);
+    }, 0);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '2rem', justifyContent: 'center', alignItems: 'center' }}>
@@ -875,9 +921,38 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', paddingRight: '0.25rem' }}>
                 {uplinkProblems.map((p, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem' }}>
-                    <span style={{ fontWeight: 800, fontSize: '0.8rem', color: p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
-                      {idx + 1}. {p} (+{p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
+                  <div 
+                    key={idx} 
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedProblemIndex(idx);
+                      e.dataTransfer.effectAllowed = 'move';
+                      // e.dataTransfer.setData('text/plain', idx.toString()); // optional
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault(); // necessary to allow drop
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedProblemIndex !== null && draggedProblemIndex !== idx) {
+                        const updated = [...uplinkProblems];
+                        const [moved] = updated.splice(draggedProblemIndex, 1);
+                        updated.splice(idx, 0, moved);
+                        setUplinkProblems(updated);
+                      }
+                      setDraggedProblemIndex(null);
+                    }}
+                    onDragEnd={() => setDraggedProblemIndex(null)}
+                    style={{ 
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                      background: draggedProblemIndex === idx ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)', 
+                      border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem',
+                      cursor: 'grab', opacity: draggedProblemIndex === idx ? 0.5 : 1
+                    }}
+                  >
+                    <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? '#50fa7b' : p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
+                      {idx + 1}. {p} (+{activePath === 'bughunter' ? 8 : p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <button
@@ -945,70 +1020,99 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           {/* Add Problem Blocks Buttons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>ADD PROBLEM BLOCK</label>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <button
-                disabled={uplinkProblems.length >= 5}
-                onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
-                style={{
-                  flex: 1,
-                  padding: '0.6rem 0.25rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid rgba(80, 250, 123, 0.3)',
-                  background: 'rgba(80, 250, 123, 0.05)',
-                  color: '#50fa7b',
-                  fontWeight: 900,
-                  fontSize: '0.75rem',
-                  cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                  opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
-                onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
-              >
-                + EASY (+5m)
-              </button>
-              <button
-                disabled={uplinkProblems.length >= 5}
-                onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
-                style={{
-                  flex: 1,
-                  padding: '0.6rem 0.25rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid rgba(255, 184, 108, 0.3)',
-                  background: 'rgba(255, 184, 108, 0.05)',
-                  color: '#ffb86c',
-                  fontWeight: 900,
-                  fontSize: '0.75rem',
-                  cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                  opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
-                onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
-              >
-                + MEDIUM (+9m)
-              </button>
-              <button
-                disabled={uplinkProblems.length >= 5}
-                onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
-                style={{
-                  flex: 1,
-                  padding: '0.6rem 0.25rem',
-                  borderRadius: '0.4rem',
-                  border: '1px solid rgba(189, 147, 249, 0.3)',
-                  background: 'rgba(189, 147, 249, 0.05)',
-                  color: '#bd93f9',
-                  fontWeight: 900,
-                  fontSize: '0.75rem',
-                  cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                  opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
-                onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
-              >
-                + HARD (+14m)
-              </button>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {activePath === "bughunter" ? (
+                (["PYTHON", "CPP", "C", "JAVA"] as string[]).map(l => (
+                  <button
+                    key={l}
+                    disabled={uplinkProblems.length >= 5}
+                    onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, l] : prev)}
+                    style={{
+                      flex: '1 1 90px',
+                      padding: '0.6rem 0.25rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(80, 250, 123, 0.3)',
+                      background: 'rgba(80, 250, 123, 0.05)',
+                      color: '#50fa7b',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                      opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
+                    onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
+                  >
+                    + {l} (+8m)
+                  </button>
+                ))
+              ) : (
+                <>
+                  <button
+                    disabled={uplinkProblems.length >= 5}
+                    onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem 0.25rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(80, 250, 123, 0.3)',
+                      background: 'rgba(80, 250, 123, 0.05)',
+                      color: '#50fa7b',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                      opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
+                    onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
+                  >
+                    + EASY (+5m)
+                  </button>
+                  <button
+                    disabled={uplinkProblems.length >= 5}
+                    onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem 0.25rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(255, 184, 108, 0.3)',
+                      background: 'rgba(255, 184, 108, 0.05)',
+                      color: '#ffb86c',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                      opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
+                    onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
+                  >
+                    + MEDIUM (+9m)
+                  </button>
+                  <button
+                    disabled={uplinkProblems.length >= 5}
+                    onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem 0.25rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(189, 147, 249, 0.3)',
+                      background: 'rgba(189, 147, 249, 0.05)',
+                      color: '#bd93f9',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                      opacity: uplinkProblems.length >= 5 ? 0.3 : 1,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
+                    onMouseLeave={e => { if (uplinkProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
+                  >
+                    + HARD (+14m)
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -1070,7 +1174,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 try {
                   await createDuel(false, {
                     problems: uplinkProblems,
-                    unrated: !uplinkIsRanked
+                    unrated: !uplinkIsRanked,
+                    gameMode: activePath === "bughunter" ? "BUGHUNTER" : "CODEKNIGHTS"
                   });
                   setShowWaitingPopup(true);
                 } catch (e) {
@@ -1591,7 +1696,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
         </div>
         
         {/* Unified Setup Controls for All Paths */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', paddingBottom: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', paddingBottom: '1rem', flex: 1 }}>
           {/* Game Mode Description */}
           <div style={{ maxWidth: '600px', margin: '0 auto 0.5rem', textAlign: 'center' }}>
             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
@@ -1605,20 +1710,19 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             </p>
           </div>
 
-          {/* Public Match Buttons Row */}
-          <div style={{ display: 'flex', gap: '1rem', width: '100%', flexWrap: 'wrap' }}>
+          {/* Action Grid: Create/Find Match & Uplink/Join */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(180px, calc(50% - 1rem)), 1fr))', gap: '1rem', width: '100%', flex: 1 }}>
+            {/* 1. CREATE MATCH */}
             <button 
               onClick={() => {
                 setShowSettingsPanel(true);
               }}
               disabled={isJoining || isCreating}
               style={{ 
-                flex: 1, 
-                minWidth: '200px',
                 background: themeColor, 
                 color: '#000', 
                 border: 'none', 
-                padding: '1.5rem', 
+                padding: '0 1.5rem', 
                 borderRadius: '0.4rem', 
                 fontWeight: 900, 
                 fontSize: '1.1rem', 
@@ -1630,7 +1734,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 justifyContent: 'center',
                 gap: '1rem',
                 transition: 'all 0.2s ease',
-                opacity: 1
+                opacity: 1,
+                height: '100%',
+                minHeight: '4rem',
+                width: '100%'
               }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
@@ -1638,18 +1745,50 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               <Sword size={22} fill="currentColor" /> {activePath === "bughunter" ? "CREATE DEBUG MATCH" : activePath === "hackbounty" ? "CREATE BOUNTY DUEL" : activePath === "mlmages" ? "CREATE GENERATION MATCH" : "CREATE CODING MATCH"}
             </button>
 
+            {/* 2. CREATE UPLINK */}
+            <button 
+              onClick={() => { 
+                if (isWaitingForResponse) return;
+                setShowUplinkConfigPanel(true);
+              }}
+              disabled={isCreating || isJoining || isWaitingForResponse}
+              style={{ 
+                background: 'rgba(255,255,255,0.05)', 
+                color: themeColor, 
+                border: `1px solid ${themeColor}33`, 
+                padding: '0 1.5rem', 
+                borderRadius: '0.4rem', 
+                fontWeight: 900, 
+                fontSize: '1.1rem', 
+                cursor: (isCreating || isJoining || isWaitingForResponse) ? 'not-allowed' : 'pointer', 
+                letterSpacing: '0.1em',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                transition: 'all 0.2s ease',
+                opacity: isWaitingForResponse ? 0.4 : 1,
+                height: '100%',
+                minHeight: '4rem',
+                width: '100%'
+              }}
+              onMouseEnter={(e) => { if (!isWaitingForResponse) e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseLeave={(e) => { if (!isWaitingForResponse) e.currentTarget.style.transform = 'translateY(0)' }}
+            >
+              <Users size={20} /> {isCreating ? "GENERATING..." : isWaitingForResponse ? "WAITING..." : t("createUplink").toUpperCase()}
+            </button>
+
+            {/* 3. FIND MATCH */}
             <button 
               onClick={() => {
                 setIsBrowsingPublicMatches(true);
               }}
               disabled={isJoining || isCreating}
               style={{ 
-                flex: 1, 
-                minWidth: '200px',
                 background: 'transparent', 
                 color: themeColor, 
                 border: `2px solid ${themeColor}`, 
-                padding: '1.5rem', 
+                padding: '0 1.5rem', 
                 borderRadius: '0.4rem', 
                 fontWeight: 900, 
                 fontSize: '1.1rem', 
@@ -1660,53 +1799,19 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 justifyContent: 'center',
                 gap: '1rem',
                 transition: 'all 0.2s ease',
-                opacity: 1
+                opacity: 1,
+                height: '100%',
+                minHeight: '4rem',
+                width: '100%'
               }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = `${themeColor}10` }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'transparent' }}
             >
               <Users size={22} /> {activePath === "bughunter" ? "FIND DEBUG MATCH" : activePath === "hackbounty" ? "FIND BOUNTY DUEL" : activePath === "mlmages" ? "FIND GENERATION MATCH" : "FIND PUBLIC MATCH"}
             </button>
-          </div>
 
-          {/* Uplink and Join Row */}
-          <div style={{ display: 'flex', gap: '1rem', width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Generate Uplink Button */}
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <button 
-                onClick={() => { 
-                  if (isWaitingForResponse) return;
-                  setShowUplinkConfigPanel(true);
-                }}
-                disabled={isCreating || isJoining || isWaitingForResponse}
-                style={{ 
-                  width: '100%', 
-                  height: '56px',
-                  background: 'rgba(255,255,255,0.05)', 
-                  color: themeColor, 
-                  border: `1px solid ${themeColor}33`, 
-                  padding: '0 1rem', 
-                  borderRadius: '0.4rem', 
-                  fontWeight: 900, 
-                  fontSize: '1rem', 
-                  cursor: (isCreating || isJoining || isWaitingForResponse) ? 'not-allowed' : 'pointer', 
-                  letterSpacing: '0.1em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.75rem',
-                  transition: 'all 0.2s ease',
-                  opacity: isWaitingForResponse ? 0.4 : 1
-                }}
-                onMouseEnter={(e) => { if (!isWaitingForResponse) e.currentTarget.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={(e) => { if (!isWaitingForResponse) e.currentTarget.style.transform = 'translateY(0)' }}
-              >
-                <Users size={20} /> {isCreating ? "GENERATING..." : isWaitingForResponse ? "WAITING..." : t("createUplink").toUpperCase()}
-              </button>
-            </div>
-
-            {/* Join Section */}
-            <div style={{ display: 'flex', gap: '0.75rem', flex: 1.2, minWidth: '250px' }}>
+            {/* 4. ENTER PIN */}
+            <div style={{ display: 'flex', gap: '0.75rem', width: '100%', height: '100%', minHeight: '4rem' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <Hash size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: themeColor, opacity: 0.7 }} />
                 <input 
@@ -1717,7 +1822,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   onChange={(e) => setJoinPin(e.target.value.toUpperCase())}
                   style={{ 
                     width: '100%', 
-                    height: '56px', 
+                    height: '100%', 
                     background: 'rgba(0,0,0,0.3)', 
                     border: '1px solid var(--line)', 
                     borderRadius: '0.4rem', 
@@ -1725,7 +1830,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     padding: '0 1rem 0 2.75rem', 
                     outline: 'none', 
                     boxSizing: 'border-box',
-                    fontSize: '1rem',
+                    fontSize: '1.1rem',
                     fontWeight: 700,
                     letterSpacing: '0.2em',
                     fontFamily: 'inherit'
@@ -1737,22 +1842,22 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               <button 
                 onClick={async () => {
                   if (!joinPin) return;
-                  if (activePath !== "codeknights") return;
+                  if (activePath !== "codeknights" && activePath !== "bughunter") return;
                   setIsJoining(true);
                   await joinDuel(joinPin);
                   setIsJoining(false);
                 }}
                 disabled={isJoining || isCreating}
                 style={{ 
-                  height: '56px', 
-                  background: activePath === "codeknights" ? 'var(--text)' : 'rgba(255,255,255,0.05)', 
-                  color: activePath === "codeknights" ? '#000' : 'var(--text-muted)', 
-                  border: activePath === "codeknights" ? 'none' : '1px solid var(--line)', 
+                  height: '100%', 
+                  background: (activePath === "codeknights" || activePath === "bughunter") ? 'var(--text)' : 'rgba(255,255,255,0.05)', 
+                  color: (activePath === "codeknights" || activePath === "bughunter") ? '#000' : 'var(--text-muted)', 
+                  border: (activePath === "codeknights" || activePath === "bughunter") ? 'none' : '1px solid var(--line)', 
                   fontWeight: 900, 
-                  padding: '0 2rem',
+                  padding: '0 1.5rem',
                   borderRadius: '0.4rem',
-                  cursor: (isJoining || isCreating) ? 'wait' : (activePath === "codeknights" ? 'pointer' : 'not-allowed'),
-                  fontSize: '0.9rem',
+                  cursor: (isJoining || isCreating) ? 'wait' : ((activePath === "codeknights" || activePath === "bughunter") ? 'pointer' : 'not-allowed'),
+                  fontSize: '1rem',
                   letterSpacing: '0.1em',
                   opacity: (isJoining || isCreating) ? 0.7 : 1
                 }}

@@ -6,7 +6,7 @@ import { TranslationKey } from "../../constants/translations";
 import { Question } from "../../types";
 
 interface AdminWindowProps {
-  newQuestion: { id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: any[]; hiddenTestCases: any[]; timeLimit: number; memoryLimit: number };
+  newQuestion: { id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: any[]; hiddenTestCases: any[]; timeLimit: number; memoryLimit: number; brokenCode?: string };
   setNewQuestion: (val: any) => void;
   handleAddQuestion: () => void;
   handleUpdateQuestion: () => void;
@@ -34,6 +34,56 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
 
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  const [gameModeSelection, setGameModeSelection] = useState<"CODEKNIGHTS" | "BUGHUNTER">("CODEKNIGHTS");
+  const [targetLanguage, setTargetLanguage] = useState<"PYTHON" | "CPP" | "C" | "JAVA">("PYTHON");
+  const [brokenCodeText, setBrokenCodeText] = useState("");
+
+  // Sync from newQuestion (e.g. when beginning editing)
+  useEffect(() => {
+    if (newQuestion.id) {
+      if (newQuestion.brokenCode) {
+        try {
+          const parsed = JSON.parse(newQuestion.brokenCode);
+          const langKey = (Object.keys(parsed)[0] || "python").toUpperCase() as "PYTHON" | "CPP" | "C" | "JAVA";
+          setGameModeSelection("BUGHUNTER");
+          setTargetLanguage(langKey);
+          setBrokenCodeText(parsed[langKey.toLowerCase()] || "");
+        } catch (e) {
+          console.error("Failed to parse brokenCode in sync", e);
+        }
+      } else {
+        setGameModeSelection("CODEKNIGHTS");
+        setBrokenCodeText("");
+      }
+    } else if (!newQuestion.brokenCode && newQuestion.title === "") {
+      setGameModeSelection("CODEKNIGHTS");
+      setBrokenCodeText("");
+    }
+  }, [newQuestion.id]);
+
+  // Sync to newQuestion
+  useEffect(() => {
+    if (gameModeSelection === "BUGHUNTER") {
+      setNewQuestion((prev: any) => {
+        const codeMap = JSON.stringify({ [targetLanguage.toLowerCase()]: brokenCodeText });
+        if (prev.difficulty === targetLanguage && prev.brokenCode === codeMap) return prev;
+        return {
+          ...prev,
+          difficulty: targetLanguage,
+          brokenCode: codeMap
+        };
+      });
+    } else {
+      setNewQuestion((prev: any) => {
+        if (prev.brokenCode === "") return prev;
+        return {
+          ...prev,
+          brokenCode: ""
+        };
+      });
+    }
+  }, [gameModeSelection, targetLanguage, brokenCodeText, setNewQuestion]);
 
   useEffect(() => {
     fetchUsers();
@@ -227,6 +277,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       let importedRestrictions = "";
       let importedTimeLimit: number | null = null;
       let importedMemoryLimit: number | null = null;
+      let importedBrokenCode: string | null = null;
+      let importedBrokenCodeLang: string | null = null;
 
       const testCasesMap: Record<number, { input?: string; output?: string }> = {};
 
@@ -302,6 +354,12 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
           hasTestOk = true;
           rawOkContent = content;
         }
+        else if (name === "broken.py" || name === "broken.cpp" || name === "broken.c" || name === "broken.java") {
+          importedBrokenCode = content;
+          let ext = name.split(".")[1].toUpperCase();
+          if (ext === "PY") ext = "PYTHON";
+          importedBrokenCodeLang = ext;
+        }
         else {
           const match = name.match(/^test(\d+)\.(in|ok)$/i);
           if (match) {
@@ -368,6 +426,12 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
         setHiddenTestCasesRaw(JSON.stringify(targetList, null, 2));
       }
 
+      if (importedBrokenCodeLang && importedBrokenCode) {
+        setGameModeSelection("BUGHUNTER");
+        setTargetLanguage(importedBrokenCodeLang as any);
+        setBrokenCodeText(importedBrokenCode);
+      }
+
       alert(`Successfully imported challenge data!\n- Parsed ${parsedCases.length} test case(s).${importedTitle ? `\n- Title: "${importedTitle}"` : ""}`);
     } catch (e: any) {
       console.error(e);
@@ -403,7 +467,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       testCases: tc,
       hiddenTestCases: htc,
       timeLimit: (q as any).timeLimit ?? 5000,
-      memoryLimit: (q as any).memoryLimit ?? 256
+      memoryLimit: (q as any).memoryLimit ?? 256,
+      brokenCode: q.brokenCode || ""
     });
     setTestCasesRaw(JSON.stringify(tc, null, 2));
     setHiddenTestCasesRaw(JSON.stringify(htc, null, 2));
@@ -447,7 +512,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       testCases: [{ input: "", output: "" }],
       hiddenTestCases: [],
       timeLimit: 5000,
-      memoryLimit: 256
+      memoryLimit: 256,
+      brokenCode: ""
     });
     setTestCasesRaw(JSON.stringify([{ input: "", output: "" }], null, 2));
     setHiddenTestCasesRaw(JSON.stringify([], null, 2));
@@ -555,24 +621,92 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("difficultyLabel")}</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Challenge Game Mode</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                   {[
-                    { label: "Target Practice", value: "Easy" },
-                    { label: "Trial Duel", value: "Medium" },
-                    { label: "Royal Challenge", value: "Hard" }
-                  ].map((d) => (
-                    <button 
-                      key={d.value}
-                      onClick={() => setNewQuestion({ ...newQuestion, difficulty: d.value })}
+                    { label: "Standard (CodeKnights)", value: "CODEKNIGHTS" },
+                    { label: "Bug Hunter (Fix Broken Code)", value: "BUGHUNTER" }
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setGameModeSelection(opt.value as any)}
                       className="btn"
-                      style={{ flex: '1 1 140px', borderColor: newQuestion.difficulty === d.value ? 'var(--accent)' : 'var(--line)', color: newQuestion.difficulty === d.value ? 'var(--accent)' : 'inherit', height: '44px', fontWeight: newQuestion.difficulty === d.value ? 700 : 400, cursor: 'pointer', background: newQuestion.difficulty === d.value ? 'rgba(var(--accent-rgb), 0.05)' : 'transparent', minWidth: '120px' }}
+                      style={{
+                        flex: 1,
+                        padding: '0.6rem',
+                        borderRadius: '0.4rem',
+                        border: '1px solid var(--line)',
+                        background: gameModeSelection === opt.value ? 'var(--accent)' : 'transparent',
+                        color: gameModeSelection === opt.value ? '#000' : 'var(--text)',
+                        fontWeight: 900,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer'
+                      }}
                     >
-                      {d.label}
+                      {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {gameModeSelection === "CODEKNIGHTS" ? (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("difficultyLabel")}</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    {[
+                      { label: "Target Practice", value: "Easy" },
+                      { label: "Trial Duel", value: "Medium" },
+                      { label: "Royal Challenge", value: "Hard" }
+                    ].map((d) => (
+                      <button 
+                        key={d.value}
+                        type="button"
+                        onClick={() => setNewQuestion({ ...newQuestion, difficulty: d.value })}
+                        className="btn"
+                        style={{ flex: '1 1 140px', borderColor: newQuestion.difficulty === d.value ? 'var(--accent)' : 'var(--line)', color: newQuestion.difficulty === d.value ? 'var(--accent)' : 'inherit', height: '44px', fontWeight: newQuestion.difficulty === d.value ? 700 : 400, cursor: 'pointer', background: newQuestion.difficulty === d.value ? 'rgba(var(--accent-rgb), 0.05)' : 'transparent', minWidth: '120px' }}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Target Programming Language</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                      {[
+                        { label: "Python", value: "PYTHON" },
+                        { label: "C++", value: "CPP" },
+                        { label: "C", value: "C" },
+                        { label: "Java", value: "JAVA" }
+                      ].map((l) => (
+                        <button 
+                          key={l.value}
+                          type="button"
+                          onClick={() => setTargetLanguage(l.value as any)}
+                          className="btn"
+                          style={{ flex: '1 1 100px', borderColor: targetLanguage === l.value ? '#50fa7b' : 'var(--line)', color: targetLanguage === l.value ? '#50fa7b' : 'inherit', height: '44px', fontWeight: targetLanguage === l.value ? 700 : 400, cursor: 'pointer', background: targetLanguage === l.value ? 'rgba(80, 250, 123, 0.05)' : 'transparent', minWidth: '100px' }}
+                        >
+                          {l.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Broken Code Template</label>
+                    <textarea
+                      value={brokenCodeText}
+                      onChange={(e) => setBrokenCodeText(e.target.value)}
+                      onKeyDown={(e) => handleTabKey(e, setBrokenCodeText)}
+                      style={{ width: '100%', minHeight: '200px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.8rem 1rem', borderRadius: '0.4rem', color: 'inherit', outline: 'none', fontSize: '0.95rem', fontFamily: 'monospace' }}
+                      placeholder={`Write the broken template code for ${targetLanguage} here...\nPlayers will receive this broken version and need to fix it.`}
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Test Cases Input Mode</label>
@@ -845,8 +979,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                         <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{q.problemId || "?"}</span>
                         {q.title}
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555', marginTop: '0.2rem', fontWeight: 600 }}>
-                        {q.difficulty === 'Easy' ? 'TARGET PRACTICE' : q.difficulty === 'Medium' ? 'TRIAL DUEL' : 'ROYAL CHALLENGE'}
+                      <div style={{ fontSize: '0.7rem', color: q.brokenCode ? '#50fa7b' : q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555', marginTop: '0.2rem', fontWeight: 600 }}>
+                        {q.brokenCode ? `BUGHUNTER (Target: ${q.difficulty})` : q.difficulty === 'Easy' ? 'TARGET PRACTICE' : q.difficulty === 'Medium' ? 'TRIAL DUEL' : 'ROYAL CHALLENGE'}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>

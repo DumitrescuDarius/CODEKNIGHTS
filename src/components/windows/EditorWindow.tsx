@@ -48,6 +48,8 @@ interface EditorWindowProps {
   insertSpaces: boolean;
   setFontSize: (size: number) => void;
   setTerminalFontSize: (size: number) => void;
+  activeQuestionId?: string;
+  isLangLocked?: boolean;
 }
 
 export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
@@ -56,7 +58,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
   stdin, setStdin, terminalOutput, terminalFontSize, vimMode,
   vimStatusBarRef, editorRef, langSelectorOpen, setLangSelectorOpen,
   cursorPos, setCursorPos, compileErrors, t, isResizing, analysis, isAnalyzing,
-  tabSize, insertSpaces, setFontSize, setTerminalFontSize
+  tabSize, insertSpaces, setFontSize, setTerminalFontSize, activeQuestionId, isLangLocked = false
 }) => {
   const monaco = useMonaco();
 
@@ -155,6 +157,10 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
   }, [compileErrors, monaco, editorRef, lang]);
 
   const emittedValues = React.useRef(new Set<string>());
+
+  useEffect(() => {
+    emittedValues.current.clear();
+  }, [activeQuestionId, lang]);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -272,13 +278,21 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
             <TerminalIcon size={14} />
           </button>
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setLangSelectorOpen(!langSelectorOpen)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.75rem' }}>{LANG_CONFIG[lang].label} ▾</button>
-            {langSelectorOpen && (
-              <div style={{ position: 'absolute', bottom: '2rem', right: 0, background: 'var(--bg)', border: '1px solid var(--line)', padding: '0.4rem', borderRadius: '0.4rem', zIndex: 100, minWidth: '100px' }}>
-                {(["c", "cpp", "python", "java"] as Language[]).map(l => (
-                  <div key={l} onClick={() => { setLang(l); setCode(LANG_CONFIG[l].defaultCode); setLangSelectorOpen(false); }} style={{ padding: '0.4rem 0.8rem', cursor: 'pointer', fontSize: '0.75rem' }}>{LANG_CONFIG[l].label}</div>
-                ))}
-              </div>
+            {isLangLocked ? (
+              <span style={{ fontSize: '0.75rem', opacity: 0.6, cursor: 'not-allowed', color: 'var(--text-muted)' }}>
+                {LANG_CONFIG[lang].label} (Locked)
+              </span>
+            ) : (
+              <>
+                <button onClick={() => setLangSelectorOpen(!langSelectorOpen)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.75rem' }}>{LANG_CONFIG[lang].label} ▾</button>
+                {langSelectorOpen && (
+                  <div style={{ position: 'absolute', bottom: '2rem', right: 0, background: 'var(--bg)', border: '1px solid var(--line)', padding: '0.4rem', borderRadius: '0.4rem', zIndex: 100, minWidth: '100px' }}>
+                    {(["c", "cpp", "python", "java"] as Language[]).map(l => (
+                      <div key={l} onClick={() => { setLang(l); setCode(LANG_CONFIG[l].defaultCode); setLangSelectorOpen(false); }} style={{ padding: '0.4rem 0.8rem', cursor: 'pointer', fontSize: '0.75rem' }}>{LANG_CONFIG[l].label}</div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t("utf8")}</span>

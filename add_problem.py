@@ -177,7 +177,27 @@ def main():
                 test_cases.append({"input": in_val, "output": out_val})
         print(f"Parsed {len(test_cases)} test cases from tests.in/tests.ok.")
 
-    # 6. Build API Request
+    # 6. Scan for broken code templates (broken.py, broken.cpp, broken.c, broken.java)
+    broken_code = {}
+    lang_mapping = {
+        'py': 'python',
+        'cpp': 'cpp',
+        'c': 'c',
+        'java': 'java'
+    }
+    for filename in os.listdir(folder_path):
+        parts = filename.split('.')
+        if len(parts) == 2 and parts[0] == 'broken' and parts[1].lower() in lang_mapping:
+            lang_key = lang_mapping[parts[1].lower()]
+            file_path = os.path.join(folder_path, filename)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    broken_code[lang_key] = f.read()
+                print(f"Parsed broken code for language: {lang_key}")
+            except Exception as e:
+                print(f"Warning: Failed to read broken code file {filename}: {e}")
+
+    # 7. Build API Request
     # First parsed test case becomes the public sample example. All test cases are added to hiddenTestCases.
     payload = {
         "title": title,
@@ -187,7 +207,8 @@ def main():
         "testCases": test_cases[:1],
         "hiddenTestCases": test_cases,
         "timeLimit": time_limit,
-        "memoryLimit": memory_limit
+        "memoryLimit": memory_limit,
+        "brokenCode": json.dumps(broken_code) if broken_code else None
     }
 
     url = os.environ.get("CODEKNIGHTS_API_URL", "http://localhost:3000/api/admin/questions")

@@ -30,6 +30,7 @@ async function seed() {
           idealComplexity: p.idealComplexity || '',
           testCases: JSON.stringify(p.testCases || []),
           hiddenTestCases: JSON.stringify(p.hiddenTestCases || []),
+          brokenCode: p.brokenCode ? (typeof p.brokenCode === 'object' ? JSON.stringify(p.brokenCode) : p.brokenCode) : null,
         },
         create: {
           title: p.title,
@@ -39,6 +40,7 @@ async function seed() {
           idealComplexity: p.idealComplexity || '',
           testCases: JSON.stringify(p.testCases || []),
           hiddenTestCases: JSON.stringify(p.hiddenTestCases || []),
+          brokenCode: p.brokenCode ? (typeof p.brokenCode === 'object' ? JSON.stringify(p.brokenCode) : p.brokenCode) : null,
         },
       });
       console.log(`Upserted: ${p.title}`);

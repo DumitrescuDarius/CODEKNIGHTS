@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye } from "lucide-react";
+import Editor from "@monaco-editor/react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
@@ -130,6 +131,7 @@ interface ProblemWindowProps {
   problemTestResults?: Record<string, { passed: number; total: number; details: any[] }>;
   problemScores?: Record<string, number>;
   problemWrongAttemptCounts?: Record<string, number>;
+  setCode?: (val: string) => void;
 }
 
 export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
@@ -137,7 +139,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
   analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin,
-  onOpenUserProfile, activeQuestionIndex, changeActiveQuestion, problemTestResults = {}, problemScores = {}, problemWrongAttemptCounts = {}
+  onOpenUserProfile, activeQuestionIndex, changeActiveQuestion, problemTestResults = {}, problemScores = {}, problemWrongAttemptCounts = {}, setCode
 }) => {
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
   const isDuelFinished = activeDuel?.status === "FINISHED" || (activeDuel != null && timeLeft === 0);
@@ -145,6 +147,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   const isGuest = activeDuel?.guestId === userId;
   const userFinalized = isHost ? activeDuel?.hostFinalized : (isGuest ? activeDuel?.guestFinalized : false);
   const otherFinalized = isHost ? activeDuel?.guestFinalized : (isGuest ? activeDuel?.hostFinalized : false);
+
+  const allProblemsSolved = activeDuel?.questions && activeDuel.questions.length > 0
+    ? activeDuel.questions.every((q: any) => {
+        const res = problemTestResults[q.id];
+        return res && res.passed === res.total && res.total > 0;
+      })
+    : allPassed;
 
   const renderProblemScoreCards = () => {
     const duelQuestions = activeDuel?.questions || [];
@@ -267,6 +276,9 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         >
           {opponentName}
         </span>
+        <div style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 700, color: otherFinalized ? '#50fa7b' : 'var(--text-muted)' }}>
+          ({otherFinalized ? 'Finalized' : 'Coding...'})
+        </div>
       </div>
     );
   };
@@ -275,6 +287,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   const [isPenaltyOpen, setIsPenaltyOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showFinalizeConfirmation, setShowFinalizeConfirmation] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setLiveTime(prev => prev + 1), 1000);
@@ -297,6 +310,51 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
       window.removeEventListener("request_ai_context", handleAiRequest);
     };
   }, [activeQuestion]);
+  const handleFinalSubmit = React.useCallback(async () => {
+    if (!activeDuel || isSubmitting || submitted) return;
+    setIsSubmitting(true);
+    try {
+      const timeSeconds = solveTime ? solveTime.split(':').reduce((acc, time) => (60 * acc) + +time, 0) : 0;
+      const complexityTotal = analysis?.scores ? 
+        (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) * 50 : 0;
+
+      await fetch("/api/duels/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            duelId: activeDuel.id, 
+            finalize: true,
+            solveTime: timeSeconds * 1000,
+            complexityScore: complexityTotal,
+            totalPenalty: totalPenalty
+        })
+      });
+      window.dispatchEvent(new CustomEvent("duel_update_required", { detail: activeDuel.id }));
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Final submit failed:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [activeDuel, isSubmitting, submitted, solveTime, analysis, totalPenalty]);
+
+  useEffect(() => {
+    const handleEndBattleReq = () => {
+      if (allProblemsSolved) {
+        handleFinalSubmit();
+      } else {
+        setShowFinalizeConfirmation(true);
+      }
+    };
+    window.addEventListener("request_end_battle", handleEndBattleReq);
+    return () => window.removeEventListener("request_end_battle", handleEndBattleReq);
+  }, [allProblemsSolved, handleFinalSubmit]);
+
+  useEffect(() => {
+    if (allProblemsSolved && !submitted && !isSubmitting && activeDuel?.status === "ACTIVE") {
+      handleFinalSubmit();
+    }
+  }, [allProblemsSolved, submitted, isSubmitting, activeDuel]);
 
   useEffect(() => {
     if (timeLeft === 0 && !submitted && activeDuel?.status === "ACTIVE") {
@@ -377,33 +435,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     );
   };
 
-  const handleFinalSubmit = async () => {
-    if (!activeDuel || isSubmitting || submitted) return;
-    setIsSubmitting(true);
-    try {
-      const timeSeconds = solveTime ? solveTime.split(':').reduce((acc, time) => (60 * acc) + +time, 0) : 0;
-      const complexityTotal = analysis?.scores ? 
-        (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) * 50 : 0;
 
-      await fetch("/api/duels/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-            duelId: activeDuel.id, 
-            finalize: true,
-            solveTime: timeSeconds * 1000,
-            complexityScore: complexityTotal,
-            totalPenalty: totalPenalty
-        })
-      });
-      window.dispatchEvent(new CustomEvent("duel_update_required", { detail: activeDuel.id }));
-      setSubmitted(true);
-    } catch (err) {
-      console.error("Final submit failed:", err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (isDuelFinished) {
     // Keep the result display consistent with the server: a higher battle score
@@ -517,9 +549,22 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Eye size={14} /> {t("liveOpponentCode")}
             </div>
-            <pre style={{ margin: 0, padding: '1rem', fontSize: '0.85rem', fontFamily: 'monospace', color: 'var(--text)', overflow: 'auto', textAlign: 'left', flex: 1 }}>
-              {opponentCode}
-            </pre>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <Editor
+                height="100%"
+                language={lang.toLowerCase()}
+                theme="dynamic-theme"
+                value={opponentCode}
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  fontSize: 12,
+                  fontFamily: '"Fira Code", monospace',
+                }}
+              />
+            </div>
           </div>
         ) : (
           <div style={{ width: '100%', maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.5rem', color: 'var(--text-muted)' }}>
@@ -530,87 +575,34 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     );
   }
 
-  const allProblemsSolved = activeDuel?.questions && activeDuel.questions.length > 0
-    ? activeDuel.questions.every((q: any) => {
-        const res = problemTestResults[q.id];
-        return res && res.passed === res.total && res.total > 0;
-      })
-    : allPassed;
 
-  if (allProblemsSolved) {
-    const totalScoreVal = Object.values(problemScores).reduce((sum, val) => sum + val, 0);
-
+  if (showFinalizeConfirmation) {
     return (
-      <div style={{ padding: '2rem', height: '100%', overflow: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>
-              {/* {activeQuestion?.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>} */}
-              {activeQuestion?.title}
-            </h2>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              {activeDuel?.status === "ACTIVE" ? (
-                <button 
-                  onClick={handleFinalSubmit}
-                  disabled={isSubmitting || submitted}
-                  style={{ 
-                    background: submitted ? 'var(--line)' : '#50fa7b', 
-                    color: submitted ? 'var(--text)' : '#000', 
-                    border: 'none', 
-                    padding: '0.5rem 1.5rem', 
-                    borderRadius: '0.4rem', 
-                    fontWeight: 800, 
-                    cursor: (isSubmitting || submitted) ? 'default' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  {isSubmitting ? t("submitting") || "SUBMITTING..." : (submitted ? t("submitted") : t("finalSubmit") || "FINAL SUBMIT")}
-                </button>
-              ) : (
-                <button 
-                  disabled={true}
-                  style={{ 
-                    background: 'var(--accent)', 
-                    color: '#000', 
-                    border: 'none', 
-                    padding: '0.5rem 1rem', 
-                    borderRadius: '0.4rem', 
-                    fontWeight: 700, 
-                    cursor: 'default',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    opacity: 0.7
-                  }}
-                >
-                  {t("submitted") || "Submitted"}
-                </button>
-              )}
-          </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
+        <Trophy size={48} color="var(--accent)" style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
+        <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>FINALIZE MATCH?</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem', maxWidth: '400px', lineHeight: 1.5 }}>
+          You have not perfectly solved all problems. Are you sure you wish to finalize the match, even if you didn&apos;t finish?
+        </p>
+        <div style={{ display: 'flex', gap: '1rem', width: '100%', maxWidth: '300px' }}>
+          <button 
+            onClick={() => {
+              setShowFinalizeConfirmation(false);
+              handleFinalSubmit();
+            }}
+            className="btn"
+            style={{ flex: 1, background: 'rgba(80, 250, 123, 0.1)', color: '#50fa7b', borderColor: '#50fa7b44', cursor: 'pointer' }}
+          >
+            {t("yesQuit") === "Da, părăsește" ? "Da, finalizează" : "Yes, Finalize"}
+          </button>
+          <button 
+            onClick={() => setShowFinalizeConfirmation(false)}
+            className="btn"
+            style={{ flex: 1, background: 'var(--line)', border: 'none', cursor: 'pointer' }}
+          >
+            {t("cancel")}
+          </button>
         </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '2.5rem' }}>
-          <div style={{ background: 'var(--accent)', color: '#000', padding: '1rem', borderRadius: '50%', marginBottom: '1.5rem', boxShadow: '0 0 30px var(--accent)' }}>
-            <Trophy size={48} />
-          </div>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>ALL PERFECT!</h2>
-          <p style={{ color: 'var(--text-muted)' }}>You have achieved a perfect score on every problem.</p>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
-            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total Match Score</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)' }}>
-                {totalScoreVal} pts
-              </div>
-            </div>
-
-            {renderProblemScoreCards()}
-        </div>
-
       </div>
     );
   }
@@ -745,6 +737,54 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             </h2>
           </div>
           
+          {(() => {
+            if (!activeQuestion.brokenCode || activeDuel?.gameMode !== "BUGHUNTER") return null;
+            let snippet = "";
+            try {
+              const parsed = JSON.parse(activeQuestion.brokenCode);
+              snippet = parsed[lang.toLowerCase()] || "";
+            } catch (e) {}
+            
+            if (!snippet) return null;
+            
+            return (
+              <div 
+                style={{ 
+                  padding: '1.25rem', 
+                  background: 'rgba(122, 162, 247, 0.05)', 
+                  border: '1px dashed rgba(122, 162, 247, 0.4)',
+                  borderRadius: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '1.5rem'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '0.25rem' }}>BUG HUNTER MODE</div>
+                  <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>Load the broken code into your editor to start debugging.</div>
+                </div>
+                <button
+                  onClick={() => setCode?.(snippet)}
+                  style={{
+                    padding: '0.6rem 1.2rem',
+                    background: 'var(--accent)',
+                    color: '#000',
+                    border: 'none',
+                    borderRadius: '0.4rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Use sample code
+                </button>
+              </div>
+            );
+          })()}
+
           <div style={{ 
             lineHeight: 1.8, 
             color: 'rgba(255,255,255,0.85)', 
@@ -775,6 +815,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               </div>
             </div>
           )}
+
+
 
           {((activeQuestion as any).timeLimit || (activeQuestion as any).memoryLimit) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
