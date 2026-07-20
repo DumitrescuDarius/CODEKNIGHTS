@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
 import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag } from "lucide-react";
+import { Tour, TourStep } from "./Tour";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
@@ -258,6 +259,13 @@ const changeCodeIndentation = (
   }).join('\n');
 };
 
+const TOUR_STEPS: TourStep[] = [
+  { target: '[data-tour="battle-btn"]', title: "The Battle Arena", content: "Click here to create a Quick Match or Duel a friend. This is where the magic happens!", position: "right" },
+  { target: '.workspace-selector', title: "Workspaces", content: "You can manage multiple layouts and duels simultaneously using 9 independent workspaces.", position: "bottom" },
+  { target: '[data-tour="settings-btn"]', title: "Settings", content: "Customize themes, fonts, vim mode, and interface language to your liking.", position: "bottom" },
+  { target: '[data-tour="profile-menu"]', title: "Your Profile", content: "Check your stats, manage your account, or edit your avatar here.", position: "bottom" }
+];
+
 const MainMenu: React.FC = () => {
   const { data: session, status, update: updateSession } = useSession();
   const [fullProfile, setFullProfile] = useState<any>(null);
@@ -471,7 +479,8 @@ const MainMenu: React.FC = () => {
   const [showGameModeSelection, setShowGameModeSelection] = useState(false);
   const [modalIsUnrated, setModalIsUnrated] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
-  const [incomingInvite, setIncomingInvite] = useState<{hostName: string, hostId: string, gameMode: string, unrated: boolean, pin: string} | null>(null);
+  const [inviteTargetForConfig, setInviteTargetForConfig] = useState<{ id: string, name: string } | null>(null);
+  const [incomingInvite, setIncomingInvite] = useState<{hostName: string, hostId: string, gameMode: string, unrated: boolean, pin: string, problems?: string[]} | null>(null);
   const [isAcceptingInvite, setIsAcceptingInvite] = useState(false);
   const [showQuitConfirmation, setShowQuitConfirmation] = useState(false);
   const [showCancelDuel, setShowCancelDuel] = useState(false);
@@ -495,6 +504,19 @@ const MainMenu: React.FC = () => {
   const activeDuelRef = useRef<any>(null);
   const codeRef = useRef(code);
   const testResultsRef = useRef(testResults);
+  
+  const lastMaximizedDuelRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeDuel?.status === "FINISHED" && activeDuel.id && lastMaximizedDuelRef.current !== activeDuel.id) {
+      if (!openWindows.includes("problem")) {
+        setOpenWindows(prev => [...prev, "problem"]);
+        setWindowFlexes(prev => [...prev, 1]);
+      }
+      setMaximizedWindow("problem");
+      setActiveWindow("problem");
+      lastMaximizedDuelRef.current = activeDuel.id;
+    }
+  }, [activeDuel, openWindows, setMaximizedWindow, setOpenWindows, setWindowFlexes]);
   const sessionRef = useRef(session);
   const guestIdRef = useRef(guestId);
   const pollDuelRef = useRef<() => void>(() => {});
@@ -626,6 +648,16 @@ const MainMenu: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [showRatingChangePopup]);
+
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const seen = localStorage.getItem("ck-tutorial-seen");
+      if (!seen) {
+        setShowWelcomePopup(true);
+      }
+    }
+  }, []);
 
   const [showWaitingPopup, setShowWaitingPopup] = useState(false);
   const [showInviteSentPopup, setShowInviteSentPopup] = useState(false);
@@ -824,7 +856,11 @@ const MainMenu: React.FC = () => {
             battlesTotal: data.battlesTotal || 0,
             rating: data.rating || 1000,
             dailyWins: data.dailyWins || {},
-            currentStreak: data.currentStreak || 0
+            currentStreak: data.currentStreak || 0,
+            codeKnightsStreak: data.codeKnightsStreak || 0,
+            bugHunterStreak: data.bugHunterStreak || 0,
+            hackBountyStreak: data.hackBountyStreak || 0,
+            mlMagesStreak: data.mlMagesStreak || 0
           });
           // Update session-like data for children that depend on it
           if (session.user) {
@@ -945,7 +981,7 @@ const MainMenu: React.FC = () => {
           setActiveDuel(data);
           socketRef.current?.emit("duel_update", { duelId: data.id });
           const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-          startBattle(data.question || (data.questions && data.questions[0]), actualStart);
+          startBattle(data.question || (data.questions && data.questions[0]), actualStart, data);
         } else {
 
           alert(data.error || "Failed to join duel");
@@ -958,7 +994,7 @@ const MainMenu: React.FC = () => {
     }
   }, [isGuest, guestName]);
 
-  const handleInviteDuel = useCallback(async (targetId: string, targetName: string) => {
+  const handleInviteDuel = useCallback(async (targetId: string, targetName: string, config?: any) => {
     const inBattle = activeDuel && activeDuel.status === "ACTIVE";
     if (inBattle) {
       setShowDuelInBattleWarning(true);
@@ -970,26 +1006,42 @@ const MainMenu: React.FC = () => {
       return;
     }
 
-    setActiveGameModeCallback(() => async (mode: string, isUnrated: boolean) => {
-      const myName = (session?.user as any)?.name || (session?.user as any)?.username || "Knight";
-      const myId = (session?.user as any)?.id || guestId || "host-id";
+    if (config) {
+      const myName = (sessionRef.current?.user as any)?.name || (sessionRef.current?.user as any)?.username || "Knight";
+      const myId = (sessionRef.current?.user as any)?.id || guestIdRef.current || "host-id";
       const pin = "INV-" + Math.floor(100000 + Math.random() * 900000).toString();
       
       socketRef.current?.emit("invite_duel", { 
         targetId, 
         hostName: myName, 
         hostId: myId,
-        gameMode: mode, 
-        unrated: isUnrated, 
+        gameMode: config.gameMode || "CODEKNIGHTS", 
+        unrated: config.unrated || false, 
+        problems: config.problems,
         pin 
       });
-      
       setPendingInviteTargetId(targetId);
       setShowInviteSentPopup(true);
       setDuelPin(pin);
+      return;
+    }
+
+    setInviteTargetForConfig({ id: targetId, name: targetName });
+    setOpenWindows(prev => {
+      const next = prev.filter(w => w !== "battle");
+      next.unshift("battle");
+      setWindowFlexes(next.map(() => 1));
+      return next;
     });
-    setShowGameModeSelection(true);
-  }, [isGuest, guestId, session, activeDuel]);
+    setActiveWindow("battle");
+  }, [activeDuel]);
+
+  const sendConfiguredInvite = useCallback((options: { problems?: string[]; unrated?: boolean; gameMode?: string }) => {
+    if (!inviteTargetForConfig) return;
+    
+    handleInviteDuel(inviteTargetForConfig.id, inviteTargetForConfig.name, options);
+    setInviteTargetForConfig(null);
+  }, [inviteTargetForConfig, handleInviteDuel]);
 
   const cancelInviteDuel = useCallback(() => {
     if (duelPin) {
@@ -1076,7 +1128,7 @@ const MainMenu: React.FC = () => {
             setShowInviteSentPopup(false);
             setPendingInviteTargetId(null);
             const actualStart = new Date(updatedDuel.startedAt || updatedDuel.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-            startBattle(updatedDuel.question || (updatedDuel.questions && updatedDuel.questions[0]), actualStart);
+            startBattle(updatedDuel.question || (updatedDuel.questions && updatedDuel.questions[0]), actualStart, updatedDuel);
           }
           if (data.serverTime) setClockOffset(data.serverTime - Date.now());
           console.log("[CLIENT pollDuel] updatedDuel.questionIds:", updatedDuel.questionIds, "questions count:", updatedDuel.questions?.length);
@@ -1209,7 +1261,7 @@ const MainMenu: React.FC = () => {
          setPendingInviteTargetId(null);
          
          const actualStart = new Date(data.duel.startedAt || data.duel.createdAt).getTime() - (data.duel.serverTime ? data.duel.serverTime - Date.now() : clockOffset);
-         startBattle(data.duel.question || (data.duel.questions && data.duel.questions[0]), actualStart);
+         startBattle(data.duel.question || (data.duel.questions && data.duel.questions[0]), actualStart, data.duel);
          setActiveDuel(data.duel);
       }
     });
@@ -1334,18 +1386,40 @@ const MainMenu: React.FC = () => {
       const opponentFinalized = isHostLocal ? (activeDuel as any).guestFinalized : (activeDuel as any).hostFinalized;
       const opponentSolveTimeMs = isHostLocal ? activeDuel.guestSolveTime : activeDuel.hostSolveTime;
       
-      if (opponentFinalized && opponentSolveTimeMs) {
-          const opponentSecs = Math.floor(opponentSolveTimeMs / 1000);
-          limit = Math.min(limit, opponentSecs + 120);
+      let deadline: number;
+      if (activeDuel.phase === "BREAKING" && activeDuel.phaseEndsAt) {
+          deadline = new Date(activeDuel.phaseEndsAt).getTime() - clockOffset;
+      } else {
+          if (opponentFinalized && opponentSolveTimeMs) {
+              const opponentSecs = Math.floor(opponentSolveTimeMs / 1000);
+              limit = Math.min(limit, opponentSecs + 120);
+          }
+          const startTime = new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset;
+          deadline = startTime + limit * 1000;
       }
-
-      const startTime = new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset;
-      const deadline = startTime + limit * 1000;
+      
+      let hasTriggeredTransition = false;
       const updateTimeLeft = () => {
         // Calculate from an absolute deadline so delayed intervals, tab throttling,
         // and temporary browser pauses cannot make the clock drift.
         const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
         setTimeLeft(remaining);
+        
+        if (remaining <= 0 && activeDuel.phase === "BREAKING" && !hasTriggeredTransition) {
+           hasTriggeredTransition = true;
+           fetch("/api/duels/transition", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ duelId: activeDuel.id, guestUserId: guestId, code: codeRef.current })
+           }).then(res => res.json()).then(data => {
+              if (data.phase === "FIXING") {
+                 // The server transitioned the phase. 
+                 // Emit a socket event to sync both clients.
+                 socketRef.current?.emit("duel_update", { duelId: activeDuel.id });
+              }
+           });
+        }
+        
         return remaining > 0;
       };
 
@@ -1362,9 +1436,37 @@ const MainMenu: React.FC = () => {
     };
   }, [activeDuel, clockOffset]);
 
+  const [lastProcessedPhase, setLastProcessedPhase] = useState<string | null>(null);
 
-
-
+  useEffect(() => {
+    if (activeDuel && activeDuel.gameMode === "HACKBOUNTY" && activeDuel.questions && activeDuel.questions.length >= 1) {
+       const currentUserId = session?.user ? (session.user as any).id : guestId;
+       const isHost = activeDuel.hostId === currentUserId;
+       
+       if (activeDuel.phase && activeDuel.phase !== lastProcessedPhase) {
+           setLastProcessedPhase(activeDuel.phase);
+           
+           if (activeDuel.phase === "BREAKING") {
+               const myQuestion = activeDuel.questions[0];
+               setActiveQuestion(myQuestion);
+               if (myQuestion?.referenceCode) {
+                   try {
+                       const refs = JSON.parse(myQuestion.referenceCode);
+                       if (refs[lang]) setCode(refs[lang]);
+                       else setCode("// No reference code available for this language");
+                   } catch(e) {}
+               }
+           } else if (activeDuel.phase === "FIXING") {
+               const oppQuestion = activeDuel.questions[0];
+               setActiveQuestion(oppQuestion);
+               const oppCode = isHost ? (activeDuel as any).guestSabotagedCode : (activeDuel as any).hostSabotagedCode;
+               if (oppCode) {
+                   setCode(oppCode);
+               }
+           }
+       }
+    }
+  }, [activeDuel, lastProcessedPhase, session, guestId, lang, setActiveQuestion, setCode]);
   useEffect(() => {
     const savedLang = localStorage.getItem("ck-lang") as Language;
     if (savedLang) setLang(savedLang);
@@ -1744,13 +1846,15 @@ const MainMenu: React.FC = () => {
     }
   };
 
-  const startBattle = useCallback((question?: Question, forceStartTime?: number) => {
+  const startBattle = useCallback((question?: Question, forceStartTime?: number, overrideDuel?: any) => {
     if (document.visibilityState === 'hidden') {
       playNotificationSound();
     }
     
     const q = question || (questions.length > 0 ? questions[Math.floor(Math.random() * questions.length)] : DEFAULT_QUESTION);
     if (!q) return;
+    
+    const currentDuel = overrideDuel || activeDuel;
     
     setActiveQuestion(q);
     setTestResults(null);
@@ -1763,7 +1867,7 @@ const MainMenu: React.FC = () => {
     
     let initialLang = lang;
     let initialCode = "";
-    if (activeDuel?.gameMode === "BUGHUNTER" && q.brokenCode) {
+    if (currentDuel?.gameMode === "BUGHUNTER" && q.brokenCode) {
       try {
         const parsed = JSON.parse(q.brokenCode);
         const availableLangs = Object.keys(parsed);
@@ -1789,7 +1893,7 @@ const MainMenu: React.FC = () => {
     setCode(initialCode);
 
     // If it's a duel, use startedAt as the start time, otherwise now.
-    const startTime = forceStartTime || (activeDuel ? new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset : Date.now());
+    const startTime = forceStartTime || (currentDuel ? new Date(currentDuel.startedAt || currentDuel.createdAt || Date.now()).getTime() - clockOffset : Date.now());
     setBattleStartTime(startTime);
     
     setSolveTime(null);
@@ -1888,7 +1992,7 @@ const MainMenu: React.FC = () => {
             setShowWaitingPopup(false);
             setShowOpponentFoundPopup(true);
             const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-            startBattle(data.question || (data.questions && data.questions[0]), actualStart);
+            startBattle(data.question || (data.questions && data.questions[0]), actualStart, data);
           }
         }
       } else {
@@ -1985,13 +2089,20 @@ const MainMenu: React.FC = () => {
             currentProblemScore = 0;
           }
         } else {
-          // Award completed tests even if a later test times out. The time bonus
-          // applies only when at least one test passed; failed attempts use the
-          // capped per-problem penalty tiers.
           const failedAttempts = (problemWrongAttemptCounts[activeQuestion.id] ?? 0) + (allTestsPassed ? 0 : 1);
           const submissionPenalty = failedAttempts >= 3 ? 100 : failedAttempts >= 1 ? 50 : 0;
-          const remainingTimeBonus = passed > 0 ? Math.max(timeLeft ?? 0, 0) : 0;
-          currentProblemScore = Math.max(0, passed * 50 + remainingTimeBonus - submissionPenalty);
+          
+          const difficultyTimeLimits: Record<string, number> = {
+            "Easy": 8 * 60,
+            "Medium": 12 * 60,
+            "Hard": 18 * 60
+          };
+          const limit = activeDuel.totalTime ? activeDuel.totalTime * 60 : (difficultyTimeLimits[activeQuestion.difficulty] || 8 * 60);
+          const elapsed = Math.max(0, limit - (timeLeft ?? 0));
+          const timeFraction = Math.min(1, elapsed / limit);
+          const reduction = Math.floor(timeFraction * 20); // 0 to 20 max reduction per test
+          
+          currentProblemScore = Math.max(0, passed * (50 - reduction) - submissionPenalty);
         }
 
         setProblemScores(prev => {
@@ -2594,6 +2705,9 @@ const MainMenu: React.FC = () => {
             t={t} onDeleteQuestion={handleDeleteQuestion} onEditQuestion={onEditQuestion}
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
             userStats={userStats}
+            inviteTargetForConfig={inviteTargetForConfig}
+            sendConfiguredInvite={sendConfiguredInvite}
+            cancelConfiguredInvite={() => setInviteTargetForConfig(null)}
             setActiveDuel={setActiveDuel} setDuelPin={setDuelPin}
             showCancelDuel={showCancelDuel} setShowCancelDuel={setShowCancelDuel}
             isWaitingForResponse={pendingInviteTargetId !== null}
@@ -2953,6 +3067,15 @@ const MainMenu: React.FC = () => {
         )}
       </AnimatePresence>
 
+      <Tour 
+        steps={TOUR_STEPS} 
+        isOpen={showWelcomePopup} 
+        onClose={() => { 
+          setShowWelcomePopup(false); 
+          localStorage.setItem("ck-tutorial-seen", "true"); 
+        }} 
+      />
+
       <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', pointerEvents: 'none' }}>
         <AnimatePresence>
           {[
@@ -2982,23 +3105,24 @@ const MainMenu: React.FC = () => {
                         setIsAcceptingInvite(true);
                         const myId = session?.user ? (session.user as any).id : (isGuest ? guestId : null);
                         try {
-                          const res = await fetch("/api/duels", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              hostId: incomingInvite.hostId,
-                              guestId: myId,
-                              gameMode: incomingInvite.gameMode,
-                              unrated: incomingInvite.unrated
-                            })
-                          });
+                            const res = await fetch("/api/duels", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                hostId: incomingInvite.hostId,
+                                guestId: myId,
+                                gameMode: incomingInvite.gameMode,
+                                unrated: incomingInvite.unrated,
+                                problems: incomingInvite.problems
+                              })
+                            });
                           const data = await res.json();
                           if (res.ok && data.id) {
                             setDuelPin(data.pin);
                             socketRef.current?.emit("accept_invite", { hostId: incomingInvite.hostId, pin: data.pin, duel: data });
                             
                             const actualStart = new Date(data.startedAt || data.createdAt).getTime() - (data.serverTime ? data.serverTime - Date.now() : clockOffset);
-                            startBattle(data.question || (data.questions && data.questions[0]), actualStart);
+                            startBattle(data.question || (data.questions && data.questions[0]), actualStart, data);
                             if (isGuest && data.guestId) {
                                setGuestId(data.guestId);
                             }
@@ -3130,6 +3254,7 @@ const MainMenu: React.FC = () => {
               return (
                 <li key={link.id}>
                   <button 
+                    data-tour={`${link.id}-btn`}
                     onClick={() => !isDisabled && toggleWindow(link.id)} 
                     className={`nav-link ${openWindows.includes(link.id) ? "nav-link--active" : ""}`} 
                     style={{ 
@@ -3150,9 +3275,9 @@ const MainMenu: React.FC = () => {
             {(session && !isGuest) && (
               <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><Brain size={20} /></button>
             )}
-            <button onClick={() => toggleWindow("settings")} style={{ background: 'transparent', border: 'none', color: '#f1fa8c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
+            <button onClick={() => toggleWindow("settings")} data-tour="settings-btn" style={{ background: 'transparent', border: 'none', color: '#f1fa8c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
             {(session || isGuest) ? (
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative' }} data-tour="profile-menu">
                 <button 
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                   style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.4rem', borderRadius: '0.3rem' }}
@@ -3426,9 +3551,9 @@ const MainMenu: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>
                             <button 
                               onClick={(e) => { e.stopPropagation(); runTests(); }} 
-                              disabled={isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)} 
-                              style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)) ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0)) ? 0.7 : 1 }}>
-                              {isTesting ? "..." : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? <><Check size={12} fill="currentColor" /> SUBMITTED</> : <><Send size={10} fill="currentColor" /> SUBMIT</>)}
+                              disabled={isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")} 
+                              style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 0.7 : 1 }}>
+                              {isTesting ? "..." : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? <><Check size={12} fill="currentColor" /> SUBMITTED</> : (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING" ? <><Zap size={10} fill="currentColor" /> BREAKING...</> : <><Send size={10} fill="currentColor" /> SUBMIT</>))}
                             </button>
                           </div>
                         )}

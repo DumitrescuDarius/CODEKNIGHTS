@@ -6,7 +6,7 @@ import { TranslationKey } from "../../constants/translations";
 import { Question } from "../../types";
 
 interface AdminWindowProps {
-  newQuestion: { id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: any[]; hiddenTestCases: any[]; timeLimit: number; memoryLimit: number; brokenCode?: string };
+  newQuestion: { id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: any[]; hiddenTestCases: any[]; timeLimit: number; memoryLimit: number; brokenCode?: string; referenceCode?: string };
   setNewQuestion: (val: any) => void;
   handleAddQuestion: () => void;
   handleUpdateQuestion: () => void;
@@ -35,14 +35,25 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  const [gameModeSelection, setGameModeSelection] = useState<"CODEKNIGHTS" | "BUGHUNTER">("CODEKNIGHTS");
+  const [gameModeSelection, setGameModeSelection] = useState<"CODEKNIGHTS" | "BUGHUNTER" | "HACKBOUNTY">("CODEKNIGHTS");
   const [targetLanguage, setTargetLanguage] = useState<"PYTHON" | "CPP" | "C" | "JAVA">("PYTHON");
   const [brokenCodeText, setBrokenCodeText] = useState("");
+  const [referenceCodeText, setReferenceCodeText] = useState("");
 
   // Sync from newQuestion (e.g. when beginning editing)
   useEffect(() => {
     if (newQuestion.id) {
-      if (newQuestion.brokenCode) {
+      if (newQuestion.referenceCode) {
+        try {
+          const parsed = JSON.parse(newQuestion.referenceCode);
+          const langKey = (Object.keys(parsed)[0] || "python").toUpperCase() as "PYTHON" | "CPP" | "C" | "JAVA";
+          setGameModeSelection("HACKBOUNTY");
+          setTargetLanguage(langKey);
+          setReferenceCodeText(parsed[langKey.toLowerCase()] || "");
+        } catch (e) {
+          console.error("Failed to parse referenceCode in sync", e);
+        }
+      } else if (newQuestion.brokenCode) {
         try {
           const parsed = JSON.parse(newQuestion.brokenCode);
           const langKey = (Object.keys(parsed)[0] || "python").toUpperCase() as "PYTHON" | "CPP" | "C" | "JAVA";
@@ -55,35 +66,50 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       } else {
         setGameModeSelection("CODEKNIGHTS");
         setBrokenCodeText("");
+        setReferenceCodeText("");
       }
-    } else if (!newQuestion.brokenCode && newQuestion.title === "") {
+    } else if (!newQuestion.brokenCode && !newQuestion.referenceCode && newQuestion.title === "") {
       setGameModeSelection("CODEKNIGHTS");
       setBrokenCodeText("");
+      setReferenceCodeText("");
     }
   }, [newQuestion.id]);
 
   // Sync to newQuestion
   useEffect(() => {
-    if (gameModeSelection === "BUGHUNTER") {
+    if (gameModeSelection === "HACKBOUNTY") {
       setNewQuestion((prev: any) => {
-        const codeMap = JSON.stringify({ [targetLanguage.toLowerCase()]: brokenCodeText });
-        if (prev.difficulty === targetLanguage && prev.brokenCode === codeMap) return prev;
+        const refMap = JSON.stringify({ [targetLanguage.toLowerCase()]: referenceCodeText });
+        if (prev.difficulty === targetLanguage && prev.referenceCode === refMap && prev.brokenCode === "") return prev;
         return {
           ...prev,
           difficulty: targetLanguage,
-          brokenCode: codeMap
+          referenceCode: refMap,
+          brokenCode: ""
+        };
+      });
+    } else if (gameModeSelection === "BUGHUNTER") {
+      setNewQuestion((prev: any) => {
+        const codeMap = JSON.stringify({ [targetLanguage.toLowerCase()]: brokenCodeText });
+        if (prev.difficulty === targetLanguage && prev.brokenCode === codeMap && prev.referenceCode === "") return prev;
+        return {
+          ...prev,
+          difficulty: targetLanguage,
+          brokenCode: codeMap,
+          referenceCode: ""
         };
       });
     } else {
       setNewQuestion((prev: any) => {
-        if (prev.brokenCode === "") return prev;
+        if (prev.brokenCode === "" && prev.referenceCode === "") return prev;
         return {
           ...prev,
-          brokenCode: ""
+          brokenCode: "",
+          referenceCode: ""
         };
       });
     }
-  }, [gameModeSelection, targetLanguage, brokenCodeText, setNewQuestion]);
+  }, [gameModeSelection, targetLanguage, brokenCodeText, referenceCodeText, setNewQuestion]);
 
   useEffect(() => {
     fetchUsers();
@@ -453,6 +479,9 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
     }
   };
 
+  type AdminTab = "CREATE" | "QUESTIONS" | "USERS";
+  const [activeTab, setActiveTab] = useState<AdminTab>("CREATE");
+
   const startEditing = (q: Question) => {
     setError(null);
     const tc = typeof q.testCases === 'string' ? JSON.parse(q.testCases) : q.testCases;
@@ -501,6 +530,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       combined.push({ input: "", output: "", isPublic: true });
     }
     setFormTests(combined);
+    setActiveTab("CREATE");
   };
 
   const cancelEditing = () => {
@@ -537,10 +567,29 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
           </div>
         )}
 
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--line)' }}>
+          <button 
+            onClick={() => setActiveTab("CREATE")}
+            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === "CREATE" ? '2px solid var(--accent)' : '2px solid transparent', color: activeTab === "CREATE" ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}>
+            CREATE / EDIT
+          </button>
+          <button 
+            onClick={() => setActiveTab("QUESTIONS")}
+            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === "QUESTIONS" ? '2px solid var(--accent)' : '2px solid transparent', color: activeTab === "QUESTIONS" ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}>
+            MANAGE QUESTIONS
+          </button>
+          <button 
+            onClick={() => setActiveTab("USERS")}
+            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === "USERS" ? '2px solid var(--accent)' : '2px solid transparent', color: activeTab === "USERS" ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}>
+            MANAGE USERS
+          </button>
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
           {/* Question Creator / Editor */}
-          <div className="settings-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem' }}>
+          {activeTab === "CREATE" && (
+            <div className="settings-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem' }}>
               <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, fontSize: '0.8rem', color: 'var(--accent)' }}>
                 {newQuestion.id ? <Edit2 size={14} /> : <Plus size={14} />} {newQuestion.id ? t("editChallenge") : t("createChallenge")}
               </span>
@@ -625,7 +674,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                   {[
                     { label: "Standard (CodeKnights)", value: "CODEKNIGHTS" },
-                    { label: "Bug Hunter (Fix Broken Code)", value: "BUGHUNTER" }
+                    { label: "Bug Hunter (Fix Broken Code)", value: "BUGHUNTER" },
+                    { label: "Hack Bounty (Break & Fix)", value: "HACKBOUNTY" }
                   ].map(opt => (
                     <button
                       key={opt.value}
@@ -695,16 +745,31 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                     </div>
                   </div>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Broken Code Template</label>
-                    <textarea
-                      value={brokenCodeText}
-                      onChange={(e) => setBrokenCodeText(e.target.value)}
-                      onKeyDown={(e) => handleTabKey(e, setBrokenCodeText)}
-                      style={{ width: '100%', minHeight: '200px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.8rem 1rem', borderRadius: '0.4rem', color: 'inherit', outline: 'none', fontSize: '0.95rem', fontFamily: 'monospace' }}
-                      placeholder={`Write the broken template code for ${targetLanguage} here...\nPlayers will receive this broken version and need to fix it.`}
-                    />
-                  </div>
+                  {gameModeSelection === "BUGHUNTER" && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Broken Code Template</label>
+                      <textarea
+                        value={brokenCodeText}
+                        onChange={(e) => setBrokenCodeText(e.target.value)}
+                        onKeyDown={(e) => handleTabKey(e, setBrokenCodeText)}
+                        style={{ width: '100%', minHeight: '200px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.8rem 1rem', borderRadius: '0.4rem', color: 'inherit', outline: 'none', fontSize: '0.95rem', fontFamily: 'monospace' }}
+                        placeholder={`Write the broken template code for ${targetLanguage} here...\nPlayers will receive this broken version and need to fix it.`}
+                      />
+                    </div>
+                  )}
+
+                  {gameModeSelection === "HACKBOUNTY" && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Reference Code / Starter Code</label>
+                      <textarea
+                        value={referenceCodeText}
+                        onChange={(e) => setReferenceCodeText(e.target.value)}
+                        onKeyDown={(e) => handleTabKey(e, setReferenceCodeText)}
+                        style={{ width: '100%', minHeight: '200px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.8rem 1rem', borderRadius: '0.4rem', color: 'inherit', outline: 'none', fontSize: '0.95rem', fontFamily: 'monospace' }}
+                        placeholder={`Write the working reference code for ${targetLanguage} here...\nPlayers will receive this working code and need to break it during phase 1.`}
+                      />
+                    </div>
+                  )}
                 </>
               )}
 
@@ -962,91 +1027,100 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
               </button>
             </div>
           </div>
+          )}
 
           {/* Question List / Management */}
-          <div className="settings-group" style={{ marginTop: '2rem' }}>
-            <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--accent)' }}>
-              <Sword size={14} /> MANAGE ARENA CHALLENGES
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {(() => {
-                const filteredQuestions = questions.filter(q => gameModeSelection === "BUGHUNTER" ? !!q.brokenCode : !q.brokenCode);
-                if (filteredQuestions.length === 0) {
-                  return <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noQuestionsFound")}</p>;
-                }
-                return filteredQuestions.map((q) => (
-                  <div key={q.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                        <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{q.problemId || "?"}</span>
-                        {q.title}
+          {activeTab === "QUESTIONS" && (
+            <div className="settings-group" style={{ marginTop: '0' }}>
+              <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--accent)' }}>
+                <Sword size={14} /> MANAGE ARENA CHALLENGES
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {(() => {
+                  const filteredQuestions = questions.filter(q => {
+                    if (gameModeSelection === "HACKBOUNTY") return !!q.referenceCode;
+                    if (gameModeSelection === "BUGHUNTER") return !!q.brokenCode;
+                    return !q.brokenCode && !q.referenceCode;
+                  });
+                  if (filteredQuestions.length === 0) {
+                    return <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noQuestionsFound")}</p>;
+                  }
+                  return filteredQuestions.map((q) => (
+                    <div key={q.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                          <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{q.problemId || "?"}</span>
+                          {q.title}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: q.referenceCode ? '#ffb86c' : q.brokenCode ? '#50fa7b' : q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555', marginTop: '0.2rem', fontWeight: 600 }}>
+                          {q.referenceCode ? `HACKBOUNTY (Target: ${q.difficulty})` : q.brokenCode ? `BUGHUNTER (Target: ${q.difficulty})` : q.difficulty === 'Easy' ? 'TARGET PRACTICE' : q.difficulty === 'Medium' ? 'TRIAL DUEL' : 'ROYAL CHALLENGE'}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: q.brokenCode ? '#50fa7b' : q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555', marginTop: '0.2rem', fontWeight: 600 }}>
-                        {q.brokenCode ? `BUGHUNTER (Target: ${q.difficulty})` : q.difficulty === 'Easy' ? 'TARGET PRACTICE' : q.difficulty === 'Medium' ? 'TRIAL DUEL' : 'ROYAL CHALLENGE'}
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          onClick={() => startEditing(q)}
+                          className="twm-btn" 
+                          style={{ color: 'var(--accent)', padding: '0.5rem', background: 'rgba(255,255,255,0.03)' }}
+                          title="Edit Question"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button 
+                          onClick={() => onDeleteQuestion(q.id)}
+                          className="twm-btn" 
+                          style={{ color: '#ff5555', padding: '0.5rem', background: 'rgba(255,255,255,0.03)' }}
+                          title="Delete Question"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button 
-                        onClick={() => startEditing(q)}
-                        className="twm-btn" 
-                        style={{ color: 'var(--accent)', padding: '0.5rem', background: 'rgba(255,255,255,0.03)' }}
-                        title="Edit Question"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button 
-                        onClick={() => onDeleteQuestion(q.id)}
-                        className="twm-btn" 
-                        style={{ color: '#ff5555', padding: '0.5rem', background: 'rgba(255,255,255,0.03)' }}
-                        title="Delete Question"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ));
-              })()}
+                  ));
+                })()}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* User List / Management */}
-          <div className="settings-group" style={{ marginTop: '2rem' }}>
-            <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--accent)' }}>
-              <Users size={14} /> MANAGE USERS
-            </span>
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.75rem', minHeight: '100px' }}>
-              {loadingUsers ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100px', gap: '0.75rem' }}>
-                  <div className="loading-spinner" style={{ width: '28px', height: '28px' }} />
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t("loadingUsers")?.toUpperCase() || "LOADING USERS..."}</div>
-                </div>
-              ) : users.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noUsersFound")}</p>
-              ) : (
-                users.map((u) => (
-                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{u.username || u.name || "Unknown User"}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontWeight: 600 }}>
-                        {u.email} {u.isAdmin ? <span style={{ color: '#ffb86c' }}>(ADMIN)</span> : ''}
+          {activeTab === "USERS" && (
+            <div className="settings-group" style={{ marginTop: '0' }}>
+              <span className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--accent)' }}>
+                <Users size={14} /> MANAGE USERS
+              </span>
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.75rem', minHeight: '100px' }}>
+                {loadingUsers ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100px', gap: '0.75rem' }}>
+                    <div className="loading-spinner" style={{ width: '28px', height: '28px' }} />
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t("loadingUsers")?.toUpperCase() || "LOADING USERS..."}</div>
+                  </div>
+                ) : users.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>{t("noUsersFound")}</p>
+                ) : (
+                  users.map((u) => (
+                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', transition: 'border-color 0.2s ease' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{u.username || u.name || "Unknown User"}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontWeight: 600 }}>
+                          {u.email} {u.isAdmin ? <span style={{ color: '#ffb86c' }}>(ADMIN)</span> : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="twm-btn" 
+                          style={{ color: '#ff5555', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', opacity: u.isAdmin ? 0.3 : 1, cursor: u.isAdmin ? 'not-allowed' : 'pointer' }}
+                          title="Delete User"
+                          disabled={u.isAdmin}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button 
-                        onClick={() => handleDeleteUser(u.id)}
-                        className="twm-btn" 
-                        style={{ color: '#ff5555', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', opacity: u.isAdmin ? 0.3 : 1, cursor: u.isAdmin ? 'not-allowed' : 'pointer' }}
-                        title="Delete User"
-                        disabled={u.isAdmin}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

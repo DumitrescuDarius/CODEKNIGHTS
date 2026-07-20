@@ -19,14 +19,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { title, description, restrictions, difficulty, testCases, hiddenTestCases, timeLimit, memoryLimit, brokenCode } = await req.json();
+    const { title, description, restrictions, difficulty, testCases, hiddenTestCases, timeLimit, memoryLimit, brokenCode, referenceCode } = await req.json();
 
     if (!title || !description || !difficulty || !testCases) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const allQuestions = await prisma.question.findMany({ select: { problemId: true } });
-    const ids = allQuestions.map(q => q.problemId).filter(id => id !== null).sort((a: any, b: any) => a - b);
+    const ids = await prisma.question.findMany({ select: { problemId: true }, orderBy: { problemId: 'asc' } }).then(res => res.map(r => r.problemId).filter(Boolean));
     let smallest = 1;
     for (const pid of ids) {
       if (pid === smallest) smallest++;
@@ -42,6 +41,7 @@ export async function POST(req: NextRequest) {
       testCases: JSON.stringify(testCases),
       hiddenTestCases: hiddenTestCases ? JSON.stringify(hiddenTestCases) : "[]",
       brokenCode: brokenCode ? (typeof brokenCode === 'object' ? JSON.stringify(brokenCode) : brokenCode) : null,
+      referenceCode: referenceCode ? (typeof referenceCode === 'object' ? JSON.stringify(referenceCode) : referenceCode) : null,
       ...(timeLimit !== undefined && { timeLimit: Number(timeLimit) }),
       ...(memoryLimit !== undefined && { memoryLimit: Number(memoryLimit) }),
     };
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   try {
-    const { id, title, description, restrictions, difficulty, testCases, hiddenTestCases, timeLimit, memoryLimit, brokenCode } = await req.json();
+    const { id, title, description, restrictions, difficulty, testCases, hiddenTestCases, timeLimit, memoryLimit, brokenCode, referenceCode } = await req.json();
 
     if (!id || !title || !description || !difficulty || !testCases) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -80,6 +80,7 @@ export async function PATCH(req: NextRequest) {
       testCases: JSON.stringify(testCases),
       hiddenTestCases: hiddenTestCases ? JSON.stringify(hiddenTestCases) : "[]",
       brokenCode: brokenCode ? (typeof brokenCode === 'object' ? JSON.stringify(brokenCode) : brokenCode) : null,
+      referenceCode: referenceCode ? (typeof referenceCode === 'object' ? JSON.stringify(referenceCode) : referenceCode) : null,
       ...(timeLimit !== undefined && { timeLimit: Number(timeLimit) }),
       ...(memoryLimit !== undefined && { memoryLimit: Number(memoryLimit) }),
     };

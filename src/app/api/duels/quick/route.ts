@@ -8,7 +8,9 @@ export async function POST(req: NextRequest) {
   const { guestName, unrated, forceCreate, findOnly, problems, gameMode } = await req.json().catch(() => ({}));
 
   let userId = session?.user ? (session.user as any).id : null;
-  let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
+  let userName = session?.user 
+    ? ((session.user as any).username || session.user.name) 
+    : `${guestName || "Guest Knight"}-${Math.floor(10000 + Math.random() * 90000)}`;
 
   try {
     if (!userId) {
@@ -117,6 +119,11 @@ export async function POST(req: NextRequest) {
       const queryCond: any = { difficulty: formattedDiff, id: { notIn: questionIds } };
       if (gameMode === "BUGHUNTER") {
         queryCond.brokenCode = { not: null };
+      } else if (gameMode === "HACKBOUNTY") {
+        queryCond.referenceCode = { not: null };
+      } else {
+        queryCond.brokenCode = null;
+        queryCond.referenceCode = null;
       }
       let pool = await prisma.question.findMany({
         where: queryCond,
@@ -126,6 +133,11 @@ export async function POST(req: NextRequest) {
         const fallbackCond: any = { difficulty: formattedDiff };
         if (gameMode === "BUGHUNTER") {
           fallbackCond.brokenCode = { not: null };
+        } else if (gameMode === "HACKBOUNTY") {
+          fallbackCond.referenceCode = { not: null };
+        } else {
+          fallbackCond.brokenCode = null;
+          fallbackCond.referenceCode = null;
         }
         pool = await prisma.question.findMany({
           where: fallbackCond,
@@ -133,8 +145,17 @@ export async function POST(req: NextRequest) {
         });
       }
       if (pool.length === 0) {
+        const finalFallbackCond: any = {};
+        if (gameMode === "BUGHUNTER") {
+          finalFallbackCond.brokenCode = { not: null };
+        } else if (gameMode === "HACKBOUNTY") {
+          finalFallbackCond.referenceCode = { not: null };
+        } else {
+          finalFallbackCond.brokenCode = null;
+          finalFallbackCond.referenceCode = null;
+        }
         pool = await prisma.question.findMany({
-          where: gameMode === "BUGHUNTER" ? { brokenCode: { not: null } } : {},
+          where: finalFallbackCond,
           select: { id: true }
         });
       }

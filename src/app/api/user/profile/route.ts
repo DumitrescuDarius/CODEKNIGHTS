@@ -72,14 +72,35 @@ export async function GET(req: Request) {
     const pastDuels = [...user.hostDuels, ...user.guestDuels].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 60);
     
     let currentStreak = 0;
+    let codeKnightsStreak = 0;
+    let bugHunterStreak = 0;
+    let hackBountyStreak = 0;
+    let mlMagesStreak = 0;
+
+    let brokenGlobal = false;
+    let brokenCK = false;
+    let brokenBH = false;
+    let brokenHB = false;
+    let brokenML = false;
+
     for (const duel of pastDuels) {
       const isHost = duel.hostId === userId;
       const change = isHost ? duel.hostRatingChange : duel.guestRatingChange;
+      const mode = duel.gameMode || "CODEKNIGHTS";
+      
       if (change !== null && change !== undefined) {
           if (change > 0) {
-              currentStreak++;
+              if (!brokenGlobal) currentStreak++;
+              if (mode === "CODEKNIGHTS" && !brokenCK) codeKnightsStreak++;
+              if (mode === "BUGHUNTER" && !brokenBH) bugHunterStreak++;
+              if (mode === "HACKBOUNTY" && !brokenHB) hackBountyStreak++;
+              if (mode === "MLMAGES" && !brokenML) mlMagesStreak++;
           } else if (change < 0) {
-              break;
+              brokenGlobal = true;
+              if (mode === "CODEKNIGHTS") brokenCK = true;
+              if (mode === "BUGHUNTER") brokenBH = true;
+              if (mode === "HACKBOUNTY") brokenHB = true;
+              if (mode === "MLMAGES") brokenML = true;
           }
       }
     }
@@ -98,7 +119,7 @@ export async function GET(req: Request) {
     });
     const globalRank = higherRatedCount + 1;
     
-    return NextResponse.json({ ...user, pastDuels, failedSubmissionsCount, currentStreak, isOnline, globalRank });
+    return NextResponse.json({ ...user, pastDuels, failedSubmissionsCount, currentStreak, codeKnightsStreak, bugHunterStreak, hackBountyStreak, mlMagesStreak, isOnline, globalRank });
   } catch (error) {
     console.error("Profile fetch error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

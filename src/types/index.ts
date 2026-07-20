@@ -40,6 +40,10 @@ export interface UserStats {
   rating?: number;
   dailyWins?: any;
   currentStreak?: number;
+  codeKnightsStreak?: number;
+  bugHunterStreak?: number;
+  hackBountyStreak?: number;
+  mlMagesStreak?: number;
 }
 
 export interface Match {

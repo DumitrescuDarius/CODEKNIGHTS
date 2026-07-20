@@ -30,11 +30,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "accept") {
+      const isHackBounty = (duel.gameMode === "HACKBOUNTY");
       const updated = await prisma.duel.update({
         where: { id: duelId },
         data: {
           status: "ACTIVE",
-          startedAt: new Date()
+          startedAt: new Date(),
+          phase: isHackBounty ? "BREAKING" : null,
+          phaseEndsAt: isHackBounty ? new Date(Date.now() + 100 * 1000) : null,
         },
         include: { host: true, guest: true, question: true }
       });

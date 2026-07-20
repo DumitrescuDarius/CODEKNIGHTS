@@ -26,6 +26,23 @@ export async function GET(req: NextRequest) {
     }
 
 
+    if (duel.gameMode === "HACKBOUNTY" && duel.phase === "BREAKING" && duel.phaseEndsAt && duel.phaseEndsAt < new Date()) {
+      duel = await prisma.duel.update({
+        where: { id: duel.id },
+        data: {
+          phase: "FIXING",
+          phaseEndsAt: null, // Fixing phase is unlimited until time runs out
+          hostSabotagedCode: duel.hostSabotagedCode || duel.question?.referenceCode || "",
+          guestSabotagedCode: duel.guestSabotagedCode || duel.question?.referenceCode || "",
+        },
+        include: {
+          host: true,
+          guest: true,
+          question: true
+        }
+      });
+    }
+
     const safeDuel = { ...duel };
     if (safeDuel.question && 'hiddenTestCases' in safeDuel.question) {
        (safeDuel.question as any).hiddenTestCases = null;

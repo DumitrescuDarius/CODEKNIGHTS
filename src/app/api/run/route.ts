@@ -122,8 +122,11 @@ function checkMaliciousCode(code: string, language: string): string | null {
       /syscall\s*\(/i,
     ],
     java: [
-      /java\.io\./i,
-      /java\.nio\./i,
+      /java\.io\.File/i,
+      /java\.io\.RandomAccessFile/i,
+      /java\.io\.FileInputStream/i,
+      /java\.io\.FileOutputStream/i,
+      /java\.nio\.file\./i,
       /java\.net\./i,
       /java\.lang\.reflect\./i,
       /Runtime\.getRuntime\(\)/i,
@@ -189,12 +192,15 @@ export async function POST(req: Request) {
     let dockerImage = "";
     let containerCmd = "";
 
+    const exeExt = process.platform === "win32" ? ".exe" : "";
+    const binName = `solution${exeExt}`;
+
     switch (language) {
       case "c":
         fileName = "solution.c";
         // -pipe: less temp I/O; -O0: fast compile for short programs
-        compileCmd = `gcc -pipe -O0 "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, "solution")}"`;
-        runCmd = `"${path.join(jobDir, "solution")}"`;
+        compileCmd = `gcc -pipe -O0 "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, binName)}"`;
+        runCmd = `"${path.join(jobDir, binName)}"`;
         if (hasDocker) {
           dockerImage = "gcc:latest";
           containerCmd = `sh -c "gcc -pipe -O0 solution.c -o solution && ./solution"`;
@@ -202,8 +208,8 @@ export async function POST(req: Request) {
         break;
       case "cpp":
         fileName = "solution.cpp";
-        compileCmd = `g++ -pipe -O0 "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, "solution")}"`;
-        runCmd = `"${path.join(jobDir, "solution")}"`;
+        compileCmd = `g++ -pipe -O0 "${path.join(jobDir, fileName)}" -o "${path.join(jobDir, binName)}"`;
+        runCmd = `"${path.join(jobDir, binName)}"`;
         if (hasDocker) {
           dockerImage = "gcc:latest";
           containerCmd = `sh -c "g++ -pipe -O0 solution.cpp -o solution && ./solution"`;
@@ -226,7 +232,7 @@ export async function POST(req: Request) {
         compileCmd = `javac "${path.join(jobDir, fileName)}"`;
         runCmd = `java -XX:TieredStopAtLevel=1 -cp "${jobDir}" ${className}`;
         if (hasDocker) {
-          dockerImage = "openjdk:17-slim";
+          dockerImage = "eclipse-temurin:17-jdk-jammy";
           containerCmd = `sh -c "javac ${fileName} && java -XX:TieredStopAtLevel=1 ${className}"`;
         }
         break;
@@ -251,7 +257,13 @@ export async function POST(req: Request) {
               if (error) {
                 let msg = stderr || error.message;
                 if (msg.includes("not recognized as an internal or external command") || msg.includes("not found") || msg.includes("cannot find")) {
-                  msg = `Compilation Failed: 'g++' (C++ compiler) is not installed or not in your system PATH.\n\nTo run C++ code, please install MinGW/GCC (e.g. from MSYS2 on Windows) and add its 'bin' folder to your system environment PATH variables.`;
+                  if (language === "java") {
+                    msg = `Compilation Failed: 'javac' (Java compiler) is not installed or not in your system PATH.\n\nTo run Java code locally, please install the Java JDK and add its 'bin' folder to your system environment PATH variables.`;
+                  } else if (language === "c") {
+                    msg = `Compilation Failed: 'gcc' (C compiler) is not installed or not in your system PATH.\n\nTo run C code locally, please install MinGW/GCC and add its 'bin' folder to your PATH.`;
+                  } else {
+                    msg = `Compilation Failed: 'g++' (C++ compiler) is not installed or not in your system PATH.\n\nTo run C++ code locally, please install MinGW/GCC (e.g. from MSYS2 on Windows) and add its 'bin' folder to your system environment PATH variables.`;
+                  }
                 }
                 reject({ stderr: msg });
               }
@@ -259,7 +271,7 @@ export async function POST(req: Request) {
             });
           });
           if (language === "cpp" || language === "c") {
-            try { fs.chmodSync(path.join(jobDir, "solution"), 0o755); } catch(e) {}
+            try { fs.chmodSync(path.join(jobDir, binName), 0o755); } catch(e) {}
           }
         }
 
@@ -281,8 +293,8 @@ export async function POST(req: Request) {
       }
       
       if (hasDocker) {
-        // --pull=never: skip registry round-trip; host already has the image from a prior run
-        const dockerArgs = `--rm --pull=never --network none --memory 512m --cpus 1.0 -v "${jobDir}:/app" -w /app`;
+        // --pull=missing: avoid registry round-trip if host already has the image, but pull if missing
+        const dockerArgs = `-i --rm --pull=missing --network none --memory 512m --cpus 1.0 -v "${jobDir}:/app" -w /app`;
         const fullRunCmd = `docker run ${dockerArgs} ${dockerImage} ${containerCmd}`;
         if (process.env.NODE_ENV === "development") {
           console.log(`[API/RUN] Executing Docker: ${fullRunCmd}`);

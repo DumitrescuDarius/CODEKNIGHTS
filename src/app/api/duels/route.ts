@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
   const { guestName, demoMode, hostId, guestId, gameMode, unrated, problems } = await req.json().catch(() => ({}));
 
   let userId = session?.user ? (session.user as any).id : null;
-  let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
+  let userName = session?.user 
+    ? ((session.user as any).username || session.user.name) 
+    : `${guestName || "Guest Knight"}-${Math.floor(10000 + Math.random() * 90000)}`;
 
   try {
     if (!userId && !hostId) {
@@ -76,6 +78,12 @@ export async function POST(req: NextRequest) {
         const queryCond: any = { difficulty: formattedDiff };
         if (gameMode === "BUGHUNTER") {
           queryCond.brokenCode = { not: null };
+        } else if (gameMode === "HACKBOUNTY") {
+          delete queryCond.difficulty;
+          queryCond.referenceCode = { not: null };
+        } else {
+          queryCond.brokenCode = null;
+          queryCond.referenceCode = null;
         }
         const availableQuestions = await prisma.question.findMany({
           where: queryCond,
@@ -83,14 +91,26 @@ export async function POST(req: NextRequest) {
         });
         
         if (availableQuestions.length === 0) {
+          const fallbackCond: any = {};
+          if (gameMode === "BUGHUNTER") {
+            fallbackCond.brokenCode = { not: null };
+          } else if (gameMode === "HACKBOUNTY") {
+            fallbackCond.referenceCode = { not: null };
+          } else {
+            fallbackCond.brokenCode = null;
+            fallbackCond.referenceCode = null;
+          }
+
           const fallbackQuestions = await prisma.question.findMany({
-            where: gameMode === "BUGHUNTER" ? { brokenCode: { not: null } } : {},
+            where: fallbackCond,
             select: { id: true }
           });
           if (fallbackQuestions.length === 0) {
-            return NextResponse.json({ error: "No questions available in the database" }, { status: 400 });
+            return NextResponse.json({ error: "No suitable questions available in the database for this mode" }, { status: 400 });
           }
-          const randQ = fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
+          let candidates = fallbackQuestions.filter(q => !selectedIds.includes(q.id));
+          if (candidates.length === 0) candidates = fallbackQuestions; // Fallback to duplicates if absolutely necessary
+          const randQ = candidates[Math.floor(Math.random() * candidates.length)];
           selectedIds.push(randQ.id);
         } else {
           let candidates = availableQuestions.filter(q => !selectedIds.includes(q.id));
@@ -107,6 +127,7 @@ export async function POST(req: NextRequest) {
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
 
     if (hostId && guestId) {
+      const isHackBounty = (gameMode === "HACKBOUNTY");
       const duel = await prisma.duel.create({
         data: {
           pin,
@@ -122,6 +143,8 @@ export async function POST(req: NextRequest) {
           totalTime: parsedTotalTime,
           difficulty: chosenDifficulty,
           questionIds: selectedIds,
+          phase: isHackBounty ? "BREAKING" : null,
+          phaseEndsAt: isHackBounty ? new Date(Date.now() + 100 * 1000) : null,
         },
         include: {
           question: true,
@@ -157,7 +180,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
   } catch (err: any) {
     console.error("Failed to create duel:", err);
-    return NextResponse.json({ error: "Failed to create duel" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create duel", details: err.message, stack: err.stack }, { status: 500 });
   }
 }
 

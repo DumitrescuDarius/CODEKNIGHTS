@@ -5,7 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye } from "lucide-react";
+import { motion, AnimatePresence } from 'framer-motion';
+import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye, Crown, Skull, Medal, ChevronDown } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
@@ -138,9 +139,12 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   userId, activeQuestion, testResults, totalPenalty, wrongAttemptCount, calculatePenalty, retryProblem, showQuitConfirmation, setShowQuitConfirmation,
   handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
-  analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin,
-  onOpenUserProfile, activeQuestionIndex, changeActiveQuestion, problemTestResults = {}, problemScores = {}, problemWrongAttemptCounts = {}, setCode
 }) => {
+  const [isScrolledToTop, setIsScrolledToTop] = useState(true);
+  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setIsScrolledToTop(e.currentTarget.scrollTop < 5);
+  }, []);
+
   const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
   const isDuelFinished = activeDuel?.status === "FINISHED" || (activeDuel != null && timeLeft === 0);
   const isHost = activeDuel?.hostId === userId;
@@ -155,30 +159,73 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
       })
     : allPassed;
 
-  const renderProblemScoreCards = () => {
-    const duelQuestions = activeDuel?.questions || [];
-    if (duelQuestions.length === 0) return null;
+  const renderMatchStats = () => {
+    const currentUserIsHost = isHost || (!isHost && !isGuest); 
+    
+    const hostStats = {
+      role: "Host",
+      name: activeDuel.host?.username || "Host",
+      score: activeDuel.hostPenalty ?? 0,
+      solveTime: activeDuel.hostSolveTime,
+      testsPassed: activeDuel.hostTestsPassed ?? 0,
+      testsTotal: activeDuel.hostTestsTotal ?? 0,
+      codeLength: activeDuel.hostCodeLength ?? 0
+    };
 
-    return duelQuestions.map((q: any, idx: number) => {
-      const pScore = Math.max(0, problemScores[q.id] || 0);
-      const pRes = problemTestResults[q.id];
-      const passed = pRes?.passed ?? 0;
-      const failedAttempts = problemWrongAttemptCounts[q.id] ?? 0;
-      const submissionPenalty = failedAttempts >= 3 ? 100 : failedAttempts >= 1 ? 50 : 0;
-      const testScore = passed * 50;
-      const timeScore = passed > 0 ? Math.max(0, pScore + submissionPenalty - testScore) : 0;
+    const guestStats = {
+      role: "Guest",
+      name: activeDuel.guest?.username || "Guest",
+      score: activeDuel.guestPenalty ?? 0,
+      solveTime: activeDuel.guestSolveTime,
+      testsPassed: activeDuel.guestTestsPassed ?? 0,
+      testsTotal: activeDuel.guestTestsTotal ?? 0,
+      codeLength: activeDuel.guestCodeLength ?? 0
+    };
 
-      return (
-        <div key={q.id} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.5rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Problem {idx + 1} Score</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>{pScore} pts</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Passed: {passed}/{pRes?.total ?? 0} tests</div>
-          <div style={{ fontSize: '0.72rem', color: '#8be9fd', marginTop: '0.35rem' }}>Test score: +{testScore} pts</div>
-          <div style={{ fontSize: '0.72rem', color: '#f1fa8c', marginTop: '0.2rem' }}>Time score: +{timeScore} pts</div>
-          {submissionPenalty > 0 && <div style={{ fontSize: '0.72rem', color: '#ff5555', marginTop: '0.2rem' }}>Submission penalty: -{submissionPenalty} pts</div>}
+    const firstStats = currentUserIsHost ? hostStats : guestStats;
+    const secondStats = currentUserIsHost ? guestStats : hostStats;
+
+    const renderCard = (stats: any, isMe: boolean) => (
+      <div key={stats.role} style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: `1px solid ${isMe ? 'var(--accent)' : 'var(--line)'}`, borderRadius: '0.8rem', position: 'relative', overflow: 'hidden' }}>
+        {isMe && <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '3px', background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }} />}
+        
+        <div style={{ fontSize: '0.8rem', color: isMe ? 'var(--accent)' : 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem', fontWeight: 800 }}>
+          {isMe ? "Your Stats" : "Opponent Stats"}
         </div>
-      );
-    });
+        
+        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginBottom: '1.2rem' }}>
+          {stats.score} <span style={{ fontSize: '1rem', opacity: 0.6 }}>PTS</span>
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+          <div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Time Spent</div>
+            <div style={{ fontSize: '1rem', color: '#f1fa8c', fontWeight: 800 }}>
+              {stats.solveTime ? formatTime(Math.floor(stats.solveTime / 1000)) : "--:--"}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Tests Passed</div>
+            <div style={{ fontSize: '1rem', color: '#50fa7b', fontWeight: 800 }}>
+              {stats.testsPassed} / {Math.max(stats.testsTotal, stats.testsPassed)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Code Length</div>
+            <div style={{ fontSize: '1rem', color: '#ff79c6', fontWeight: 800 }}>
+              {stats.codeLength} chars
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    return (
+      <>
+        {renderCard(firstStats, true)}
+        {activeDuel.guestId && renderCard(secondStats, false)}
+      </>
+    );
   };
 
   const SURRENDER_TIME = 999999999;
@@ -463,81 +510,151 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     const draw = !hostWin && !guestWin;
 
     return (
-      <div style={{ padding: '2rem', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ background: 'var(--accent)', color: '#000', padding: '1rem', borderRadius: '50%', marginBottom: '1.5rem', boxShadow: '0 0 20px var(--accent)' }}>
-          <Trophy size={48} />
-        </div>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--accent)' }}>{t("duelResult")}</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem' }}>{activeDuel.question.title}</p>
+      <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      <motion.div 
+        onScroll={handleScroll}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        style={{ height: '100%', overflowY: 'auto', background: 'radial-gradient(circle at top, rgba(189,147,249,0.05) 0%, transparent 60%)' }}
+      >
+        <div style={{ padding: '3rem 2rem', minHeight: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        
+        <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', color: 'var(--accent)', textShadow: '0 2px 10px rgba(189,147,249,0.3)', letterSpacing: '-0.05em' }}>
+          {t("duelResult")}
+        </h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '3rem', fontSize: '1.1rem' }}>{activeDuel.question?.title || "Match Ended"}</p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', width: '100%', maxWidth: '500px', marginBottom: '3rem' }}>
-          <div style={{ padding: '1.5rem', background: hostWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
-            {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
-            {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2rem', width: '100%', maxWidth: '700px', marginBottom: '4rem', flexWrap: 'wrap' }}>
+          
+          {/* HOST CARD */}
+          <motion.div 
+             initial={{ x: -30, opacity: 0 }}
+             animate={{ x: 0, opacity: 1 }}
+             transition={{ delay: 0.2 }}
+             style={{ flex: 1, minWidth: '220px', padding: '2rem 1.5rem', background: hostWin ? 'linear-gradient(145deg, rgba(80, 250, 123, 0.1), rgba(0,0,0,0.2))' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? 'rgba(80, 250, 123, 0.5)' : 'var(--line)'}`, borderRadius: '1rem', textAlign: 'center', position: 'relative', boxShadow: hostWin ? '0 10px 40px rgba(80, 250, 123, 0.1)' : 'none', filter: guestWin ? 'grayscale(0.5) opacity(0.8)' : 'none' }}
+          >
+            {hostWin && <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.3rem 1rem', borderRadius: '2rem', fontSize: '0.75rem', fontWeight: 800, display: 'flex', gap: '0.3rem', alignItems: 'center', boxShadow: '0 0 15px rgba(80,250,123,0.5)' }}><Crown size={14} /> {t("winner")}</div>}
+            {guestWin && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.2rem 0.8rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
+            
             <div 
-              style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
+              style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
               onClick={() => { if (activeDuel.hostId) onOpenUserProfile?.(activeDuel.hostId); }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <DefaultAvatar 
                 name={activeDuel.host?.username || activeDuel.host?.name || "Host"} 
-                size={48} 
+                size={80} 
                 image={activeDuel.host?.image}
                 isRoyal={!!activeDuel.host?.isRoyal}
-                style={{ border: hostWin ? '1px solid #50fa7b' : '1px solid var(--line)' }} 
+                style={{ border: hostWin ? '3px solid #50fa7b' : '2px solid var(--line)', padding: '3px', background: 'var(--bg)' }} 
               />
             </div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
-            <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
+            
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#fff' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
+            
+            <div style={{ fontSize: '0.9rem', color: '#f1fa8c', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
               Rating: {activeDuel.host?.rating ?? 1000}
               {activeDuel.hostRatingChange !== null && activeDuel.hostRatingChange !== undefined && (
-                <span style={{ marginLeft: '0.5rem', color: activeDuel.hostRatingChange >= 0 ? '#50fa7b' : '#ff5555' }}>
+                <span style={{ color: activeDuel.hostRatingChange >= 0 ? '#50fa7b' : '#ff5555', display: 'flex', alignItems: 'center' }}>
                   ({activeDuel.hostRatingChange >= 0 ? '+' : ''}{activeDuel.hostRatingChange})
                 </span>
               )}
             </div>
-            <div style={{ fontSize: hostSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : 'inherit') }}>{hostSurrendered ? "SURRENDERED" : (activeDuel.hostSolveTime ? formatTime(Math.floor(activeDuel.hostSolveTime / 1000)) : "--:--")}</div>
-          </div>
-          <div style={{ padding: '1.5rem', background: guestWin ? 'rgba(80, 250, 123, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? '#50fa7b' : 'var(--line)'}`, borderRadius: '0.8rem', textAlign: 'center', position: 'relative' }}>
-            {guestWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>{t("winner")}</div>}
-            {hostWin && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.1rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
+            
+            <div style={{ fontSize: hostSurrendered ? '1rem' : '2.5rem', fontWeight: 900, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : '#fff'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textShadow: hostWin ? '0 0 20px rgba(80,250,123,0.3)' : 'none' }}>
+               {hostSurrendered ? <><Skull size={18} /> SURRENDERED</> : <>{hostScore} <span style={{ fontSize: '1rem', opacity: 0.7 }}>PTS</span></>}
+            </div>
+          </motion.div>
+
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-muted)', fontStyle: 'italic', opacity: 0.5 }}>VS</div>
+
+          {/* GUEST CARD */}
+          <motion.div 
+             initial={{ x: 30, opacity: 0 }}
+             animate={{ x: 0, opacity: 1 }}
+             transition={{ delay: 0.3 }}
+             style={{ flex: 1, minWidth: '220px', padding: '2rem 1.5rem', background: guestWin ? 'linear-gradient(145deg, rgba(80, 250, 123, 0.1), rgba(0,0,0,0.2))' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? 'rgba(80, 250, 123, 0.5)' : 'var(--line)'}`, borderRadius: '1rem', textAlign: 'center', position: 'relative', boxShadow: guestWin ? '0 10px 40px rgba(80, 250, 123, 0.1)' : 'none', filter: hostWin ? 'grayscale(0.5) opacity(0.8)' : 'none' }}
+          >
+            {guestWin && <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.3rem 1rem', borderRadius: '2rem', fontSize: '0.75rem', fontWeight: 800, display: 'flex', gap: '0.3rem', alignItems: 'center', boxShadow: '0 0 15px rgba(80,250,123,0.5)' }}><Crown size={14} /> {t("winner")}</div>}
+            {hostWin && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.2rem 0.8rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
+            
             <div 
-              style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
+              style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
               onClick={() => { if (activeDuel.guestId) onOpenUserProfile?.(activeDuel.guestId); }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <DefaultAvatar 
                 name={activeDuel.guest?.username || activeDuel.guest?.name || "Guest"} 
-                size={48} 
+                size={80} 
                 image={activeDuel.guest?.image}
                 isRoyal={!!activeDuel.guest?.isRoyal}
-                style={{ border: guestWin ? '1px solid #50fa7b' : '1px solid var(--line)' }} 
+                style={{ border: guestWin ? '3px solid #50fa7b' : '2px solid var(--line)', padding: '3px', background: 'var(--bg)' }} 
               />
             </div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
-            <div style={{ fontSize: '0.75rem', color: '#f1fa8c', marginBottom: '0.5rem', fontWeight: 600 }}>
+            
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#fff' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
+            
+            <div style={{ fontSize: '0.9rem', color: '#f1fa8c', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
               Rating: {activeDuel.guest?.rating ?? 1000}
               {activeDuel.guestRatingChange !== null && activeDuel.guestRatingChange !== undefined && (
-                <span style={{ marginLeft: '0.5rem', color: activeDuel.guestRatingChange >= 0 ? '#50fa7b' : '#ff5555' }}>
+                <span style={{ color: activeDuel.guestRatingChange >= 0 ? '#50fa7b' : '#ff5555', display: 'flex', alignItems: 'center' }}>
                   ({activeDuel.guestRatingChange >= 0 ? '+' : ''}{activeDuel.guestRatingChange})
                 </span>
               )}
             </div>
-            <div style={{ fontSize: guestSurrendered ? '0.8rem' : '1.5rem', fontWeight: 800, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : 'inherit') }}>{guestSurrendered ? "SURRENDERED" : (activeDuel.guestSolveTime ? formatTime(Math.floor(activeDuel.guestSolveTime / 1000)) : "--:--")}</div>
-          </div>
-        </div>
-        {activeDuel?.questions?.length > 0 && (
-          <div style={{ width: '100%', maxWidth: '700px', marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>Problem Scores</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              {renderProblemScoreCards()}
+            
+            <div style={{ fontSize: guestSurrendered ? '1rem' : '2.5rem', fontWeight: 900, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : '#fff'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textShadow: guestWin ? '0 0 20px rgba(80,250,123,0.3)' : 'none' }}>
+               {guestSurrendered ? <><Skull size={18} /> SURRENDERED</> : <>{guestScore} <span style={{ fontSize: '1rem', opacity: 0.7 }}>PTS</span></>}
             </div>
+          </motion.div>
+        </div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} style={{ width: '100%', maxWidth: '700px', marginBottom: '4rem', marginTop: '4rem' }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text-muted)', textAlign: 'center', fontWeight: 800 }}>MATCH STATISTICS</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+            {renderMatchStats()}
           </div>
+        </motion.div>
+
+        {draw && !hostSurrendered && !guestSurrendered && (
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.4 }} style={{ background: 'rgba(139, 233, 253, 0.1)', padding: '0.75rem 2rem', borderRadius: '2rem', border: '1px solid rgba(139, 233, 253, 0.3)', color: '#8be9fd', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '1px' }}>
+            {t("fairDraw").toUpperCase()}
+          </motion.div>
         )}
-        {draw && !hostSurrendered && !guestSurrendered && <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '2rem' }}>{t("fairDraw")}</p>}
-        <button onClick={() => { setActiveDuel?.(null); setDuelPin?.(""); handleQuitBattle(); }} className="btn" style={{ width: '100%', maxWidth: '300px', background: 'var(--line)', border: 'none', padding: '1rem' }}>{t("backToArena")}</button>
+
+        <motion.button 
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+          onClick={() => { setActiveDuel?.(null); setDuelPin?.(""); handleQuitBattle(); }} 
+          className="btn" 
+          style={{ width: '100%', maxWidth: '300px', background: 'var(--accent)', color: '#000', border: 'none', padding: '1.2rem', borderRadius: '0.5rem', fontWeight: 800, fontSize: '1.1rem', boxShadow: '0 5px 20px rgba(189,147,249,0.3)' }}
+        >
+          {t("backToArena")}
+        </motion.button>
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {isScrolledToTop && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, x: '-50%' }} 
+            animate={{ opacity: 1, y: 0, x: '-50%' }} 
+            exit={{ opacity: 0, y: 10, x: '-50%' }} 
+            transition={{ delay: 0.5, duration: 0.15 }}
+            style={{ position: 'absolute', bottom: '1rem', left: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--text-muted)', opacity: 0.8, zIndex: 10, pointerEvents: 'none' }}
+          >
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '1px', textShadow: '0 2px 5px var(--bg)' }}>SCROLL FOR DETAILS</span>
+            <motion.div
+              animate={{ y: [0, 8, 0] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+            >
+              <ChevronDown size={24} style={{ filter: 'drop-shadow(0 2px 5px var(--bg))' }} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
     );
   }
@@ -749,6 +866,26 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               {/* {activeQuestion.problemId && <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{activeQuestion.problemId}</span>} */}
               {activeQuestion.title}
             </h2>
+            
+            {activeDuel?.gameMode === "HACKBOUNTY" && activeDuel.phase === "BREAKING" && (
+              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(255, 85, 85, 0.1)', border: '1px solid rgba(255, 85, 85, 0.4)', borderRadius: '0.5rem', color: '#ff5555', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Zap size={20} />
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>PHASE 1: SABOTAGE!</div>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>Break this perfectly working code before the timer ends. Do NOT fix it!</div>
+                </div>
+              </div>
+            )}
+            
+            {activeDuel?.gameMode === "HACKBOUNTY" && activeDuel.phase === "FIXING" && (
+              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(80, 250, 123, 0.1)', border: '1px solid rgba(80, 250, 123, 0.4)', borderRadius: '0.5rem', color: '#50fa7b', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <ShieldCheck size={20} />
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>PHASE 2: FIX IT!</div>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>Your opponent broke this code. Fix it and make it pass all tests! First to submit wins.</div>
+                </div>
+              </div>
+            )}
           </div>
           
           {(() => {

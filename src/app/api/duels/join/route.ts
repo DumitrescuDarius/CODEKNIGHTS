@@ -8,7 +8,9 @@ export async function POST(req: NextRequest) {
   const { pin, guestName } = await req.json();
 
   let userId = session?.user ? (session.user as any).id : null;
-  let userName = session?.user ? ((session.user as any).username || session.user.name) : guestName || "Guest Knight";
+  let userName = session?.user 
+    ? ((session.user as any).username || session.user.name) 
+    : `${guestName || "Guest Knight"}-${Math.floor(10000 + Math.random() * 90000)}`;
 
   try {
     if (!pin) {
@@ -38,13 +40,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "You cannot join your own duel" }, { status: 400 });
     }
 
-    const updatedDuel = await prisma.duel.update({
-      where: { id: duel.id },
-      data: {
-        guestId: userId,
-        status: "ACTIVE",
-        startedAt: new Date(),
-      },
+      const isHackBounty = (duel.gameMode === "HACKBOUNTY");
+      const updatedDuel = await prisma.duel.update({
+        where: { id: duel.id },
+        data: {
+          guestId: userId,
+          status: "ACTIVE",
+          startedAt: new Date(),
+          phase: isHackBounty ? "BREAKING" : null,
+          phaseEndsAt: isHackBounty ? new Date(Date.now() + 100 * 1000) : null,
+        },
       include: {
         question: true,
         host: true,

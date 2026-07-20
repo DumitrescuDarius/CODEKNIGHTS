@@ -78,7 +78,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
     automaticLayout: true, 
     padding: { top: 0 }, 
     scrollBeyondLastLine: false, 
-    roundedSelection: true, 
+    roundedSelection: false, 
     fixedOverflowWidgets: false, 
     stickyScroll: { enabled: false },
     cursorSmoothCaretAnimation: "off" as const, 

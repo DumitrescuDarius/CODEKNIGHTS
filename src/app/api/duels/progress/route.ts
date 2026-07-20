@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   try {
-    const { duelId, codeLength, lineCount, testsPassed, testsTotal, guestUserId, code } = await req.json();
+    const { duelId, codeLength, lineCount, testsPassed, testsTotal, guestUserId, codeSnapshot } = await req.json();
     const userId = session?.user ? (session.user as any).id : guestUserId || "guest";
 
     if (!duelId) {
@@ -36,14 +36,24 @@ export async function POST(req: NextRequest) {
       updateData.hostTestsPassed = testsPassed ?? 0;
       updateData.hostTestsTotal = testsTotal ?? 0;
       updateData.hostLastActive = new Date();
-      if (code) updateData.hostCode = code;
+      if (codeSnapshot) {
+        updateData.hostCode = codeSnapshot;
+        if (duel.gameMode === "HACKBOUNTY" && duel.phase === "BREAKING") {
+           updateData.hostSabotagedCode = codeSnapshot;
+        }
+      }
     } else {
       updateData.guestCodeLength = codeLength ?? 0;
       updateData.guestLineCount = lineCount ?? 0;
       updateData.guestTestsPassed = testsPassed ?? 0;
       updateData.guestTestsTotal = testsTotal ?? 0;
       updateData.guestLastActive = new Date();
-      if (code) updateData.guestCode = code;
+      if (codeSnapshot) {
+        updateData.guestCode = codeSnapshot;
+        if (duel.gameMode === "HACKBOUNTY" && duel.phase === "BREAKING") {
+           updateData.guestSabotagedCode = codeSnapshot;
+        }
+      }
     }
 
     await prisma.duel.update({

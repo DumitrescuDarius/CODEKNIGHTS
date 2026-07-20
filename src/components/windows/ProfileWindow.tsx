@@ -238,7 +238,14 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
       });
   }
   
-  let ratingHistory = fullRatingHistory.reverse().filter(d => !d.gameMode || d.gameMode === selectedGameMode);
+  let rawRatingHistory = fullRatingHistory.reverse().filter(d => !d.gameMode || d.gameMode === selectedGameMode);
+  
+  // Aggregate to only show one node per day (the final rating of that day)
+  const groupedByDay = new Map();
+  for (const item of rawRatingHistory) {
+      groupedByDay.set(item.date.toLocaleDateString(), item);
+  }
+  let ratingHistory = Array.from(groupedByDay.values());
   
   if (ratingHistory.length === 0) {
       ratingHistory.push({ rating: rating, name: 'Start', date: new Date(Date.now() - 86400000), hideNode: false });

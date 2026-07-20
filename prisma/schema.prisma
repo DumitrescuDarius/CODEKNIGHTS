@@ -95,6 +95,7 @@ model Question {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   brokenCode  String?
+  referenceCode String?
   submissions Submission[]
   duels       Duel[]
 }
@@ -139,6 +140,11 @@ model Duel {
   guestTestsTotal Int       @default(0)
   hostLastActive  DateTime?
   guestLastActive DateTime?
+
+  phase              String?
+  phaseEndsAt        DateTime?
+  hostSabotagedCode  String?
+  guestSabotagedCode String?
 
   createdAt   DateTime @default(now())
   startedAt   DateTime?
