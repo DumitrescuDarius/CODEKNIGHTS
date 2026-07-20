@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   try {
-    const { duelId, solveTime, surrender, complexityScore, totalPenalty, finalize, guestUserId, code } = await req.json();
+    const { duelId, solveTime, surrender, complexityScore, totalPenalty, finalize, guestUserId, code, hackBountySolved } = await req.json();
     const userId = session?.user ? (session.user as any).id : guestUserId || "guest";
     const TIME_LIMIT = 420 * 1000; // 7 minutes
 
@@ -127,8 +127,20 @@ export async function POST(req: NextRequest) {
     const hostSurrendered = (isHost && surrender) || updatedDuel.hostPenalty === ZERO_SCORE || (isTimedOut && updatedDuel.hostPenalty === null);
     const guestSurrendered = (isGuest && surrender) || updatedDuel.guestPenalty === ZERO_SCORE || (isTimedOut && updatedDuel.guestPenalty === null);
     const bothFinalized = updatedDuel.hostFinalized && updatedDuel.guestFinalized;
+    const hackBountyEarlyWin = duel.gameMode === "HACKBOUNTY" && duel.phase === "FIXING" && hackBountySolved;
 
-    if (updatedDuel.status === "ACTIVE" && (bothFinalized || isTimedOut || hostSurrendered || guestSurrendered)) {
+    if (updatedDuel.status === "WAITING" && (hostSurrendered || guestSurrendered)) {
+        await prisma.duel.updateMany({
+            where: { id: duelId, status: "WAITING" },
+            data: { status: "CANCELLED" }
+        });
+        updatedDuel = (await prisma.duel.findUnique({
+            where: { id: duelId },
+            include: { host: true, guest: true, question: true }
+        })) as any;
+    }
+
+    if (updatedDuel.status === "ACTIVE" && (bothFinalized || isTimedOut || hostSurrendered || guestSurrendered || hackBountyEarlyWin)) {
         let hostWon = false;
         let isDraw = false;
 
@@ -138,6 +150,8 @@ export async function POST(req: NextRequest) {
             hostWon = false;
         } else if (guestSurrendered) {
             hostWon = true;
+        } else if (hackBountyEarlyWin) {
+            hostWon = isHost;
         } else {
             const hostScore = updatedDuel.hostPenalty ?? ZERO_SCORE;
             const guestScore = updatedDuel.guestPenalty ?? ZERO_SCORE;

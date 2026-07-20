@@ -23,6 +23,8 @@ export interface Question {
   title: string;
   description: string;
   restrictions?: string;
+  inputFormat?: string;
+  outputFormat?: string;
   difficulty: string;
   testCases: string | any[];
   hiddenTestCases?: string | any[];
@@ -30,6 +32,7 @@ export interface Question {
   timeLimit?: number;
   memoryLimit?: number;
   brokenCode?: string;
+  referenceCode?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

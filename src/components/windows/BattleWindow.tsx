@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Question } from "../../types";
 import { signIn } from "next-auth/react";
-import { LogIn, User, Sword, Swords, Shield, Trash2, Users, Plus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search, Flame, Github, ArrowLeft, Sparkles, Check, RotateCcw, Crown, ChevronUp, ChevronDown } from "lucide-react";
+import { LogIn, User, Sword, Swords, Shield, Trash2, Users, Plus, Minus, Copy, Hash, X, Trophy, Zap, Target, Edit2, Search, Flame, Github, ArrowLeft, Sparkles, Check, RotateCcw, Crown, ChevronUp, ChevronDown } from "lucide-react";
 import { TranslationKey } from "../../constants/translations";
 import { motion, AnimatePresence } from "framer-motion";
 import { DefaultAvatar } from "../DefaultAvatar";
@@ -76,18 +76,25 @@ interface BattleWindowProps {
   inviteTargetForConfig?: { id: string, name: string } | null;
   sendConfiguredInvite?: (options: { problems?: string[]; unrated?: boolean; gameMode?: string }) => void;
   cancelConfiguredInvite?: () => void;
+  sessionStatus?: string;
 }
 
 export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   startBattle, startQuickMatch, setShowWaitingPopup, questions, session, isGuest, handlePlayAsGuest, t, onDeleteQuestion, onEditQuestion,
   createDuel, joinDuel, activeDuel, setActiveDuel, setDuelPin, showCancelDuel, setShowCancelDuel, handleCancelDuel, timeLeft, userStats,
   showSignInOptions, setShowSignInOptions, isWaitingForResponse = false, guestId = null,
-  inviteTargetForConfig, sendConfiguredInvite, cancelConfiguredInvite
+  inviteTargetForConfig, sendConfiguredInvite, cancelConfiguredInvite, sessionStatus
 }) => {
   const [joinPin, setJoinPin] = useState("");
   const [showBubbles, setShowBubbles] = useState(false);
   const [isQuickMatchMode, setIsQuickMatchMode] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isArtificiallyLoading, setIsArtificiallyLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsArtificiallyLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const [showUplinkConfigPanel, setShowUplinkConfigPanel] = useState(false);
   const [uplinkProblems, setUplinkProblems] = useState<string[]>([]);
@@ -138,6 +145,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
     };
   }, [activeDuel?.id, activeDuel?.status, isQuickMatchMode]);
   const [selectedBubble, setSelectedBubble] = useState<string | null>(null);
+
   const [activePath, setActivePath] = useState<string>("codeknights");
   
   useEffect(() => {
@@ -154,8 +162,52 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [selectedProblems, setSelectedProblems] = useState<string[]>([]);
   const [isRanked, setIsRanked] = useState(true);
+  
+  const [filterDifficulties, setFilterDifficulties] = useState<string[]>([]);
+  const [filterMinElo, setFilterMinElo] = useState<string>("");
+  const [filterMaxElo, setFilterMaxElo] = useState<string>("");
+  const [battleNotification, setBattleNotification] = useState<{message: string, isConfirm?: boolean, onConfirm?: () => void} | null>(null);
 
+  useEffect(() => {
+    if (battleNotification) {
+      const timer = setTimeout(() => setBattleNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [battleNotification]);
 
+  const renderBattleNotification = () => (
+    <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', pointerEvents: 'none' }}>
+      <AnimatePresence>
+        {battleNotification && (
+          <motion.div
+            initial={{ opacity: 0, x: 50, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+            style={{
+              background: 'rgba(20, 20, 25, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid var(--line)',
+              borderLeft: '4px solid #ff5555',
+              padding: '0.75rem 1rem',
+              borderRadius: '0.4rem',
+              color: 'var(--text)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              zIndex: 1000,
+              pointerEvents: 'none'
+            }}
+          >
+            {battleNotification.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+  
   const fetchPublicMatches = React.useCallback(async () => {
     setIsFetchingMatches(true);
     try {
@@ -198,6 +250,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
       setDuelPin("");
     }
   }, [activeDuel, setActiveDuel, setDuelPin]);
+
+  if (sessionStatus === "loading" || isArtificiallyLoading) {
+    return <WindowSpinner />;
+  }
 
   if (!session && !isGuest) {
     return (
@@ -1160,11 +1216,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 padding: '0.75rem',
                 borderRadius: '0.4rem',
                 border: 'none',
-                background: uplinkProblems.length === 0 ? 'var(--text-muted)' : themeColor,
+                background: (activePath !== 'hackbounty' && uplinkProblems.length === 0) ? 'var(--text-muted)' : themeColor,
                 color: '#000',
                 fontWeight: 900,
-                cursor: uplinkProblems.length === 0 ? 'not-allowed' : 'pointer',
-                boxShadow: uplinkProblems.length === 0 ? 'none' : `0 4px 15px ${themeColor}33`
+                cursor: (activePath !== 'hackbounty' && uplinkProblems.length === 0) ? 'not-allowed' : 'pointer',
+                boxShadow: (activePath !== 'hackbounty' && uplinkProblems.length === 0) ? 'none' : `0 4px 15px ${themeColor}33`
               }}
             >
               {inviteTargetForConfig ? `INVITE ${inviteTargetForConfig.name.toUpperCase()}` : "CREATE UPLINK"}
@@ -1317,6 +1373,85 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           </button>
         </div>
 
+        {/* Filters Section */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', flexShrink: 0 }}>
+          
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter Matches</div>
+          
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            
+            {/* Format filter (bubbles) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '250px' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', opacity: filterDifficulties.length >= 5 ? 0.5 : 1, pointerEvents: filterDifficulties.length >= 5 ? 'none' : 'auto' }}>
+                <button onClick={() => setFilterDifficulties([...filterDifficulties, 'EASY'])} style={{ background: 'rgba(80, 250, 123, 0.1)', color: '#50fa7b', border: '1px solid rgba(80, 250, 123, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Plus size={12} /> EASY
+                </button>
+                <button onClick={() => setFilterDifficulties([...filterDifficulties, 'MEDIUM'])} style={{ background: 'rgba(255, 184, 108, 0.1)', color: '#ffb86c', border: '1px solid rgba(255, 184, 108, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Plus size={12} /> MEDIUM
+                </button>
+                <button onClick={() => setFilterDifficulties([...filterDifficulties, 'HARD'])} style={{ background: 'rgba(255, 85, 85, 0.1)', color: '#ff5555', border: '1px solid rgba(255, 85, 85, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Plus size={12} /> HARD
+                </button>
+              </div>
+              
+              {filterDifficulties.length > 0 && (
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                  {filterDifficulties.map((diff, i) => {
+                    const diffColor = diff === 'HARD' ? '#ff5555' : diff === 'MEDIUM' ? '#ffb86c' : '#50fa7b';
+                    return (
+                      <div key={i} onClick={() => setFilterDifficulties(filterDifficulties.filter((_, index) => index !== i))} style={{ background: diffColor, color: '#000', padding: '0.1rem 0.5rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                        {diff} <X size={10} />
+                      </div>
+                    );
+                  })}
+                  <div onClick={() => setFilterDifficulties([])} style={{ fontSize: '0.7rem', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline', padding: '0.1rem 0.5rem', alignSelf: 'center' }}>Clear</div>
+                </div>
+              )}
+            </div>
+
+            {/* Elo filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '250px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>OPP ELO:</div>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.4rem', padding: '0.2rem' }}>
+                <button onClick={() => setFilterMinElo(prev => String(Math.max(0, (parseInt(prev || "0") - 50))))} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '0.25rem' }}>
+                  <Minus size={14} />
+                </button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={filterMinElo}
+                  onChange={(e) => setFilterMinElo(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="0"
+                  style={{ width: '40px', background: 'transparent', border: 'none', color: 'var(--text)', outline: 'none', fontSize: '0.85rem', textAlign: 'center' }}
+                />
+                <button onClick={() => setFilterMinElo(prev => String(parseInt(prev || "0") + 50))} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '0.25rem' }}>
+                  <Plus size={14} />
+                </button>
+              </div>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 800 }}>-</span>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.4rem', padding: '0.2rem' }}>
+                <button onClick={() => setFilterMaxElo(prev => String(Math.max(0, (parseInt(prev || "9999") - 50))))} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '0.25rem' }}>
+                  <Minus size={14} />
+                </button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={filterMaxElo}
+                  onChange={(e) => setFilterMaxElo(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="9999"
+                  style={{ width: '40px', background: 'transparent', border: 'none', color: 'var(--text)', outline: 'none', fontSize: '0.85rem', textAlign: 'center' }}
+                />
+                <button onClick={() => setFilterMaxElo(prev => String(parseInt(prev || "9999") + 50))} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '0.25rem' }}>
+                  <Plus size={14} />
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
         {/* Matches List Container */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem', justifyContent: publicMatches.length === 0 ? 'center' : 'flex-start', alignItems: publicMatches.length === 0 ? 'center' : 'stretch' }}>
           {publicMatches.length === 0 ? (
@@ -1346,13 +1481,65 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               </div>
             )
           ) : (
-            publicMatches.map((match: any) => {
+            [...publicMatches].map(match => {
+              let score = 0;
+              const hostElo = match.host?.rating ?? 1000;
+              const minElo = filterMinElo ? parseInt(filterMinElo) : 0;
+              const maxElo = filterMaxElo ? parseInt(filterMaxElo) : 9999;
+              
+              // Score Elo Match
+              if (hostElo >= minElo && hostElo <= maxElo) {
+                score += 100;
+              } else {
+                const diff = Math.min(Math.abs(hostElo - minElo), Math.abs(hostElo - maxElo));
+                score -= diff * 0.1; // Penalize based on distance from range
+              }
+
+              // Score Difficulty Match
+              if (filterDifficulties.length > 0) {
+                const requiredCounts = filterDifficulties.reduce((acc: any, diff: string) => {
+                  acc[diff] = (acc[diff] || 0) + 1;
+                  return acc;
+                }, {});
+                
+                const matchCounts = (match.questions || []).reduce((acc: any, q: any) => {
+                  const d = q.difficulty || "UNKNOWN";
+                  acc[d] = (acc[d] || 0) + 1;
+                  return acc;
+                }, {});
+
+                let diffScore = 0;
+                for (const diff of Object.keys(requiredCounts)) {
+                  const has = matchCounts[diff] || 0;
+                  const req = requiredCounts[diff];
+                  if (has >= req) {
+                    diffScore += req * 50; // Points for having what we want
+                  } else {
+                    diffScore += has * 50; // Partial points
+                    diffScore -= (req - has) * 20; // Penalty for missing
+                  }
+                }
+                score += diffScore;
+              }
+              
+              return { match, score };
+            })
+            .sort((a, b) => b.score - a.score)
+            .map(({ match }) => {
               const hostName = match.host?.username || match.host?.name || "Host";
               const hostElo = match.host?.rating ?? 1000;
               const hostImage = match.host?.image;
               const isRoyal = !!match.host?.isRoyal;
               const diffColor = match.question?.difficulty === 'HARD' ? '#ff5555' : match.question?.difficulty === 'MEDIUM' ? '#ffb86c' : '#50fa7b';
-              
+                const formatMap = (match.questions || []).reduce((acc: any, q: any) => {
+                  const d = q.difficulty || "UNKNOWN";
+                  acc[d] = (acc[d] || 0) + 1;
+                  return acc;
+                }, {});
+                const formatDisplay = Object.entries(formatMap).length > 0
+                  ? Object.entries(formatMap).map(([d, c]) => `${c} ${d}`).join(", ").toUpperCase()
+                  : match.difficulty;
+
               return (
                 <div 
                   key={match.id} 
@@ -1387,7 +1574,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                     <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 800 }}>Match Configuration</div>
                     <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text)' }}>
-                      {match.numProblems} Problem{match.numProblems > 1 ? 's' : ''} ({match.difficulty})
+                      {match.numProblems} Problem{match.numProblems > 1 ? 's' : ''} ({formatDisplay})
                     </div>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                       Duration: {match.totalTime}m • {match.unrated ? 'Unrated' : 'Ranked'}
@@ -1401,13 +1588,13 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                       const userElo = userStats?.rating ?? 1000;
                       
                       if (userElo - hostElo > 250) {
-                        alert("Find someone closer to your level (You are too strong for them!)");
-                        return;
-                      }
-                      
-                      if (hostElo - userElo > 250) {
-                        const confirmed = window.confirm("Are you sure you want to fight them? There is a very large Elo gap and they might be much stronger than you!");
-                        if (!confirmed) return;
+                        setBattleNotification({
+                          message: "Challenging an underdog. You won't gain much Elo but could lose a lot!",
+                        });
+                      } else if (hostElo - userElo > 250) {
+                        setBattleNotification({
+                          message: "Challenging a stronger opponent. There is a very large Elo gap!",
+                        });
                       }
 
                       setPendingChallengeMatch(match);
@@ -1436,6 +1623,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             })
           )}
         </div>
+        {renderBattleNotification()}
       </div>
     );
   }
@@ -1723,7 +1911,12 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             {/* 1. CREATE MATCH */}
             <button 
               onClick={() => {
-                setShowSettingsPanel(true);
+                if (activePath === 'hackbounty') {
+                  setIsQuickMatchMode(true);
+                  startQuickMatch?.('create', { gameMode: 'HACKBOUNTY', problems: ['ANY'] }).catch(() => setIsQuickMatchMode(false));
+                } else {
+                  setShowSettingsPanel(true);
+                }
               }}
               disabled={isJoining || isCreating}
               style={{ 
@@ -1755,9 +1948,24 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
             {/* 2. CREATE UPLINK */}
             <button 
-              onClick={() => { 
+              onClick={async () => { 
                 if (isWaitingForResponse) return;
-                setShowUplinkConfigPanel(true);
+                if (activePath === 'hackbounty') {
+                  setIsCreating(true);
+                  try {
+                    await createDuel(false, {
+                      gameMode: 'HACKBOUNTY',
+                      problems: ['ANY'],
+                      unrated: false
+                    });
+                    setShowWaitingPopup(true);
+                  } catch (e) {
+                    console.error(e);
+                  }
+                  setIsCreating(false);
+                } else {
+                  setShowUplinkConfigPanel(true);
+                }
               }}
               disabled={isCreating || isJoining || isWaitingForResponse}
               style={{ 
@@ -1850,7 +2058,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               <button 
                 onClick={async () => {
                   if (!joinPin) return;
-                  if (activePath !== "codeknights" && activePath !== "bughunter") return;
+                  if (activePath !== "codeknights" && activePath !== "bughunter" && activePath !== "hackbounty") return;
                   setIsJoining(true);
                   await joinDuel(joinPin);
                   setIsJoining(false);
@@ -1858,13 +2066,13 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 disabled={isJoining || isCreating}
                 style={{ 
                   height: '100%', 
-                  background: (activePath === "codeknights" || activePath === "bughunter") ? 'var(--text)' : 'rgba(255,255,255,0.05)', 
-                  color: (activePath === "codeknights" || activePath === "bughunter") ? '#000' : 'var(--text-muted)', 
-                  border: (activePath === "codeknights" || activePath === "bughunter") ? 'none' : '1px solid var(--line)', 
+                  background: (activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? 'var(--text)' : 'rgba(255,255,255,0.05)', 
+                  color: (activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? '#000' : 'var(--text-muted)', 
+                  border: (activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? 'none' : '1px solid var(--line)', 
                   fontWeight: 900, 
                   padding: '0 1.5rem',
                   borderRadius: '0.4rem',
-                  cursor: (isJoining || isCreating) ? 'wait' : ((activePath === "codeknights" || activePath === "bughunter") ? 'pointer' : 'not-allowed'),
+                  cursor: (isJoining || isCreating) ? 'wait' : ((activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? 'pointer' : 'not-allowed'),
                   fontSize: '1rem',
                   letterSpacing: '0.1em',
                   opacity: (isJoining || isCreating) ? 0.7 : 1
@@ -1875,9 +2083,9 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             </div>
           </div>
         </div>
+        {renderBattleNotification()}
       </div>
     </div>
   );
 });
-
 BattleWindow.displayName = "BattleWindow";

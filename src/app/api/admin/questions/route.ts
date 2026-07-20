@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { title, description, restrictions, difficulty, testCases, hiddenTestCases, timeLimit, memoryLimit, brokenCode, referenceCode } = await req.json();
+    const { title, description, restrictions, inputFormat, outputFormat, difficulty, testCases, hiddenTestCases, timeLimit, memoryLimit, brokenCode, referenceCode } = await req.json();
 
     if (!title || !description || !difficulty || !testCases) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   try {
-    const { id, title, description, restrictions, difficulty, testCases, hiddenTestCases, timeLimit, memoryLimit, brokenCode, referenceCode } = await req.json();
+    const { id, title, description, restrictions, inputFormat, outputFormat, difficulty, testCases, hiddenTestCases, timeLimit, memoryLimit, brokenCode, referenceCode } = await req.json();
 
     if (!id || !title || !description || !difficulty || !testCases) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });

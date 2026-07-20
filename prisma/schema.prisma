@@ -86,6 +86,8 @@ model Question {
   title       String   @unique
   description String
   restrictions String? // New field for problem constraints
+  inputFormat String?
+  outputFormat String?
   difficulty  String
   testCases   String   // JSON string of visible input/output pairs
   hiddenTestCases String? // JSON string of hidden input/output pairs

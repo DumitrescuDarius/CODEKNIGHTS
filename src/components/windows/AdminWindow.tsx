@@ -6,7 +6,7 @@ import { TranslationKey } from "../../constants/translations";
 import { Question } from "../../types";
 
 interface AdminWindowProps {
-  newQuestion: { id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: any[]; hiddenTestCases: any[]; timeLimit: number; memoryLimit: number; brokenCode?: string; referenceCode?: string };
+  newQuestion: { id?: string; title: string; description: string; restrictions: string; inputFormat?: string; outputFormat?: string; difficulty: string; testCases: any[]; hiddenTestCases: any[]; timeLimit: number; memoryLimit: number; brokenCode?: string; referenceCode?: string };
   setNewQuestion: (val: any) => void;
   handleAddQuestion: () => void;
   handleUpdateQuestion: () => void;
@@ -143,7 +143,6 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       alert("Failed to delete user");
     }
   };
-
 
   // ONLY sync raw strings when we start editing a new ID
   useEffect(() => {
@@ -301,6 +300,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       let importedDesc = "";
       let importedDifficulty = "";
       let importedRestrictions = "";
+        let importedInputFormat = "";
+        let importedOutputFormat = "";
       let importedTimeLimit: number | null = null;
       let importedMemoryLimit: number | null = null;
       let importedBrokenCode: string | null = null;
@@ -323,7 +324,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
           for (const line of lines) {
             if (line.includes(":")) {
               const key = line.split(":")[0].trim().toLowerCase();
-              if (["title", "difficulty", "restrictions", "timelimit", "time_limit", "memorylimit", "memory_limit"].includes(key)) {
+              if (["title", "difficulty", "restrictions", "inputformat", "outputformat", "timelimit", "time_limit", "memorylimit", "memory_limit"].includes(key)) {
                 hasKeys = true;
               }
             }
@@ -438,6 +439,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
         if (importedDesc) updated.description = importedDesc;
         if (importedDifficulty) updated.difficulty = importedDifficulty;
         if (importedRestrictions) updated.restrictions = importedRestrictions;
+        if (importedInputFormat) updated.inputFormat = importedInputFormat;
+        if (importedOutputFormat) updated.outputFormat = importedOutputFormat;
         if (importedTimeLimit !== null) updated.timeLimit = importedTimeLimit;
         if (importedMemoryLimit !== null) updated.memoryLimit = importedMemoryLimit;
         return updated;
@@ -492,6 +495,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       title: q.title,
       description: q.description,
       restrictions: q.restrictions || "",
+      inputFormat: (q as any).inputFormat || "",
+      outputFormat: (q as any).outputFormat || "",
       difficulty: q.difficulty,
       testCases: tc,
       hiddenTestCases: htc,
@@ -538,6 +543,8 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
       title: "",
       description: "",
       restrictions: "",
+      inputFormat: "",
+      outputFormat: "",
       difficulty: "Easy",
       testCases: [{ input: "", output: "" }],
       hiddenTestCases: [],
@@ -601,6 +608,37 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Challenge Game Mode</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                  {[
+                    { label: "Standard (CodeKnights)", value: "CODEKNIGHTS" },
+                    { label: "Bug Hunter (Fix Broken Code)", value: "BUGHUNTER" },
+                    { label: "Hack Bounty (Break & Fix)", value: "HACKBOUNTY" }
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setGameModeSelection(opt.value as any)}
+                      className="btn"
+                      style={{
+                        flex: 1,
+                        padding: '0.6rem',
+                        borderRadius: '0.4rem',
+                        border: '1px solid var(--line)',
+                        background: gameModeSelection === opt.value ? 'var(--accent)' : 'transparent',
+                        color: gameModeSelection === opt.value ? '#000' : 'var(--text)',
+                        fontWeight: 900,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("titleLabel")}</label>
                 <input 
                   type="text" 
@@ -637,7 +675,30 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                 <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Supports Markdown: **bold**, `code`, - lists, etc.</p>
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1.5rem' }}>
+                <div style={{ flex: '1 1 200px' }}>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Input Format (Markdown)</label>
+                  <textarea 
+                    value={newQuestion.inputFormat || ""} 
+                    onChange={(e) => { setError(null); setNewQuestion((prev: any) => ({ ...prev, inputFormat: e.target.value })); }}
+                    onKeyDown={(e) => handleTabKey(e, (val) => setNewQuestion((prev: any) => ({ ...prev, inputFormat: val })))}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.8rem 1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '80px', resize: 'vertical', outline: 'none', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'monospace' }}
+                    placeholder="E.g. Line 1: N swords..."
+                  />
+                </div>
+                <div style={{ flex: '1 1 200px' }}>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Output Format (Markdown)</label>
+                  <textarea 
+                    value={newQuestion.outputFormat || ""} 
+                    onChange={(e) => { setError(null); setNewQuestion((prev: any) => ({ ...prev, outputFormat: e.target.value })); }}
+                    onKeyDown={(e) => handleTabKey(e, (val) => setNewQuestion((prev: any) => ({ ...prev, outputFormat: val })))}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '0.8rem 1rem', borderRadius: '0.4rem', color: 'inherit', minHeight: '80px', resize: 'vertical', outline: 'none', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'monospace' }}
+                    placeholder="E.g. Print YES or NO..."
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1.5rem' }}>
                 <div style={{ flex: '1 1 200px' }}>
                   <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Time Limit (ms)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -669,38 +730,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Challenge Game Mode</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {[
-                    { label: "Standard (CodeKnights)", value: "CODEKNIGHTS" },
-                    { label: "Bug Hunter (Fix Broken Code)", value: "BUGHUNTER" },
-                    { label: "Hack Bounty (Break & Fix)", value: "HACKBOUNTY" }
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setGameModeSelection(opt.value as any)}
-                      className="btn"
-                      style={{
-                        flex: 1,
-                        padding: '0.6rem',
-                        borderRadius: '0.4rem',
-                        border: '1px solid var(--line)',
-                        background: gameModeSelection === opt.value ? 'var(--accent)' : 'transparent',
-                        color: gameModeSelection === opt.value ? '#000' : 'var(--text)',
-                        fontWeight: 900,
-                        fontSize: '0.75rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {gameModeSelection === "CODEKNIGHTS" ? (
+{gameModeSelection === "CODEKNIGHTS" ? (
                 <div>
                   <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("difficultyLabel")}</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -723,27 +753,24 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                 </div>
               ) : (
                 <>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Target Programming Language</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                      {[
-                        { label: "Python", value: "PYTHON" },
-                        { label: "C++", value: "CPP" },
-                        { label: "C", value: "C" },
-                        { label: "Java", value: "JAVA" }
-                      ].map((l) => (
-                        <button 
-                          key={l.value}
-                          type="button"
-                          onClick={() => setTargetLanguage(l.value as any)}
-                          className="btn"
-                          style={{ flex: '1 1 100px', borderColor: targetLanguage === l.value ? '#50fa7b' : 'var(--line)', color: targetLanguage === l.value ? '#50fa7b' : 'inherit', height: '44px', fontWeight: targetLanguage === l.value ? 700 : 400, cursor: 'pointer', background: targetLanguage === l.value ? 'rgba(80, 250, 123, 0.05)' : 'transparent', minWidth: '100px' }}
-                        >
-                          {l.label}
-                        </button>
-                      ))}
+                  {gameModeSelection !== "HACKBOUNTY" && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Target Programming Language</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        {[ { label: "C++ (Locked)", value: "CPP" } ].map((l) => (
+                          <button 
+                            key={l.value}
+                            type="button"
+                            onClick={() => setTargetLanguage(l.value as any)}
+                            className="btn"
+                            style={{ flex: '1 1 100px', borderColor: targetLanguage === l.value ? '#50fa7b' : 'var(--line)', color: targetLanguage === l.value ? '#50fa7b' : 'inherit', height: '44px', fontWeight: targetLanguage === l.value ? 700 : 400, cursor: 'pointer', background: targetLanguage === l.value ? 'rgba(80, 250, 123, 0.05)' : 'transparent', minWidth: '100px' }}
+                          >
+                            {l.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {gameModeSelection === "BUGHUNTER" && (
                     <div>

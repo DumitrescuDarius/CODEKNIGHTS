@@ -128,6 +128,8 @@ export async function POST(req: NextRequest) {
 
     if (hostId && guestId) {
       const isHackBounty = (gameMode === "HACKBOUNTY");
+      const finalTotalTime = isHackBounty ? 12 : parsedTotalTime;
+      
       const duel = await prisma.duel.create({
         data: {
           pin,
@@ -138,13 +140,13 @@ export async function POST(req: NextRequest) {
           gameMode: gameMode || "CODEKNIGHTS",
           unrated: isUnrated,
           startedAt: new Date(),
-          expiresAt: new Date(Date.now() + parsedTotalTime * 60000 + 5 * 60000),
+          expiresAt: new Date(Date.now() + finalTotalTime * 60000 + 5 * 60000),
           numProblems: parsedNumProblems,
-          totalTime: parsedTotalTime,
+          totalTime: finalTotalTime,
           difficulty: chosenDifficulty,
           questionIds: selectedIds,
           phase: isHackBounty ? "BREAKING" : null,
-          phaseEndsAt: isHackBounty ? new Date(Date.now() + 100 * 1000) : null,
+          phaseEndsAt: isHackBounty ? new Date(Date.now() + 120 * 1000) : null,
         },
         include: {
           question: true,
@@ -156,6 +158,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ...safeDuel, serverTime: Date.now() });
     }
 
+    const isHackBounty2 = (gameMode === "HACKBOUNTY");
+    const finalTotalTime2 = isHackBounty2 ? 12 : parsedTotalTime;
+
     const duel = await prisma.duel.create({
       data: {
         pin,
@@ -163,9 +168,9 @@ export async function POST(req: NextRequest) {
         status: "WAITING",
         hostId: userId,
         gameMode: gameMode || "CODEKNIGHTS",
-        expiresAt: new Date(Date.now() + parsedTotalTime * 60000 + 5 * 60000),
+        expiresAt: new Date(Date.now() + finalTotalTime2 * 60000 + 5 * 60000),
         numProblems: parsedNumProblems,
-        totalTime: parsedTotalTime,
+        totalTime: finalTotalTime2,
         difficulty: chosenDifficulty,
         unrated: isUnrated,
         questionIds: selectedIds,

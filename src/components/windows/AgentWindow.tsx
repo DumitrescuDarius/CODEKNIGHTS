@@ -159,9 +159,12 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
   const [provider, setProvider] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isArtificiallyLoading, setIsArtificiallyLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+    const timer = setTimeout(() => setIsArtificiallyLoading(false), 500);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -176,6 +179,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
       return () => clearTimeout(timer);
     }
   }, [messages, isLoading]);
+
 
   useEffect(() => {
     // Process any queued contexts
@@ -336,7 +340,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
 
 
 
-  if (!mounted) {
+  if (!mounted || isArtificiallyLoading) {
     return (
       <div style={{ height: '100%', width: '100%', background: 'var(--bg)', position: 'relative' }}>
         <WindowSpinner message={t("loading") || "LOADING..."} />

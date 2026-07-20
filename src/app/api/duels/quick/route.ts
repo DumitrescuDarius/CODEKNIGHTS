@@ -81,9 +81,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (waiting) {
+      const isHackBounty = waiting.gameMode === "HACKBOUNTY";
       const updated = await prisma.duel.update({
         where: { id: waiting.id },
-        data: { guestId: userId, status: 'ACTIVE', startedAt: new Date() },
+        data: { 
+          guestId: userId, 
+          status: 'ACTIVE', 
+          startedAt: new Date(),
+          phase: isHackBounty ? "BREAKING" : null,
+          phaseEndsAt: isHackBounty ? new Date(Date.now() + 120 * 1000) : null
+        },
         include: { question: true, host: true, guest: true }
       });
       const safeUpdated = await attachQuestionsToDuel(updated);

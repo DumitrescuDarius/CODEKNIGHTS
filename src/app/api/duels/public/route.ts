@@ -51,11 +51,49 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Remove hidden test cases from questions for security
-    const safeDuels = availableDuels.map(d => {
-      const copy = { ...d };
+    let onlineUsers: string[] | null = null;
+    try {
+      const port = process.env.PORT || 3000;
+      // Note: Use 127.0.0.1 to avoid potential IPv6 resolution issues on Windows
+      const res = await fetch(`http://127.0.0.1:${port}/api/socket_online`, { cache: 'no-store' });
+      if (res.ok) {
+        onlineUsers = await res.json();
+      }
+    } catch (e) {
+      console.error("Failed to fetch online users for public duels", e);
+    }
+
+    const activeAvailableDuels = onlineUsers 
+      ? availableDuels.filter(d => onlineUsers!.includes(d.hostId))
+      : availableDuels;
+
+    // Attach full questions array if questionIds exist
+    let allQuestionIds = new Set<string>();
+    activeAvailableDuels.forEach(d => {
+      if (d.questionIds && d.questionIds.length > 0) {
+        d.questionIds.forEach(id => allQuestionIds.add(id));
+      }
+    });
+
+    let questionsMap: Record<string, any> = {};
+    if (allQuestionIds.size > 0) {
+      const qList = await prisma.question.findMany({
+        where: { id: { in: Array.from(allQuestionIds) } },
+        select: { id: true, title: true, difficulty: true }
+      });
+      qList.forEach(q => { questionsMap[q.id] = q; });
+    }
+
+    // Remove hidden test cases from questions for security and attach questions
+    const safeDuels = activeAvailableDuels.map(d => {
+      const copy = { ...d } as any;
       if (copy.question && 'hiddenTestCases' in copy.question) {
-        (copy.question as any).hiddenTestCases = null;
+        copy.question.hiddenTestCases = null;
+      }
+      if (copy.questionIds && copy.questionIds.length > 0) {
+        copy.questions = copy.questionIds.map((id: string) => questionsMap[id]).filter(Boolean);
+      } else {
+        copy.questions = copy.question ? [copy.question] : [];
       }
       return copy;
     });

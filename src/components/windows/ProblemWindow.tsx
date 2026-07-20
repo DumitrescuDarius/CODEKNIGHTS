@@ -139,14 +139,16 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   userId, activeQuestion, testResults, totalPenalty, wrongAttemptCount, calculatePenalty, retryProblem, showQuitConfirmation, setShowQuitConfirmation,
   handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
+  analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin, onOpenUserProfile,
+  activeQuestionIndex, changeActiveQuestion, problemTestResults, problemScores, problemWrongAttemptCounts, setCode
 }) => {
   const [isScrolledToTop, setIsScrolledToTop] = useState(true);
   const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setIsScrolledToTop(e.currentTarget.scrollTop < 5);
   }, []);
 
-  const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
-  const isDuelFinished = activeDuel?.status === "FINISHED" || (activeDuel != null && timeLeft === 0);
+  const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0 && (testResults as any)?.phase === (activeDuel?.phase || null);
+  const isDuelFinished = activeDuel?.status === "FINISHED" || (activeDuel != null && timeLeft === 0 && !(activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING"));
   const isHost = activeDuel?.hostId === userId;
   const isGuest = activeDuel?.guestId === userId;
   const userFinalized = isHost ? activeDuel?.hostFinalized : (isGuest ? activeDuel?.guestFinalized : false);
@@ -154,8 +156,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
   const allProblemsSolved = activeDuel?.questions && activeDuel.questions.length > 0
     ? activeDuel.questions.every((q: any) => {
-        const res = problemTestResults[q.id];
-        return res && res.passed === res.total && res.total > 0;
+        const res = problemTestResults?.[q.id];
+        return res && res.passed === res.total && res.total > 0 && (res as any).phase === (activeDuel?.phase || null);
       })
     : allPassed;
 
@@ -345,7 +347,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           detail: {
             // id: `problem-${activeQuestion.id}`,
             title: `Problem: ${activeQuestion.title}`,
-            content: `Problem Title: ${activeQuestion.title}\n\nDescription:\n${activeQuestion.description}\n\nRestrictions:\n${activeQuestion.restrictions || 'None'}`
+            content: `Problem Title: ${activeQuestion.title}\n\nDescription:\n${activeQuestion.description}\n\nInput Format:\n${activeQuestion.inputFormat || "None"}\n\nOutput Format:\n${activeQuestion.outputFormat || "None"}\n\nRestrictions:\n${activeQuestion.restrictions || "None"}`
           }
         }));
       }
@@ -373,7 +375,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             finalize: true,
             solveTime: timeSeconds * 1000,
             complexityScore: complexityTotal,
-            totalPenalty: totalPenalty
+            totalPenalty: totalPenalty,
+            hackBountySolved: (activeDuel?.gameMode === "HACKBOUNTY" && allProblemsSolved) ? true : undefined
         })
       });
       window.dispatchEvent(new CustomEvent("duel_update_required", { detail: activeDuel.id }));
@@ -383,14 +386,14 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     } finally {
       setIsSubmitting(false);
     }
-  }, [activeDuel, isSubmitting, submitted, solveTime, analysis, totalPenalty]);
+  }, [activeDuel, isSubmitting, submitted, solveTime, analysis, totalPenalty, allProblemsSolved]);
 
   useEffect(() => {
     const handleEndBattleReq = () => {
       if (allProblemsSolved) {
         handleFinalSubmit();
       } else {
-        if (activeDuel?.gameMode === "BUGHUNTER") {
+        if (activeDuel?.gameMode === "BUGHUNTER" || activeDuel?.gameMode === "HACKBOUNTY") {
           alert(t("bugHunterMustPassAll") || "In BugHunter mode, you must pass all tests to submit and end the battle!");
           return;
         }
@@ -409,9 +412,15 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
   useEffect(() => {
     if (timeLeft === 0 && !submitted && activeDuel?.status === "ACTIVE") {
-      handleFinalSubmit();
+      if (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel.phase === "BREAKING") return;
+      
+      // Debounce to prevent stale timeLeft state from triggering premature submissions
+      const timer = setTimeout(() => {
+         handleFinalSubmit();
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [timeLeft, submitted, activeDuel]);
+  }, [timeLeft, submitted, activeDuel, handleFinalSubmit]);
   
   const penaltyBreakdown = {
       time: solveTime ? solveTime.split(':').reduce((acc, time) => (60 * acc) + +time, 0) : 0,
@@ -440,8 +449,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
   const renderFormattedText = (text: string) => {
     if (!text) return null;
+    const processedText = text.replace(/==(.*?)==/g, '[$1](#ck-mark)');
     return (
       <ReactMarkdown 
+        children={processedText}
         remarkPlugins={[remarkMath, remarkGfm]}
         rehypePlugins={[rehypeKatex]}
         components={{
@@ -476,13 +487,21 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           ul({children, ...props}: any) {
             return <ul style={{ paddingLeft: '1.5rem', margin: '0.5rem 0', color: 'rgba(255,255,255,0.85)' }} {...props}>{children}</ul>;
           },
+          a({href, children, ...props}: any) {
+            if (href === '#ck-mark') {
+              return (
+                <mark style={{ background: 'rgba(255, 184, 108, 0.25)', color: '#ffb86c', padding: '0 0.3rem', borderRadius: '0.2rem', fontWeight: 700, boxShadow: '0 0 10px rgba(255, 184, 108, 0.1)' }}>
+                  {children}
+                </mark>
+              );
+            }
+            return <a href={href} style={{ color: 'var(--accent)', textDecoration: 'underline' }} {...props}>{children}</a>;
+          },
           li({children, ...props}: any) {
             return <li style={{ marginBottom: '0.5rem', lineHeight: 1.6 }} {...props}>{children}</li>;
           }
         }}
-      >
-        {text}
-      </ReactMarkdown>
+      />
     );
   };
 
@@ -766,7 +785,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     );
   }
 
-  const currentTestCases = activeQuestion ? (typeof activeQuestion.testCases === 'string' ? JSON.parse(activeQuestion.testCases) : activeQuestion.testCases) : [];
+  const currentTestCases = activeQuestion ? (typeof activeQuestion.testCases === 'string' ? JSON.parse(activeQuestion.testCases) : (activeQuestion.testCases || [])) : [];
 
   return (
     <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto', position: 'relative' }}>
@@ -944,6 +963,30 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             {renderFormattedText(activeQuestion.description)}
           </div>
 
+
+          {activeQuestion.inputFormat && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
+                Input Format
+              </div>
+              <div style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                {renderFormattedText(activeQuestion.inputFormat)}
+              </div>
+            </div>
+          )}
+
+          {activeQuestion.outputFormat && (
+            <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
+                Output Format
+              </div>
+              <div style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                {renderFormattedText(activeQuestion.outputFormat)}
+              </div>
+            </div>
+          )}
+  
+
           {activeQuestion.restrictions && (
             <div 
               style={{ 
@@ -969,9 +1012,9 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
 
 
-          {((activeQuestion as any).timeLimit || (activeQuestion as any).memoryLimit) && (
+          {(activeQuestion.timeLimit || activeQuestion.memoryLimit) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-              {(activeQuestion as any).timeLimit && (
+              {activeQuestion.timeLimit && (
                 <div style={{ 
                   display: 'flex', alignItems: 'center', gap: '0.5rem',
                   background: 'rgba(122, 162, 247, 0.08)', 
@@ -980,10 +1023,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                   padding: '0.75rem 1.25rem'
                 }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Time Limit</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text)' }}>{((activeQuestion as any).timeLimit / 1000).toFixed(1)}s</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text)' }}>{(activeQuestion.timeLimit / 1000).toFixed(1)}s</span>
                 </div>
               )}
-              {(activeQuestion as any).memoryLimit && (
+              {activeQuestion.memoryLimit && (
                 <div style={{ 
                   display: 'flex', alignItems: 'center', gap: '0.5rem',
                   background: 'rgba(122, 162, 247, 0.08)', 
@@ -992,7 +1035,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                   padding: '0.75rem 1.25rem'
                 }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Memory Limit</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text)' }}>{(activeQuestion as any).memoryLimit} MB</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text)' }}>{activeQuestion.memoryLimit} MB</span>
                 </div>
               )}
             </div>
@@ -1001,7 +1044,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div className="settings-group" style={{ marginTop: '1rem' }}>
             <span className="settings-label" style={{ fontSize: '1.1rem', color: 'var(--text)', marginBottom: '1.5rem', display: 'inline-block' }}>{t("examples")}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {currentTestCases.map((tc: any, i: number) => (
+              {(currentTestCases || []).map((tc: any, i: number) => (
                 <div 
                   key={i} 
                   style={{ 

@@ -205,9 +205,10 @@ interface NotesWindowProps {
   t: (key: TranslationKey) => string;
   openAgentWindow?: () => void;
   setCode?: (val: string) => void;
+  isRoyal?: boolean;
 }
 
-export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, setCode }) => {
+export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, setCode, isRoyal }) => {
   const markdownComponents = React.useMemo(() => getMarkdownComponents(setCode), [setCode]);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -513,6 +514,10 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
   };
 
   const handleCreateWorkspace = () => {
+    if (!isRoyal && workspaces.length >= 3) {
+      alert("Standard users are limited to 3 notes workspaces. Upgrade to Royal to add more!");
+      return;
+    }
     const newWs: Workspace = {
       id: Date.now().toString(),
       name: "",

@@ -54,14 +54,15 @@ export async function POST(req: NextRequest) {
     // For simplicity, if time has passed and at least one submitted, we transition?
     // Let's transition as soon as BOTH have non-null sabotaged codes, or we just let the host do the transition?
     // It's better if we just check if both are submitted.
-    if (updatedDuel.hostSabotagedCode && updatedDuel.guestSabotagedCode) {
+    const timeIsUp = updatedDuel.phaseEndsAt && (new Date(updatedDuel.phaseEndsAt).getTime() <= Date.now() + 5000);
+    if ((updatedDuel.hostSabotagedCode && updatedDuel.guestSabotagedCode) || timeIsUp) {
       await prisma.duel.update({
         where: { id: duelId },
-        data: { phase: "FIXING", phaseEndsAt: null }
+        data: { phase: "FIXING", phaseEndsAt: new Date(Date.now() + 10 * 60000).toISOString() }
       });
     }
 
-    return NextResponse.json({ success: true, phase: updatedDuel.hostSabotagedCode && updatedDuel.guestSabotagedCode ? "FIXING" : "BREAKING" });
+    return NextResponse.json({ success: true, phase: ((updatedDuel.hostSabotagedCode && updatedDuel.guestSabotagedCode) || timeIsUp) ? "FIXING" : "BREAKING" });
   } catch (err: any) {
     console.error("Transition error:", err);
     return NextResponse.json({ error: "Failed to transition phase" }, { status: 500 });

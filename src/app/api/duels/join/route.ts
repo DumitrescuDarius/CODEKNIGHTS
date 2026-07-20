@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const { pin, guestName } = await req.json();
+  const { pin, guestName, gameMode } = await req.json();
 
   let userId = session?.user ? (session.user as any).id : null;
   let userName = session?.user 
@@ -32,6 +32,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Duel not found" }, { status: 404 });
     }
 
+    if (gameMode && duel.gameMode && gameMode.toUpperCase() !== duel.gameMode.toUpperCase()) {
+      return NextResponse.json({ error: "Game mode mismatch! You cannot join a " + duel.gameMode + " duel from " + gameMode }, { status: 400 });
+    }
+
     if (duel.status !== "WAITING") {
       return NextResponse.json({ error: "Duel is already active or finished" }, { status: 400 });
     }
@@ -48,7 +52,7 @@ export async function POST(req: NextRequest) {
           status: "ACTIVE",
           startedAt: new Date(),
           phase: isHackBounty ? "BREAKING" : null,
-          phaseEndsAt: isHackBounty ? new Date(Date.now() + 100 * 1000) : null,
+          phaseEndsAt: isHackBounty ? new Date(Date.now() + 120 * 1000) : null,
         },
       include: {
         question: true,

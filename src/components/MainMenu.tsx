@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag, Zap } from "lucide-react";
 import { Tour, TourStep } from "./Tour";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
@@ -270,7 +270,7 @@ const MainMenu: React.FC = () => {
   const { data: session, status, update: updateSession } = useSession();
   const [fullProfile, setFullProfile] = useState<any>(null);
   const isRoyal = !!(session?.user as any)?.isRoyal || !!fullProfile?.isRoyal;
-  const maxWindows = isRoyal ? 999 : 5;
+  const maxWindows = 4;
   const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [usernameError, setUsernameError] = useState("");
@@ -405,7 +405,7 @@ const MainMenu: React.FC = () => {
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const problemCodesRef = useRef<Record<string, string>>({});
   const [testResults, setTestResults] = useState<{ passed: number, total: number, details: TestDetail[] } | null>(null);
-  const [problemTestResults, setProblemTestResults] = useState<Record<string, { passed: number; total: number; details: any[] }>>({});
+  const [problemTestResults, setProblemTestResults] = useState<Record<string, { passed: number; total: number; details: any[]; phase?: string | null }>>({});
   const [problemScores, setProblemScores] = useState<Record<string, number>>({});
   const [problemWrongAttemptCounts, setProblemWrongAttemptCounts] = useState<Record<string, number>>({});
   const [totalPenalty, setTotalPenalty] = useState<number | null>(null);
@@ -960,12 +960,12 @@ const MainMenu: React.FC = () => {
     }
   }, [isGuest, guestName, pendingInviteTargetId]);
 
-  const joinDuel = useCallback(async (pin: string) => {
+  const joinDuel = useCallback(async (pin: string, overrideGameMode?: string) => {
     try {
       const res = await fetch("/api/duels/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin, guestName: isGuest ? guestName : undefined })
+        body: JSON.stringify({ pin, guestName: isGuest ? guestName : undefined, gameMode: overrideGameMode })
       });
       const data = await res.json();
       if (res.ok) {
@@ -1028,7 +1028,7 @@ const MainMenu: React.FC = () => {
 
     setInviteTargetForConfig({ id: targetId, name: targetName });
     setOpenWindows(prev => {
-      const next = prev.filter(w => w !== "battle");
+      const next = prev.filter(w => w !== "battle") as WindowId[];
       next.unshift("battle");
       setWindowFlexes(next.map(() => 1));
       return next;
@@ -1141,14 +1141,19 @@ const MainMenu: React.FC = () => {
   }, [session, fetchUserStats]);
 
   useEffect(() => {
-    const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
-    if (!isDuelActive) return;
+    if (!activeDuel) return;
+    
+    const isDuelActive = activeDuel.status === "ACTIVE";
+    const isDuelWaiting = activeDuel.status === "WAITING";
+    if (!isDuelActive && !isDuelWaiting) return;
 
-    // 1. Refresh Prevention Warning
+    // 1. Refresh Prevention Warning (Only for ACTIVE duels)
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
+      if (isDuelActive) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
@@ -2055,7 +2060,7 @@ const MainMenu: React.FC = () => {
       const { passed, total, details } = data;
       const allTestsLength = total || details.length;
       
-      const newResults = { passed, total: allTestsLength, details };
+      const newResults = { passed, total: allTestsLength, details, phase: activeDuel?.phase || null };
       setTestResults(newResults);
       setSubmissionFeedback(getSubmissionFeedback(passed, allTestsLength));
       if (data.timedOut && data.executionNotice) {
@@ -2660,7 +2665,7 @@ const MainMenu: React.FC = () => {
             setFontSize={setFontSize}
             setTerminalFontSize={setTerminalFontSize}
             activeQuestionId={activeQuestion?.id}
-            isLangLocked={!!activeDuel && activeDuel.gameMode === "BUGHUNTER"}
+            isLangLocked={!!activeDuel && (activeDuel.gameMode === "BUGHUNTER" || activeDuel.gameMode === "HACKBOUNTY")}
           />
         );
       case "settings":
@@ -2700,7 +2705,7 @@ const MainMenu: React.FC = () => {
           <BattleWindow 
             startBattle={startBattle} questions={questions}
             startQuickMatch={startQuickMatch}
-            session={session} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest} guestId={guestId}
+            session={session} sessionStatus={status} isGuest={isGuest} handlePlayAsGuest={handlePlayAsGuest} guestId={guestId}
             showSignInOptions={showSignInOptions} setShowSignInOptions={setShowSignInOptions}
             t={t} onDeleteQuestion={handleDeleteQuestion} onEditQuestion={onEditQuestion}
             createDuel={createDuel} joinDuel={joinDuel} activeDuel={activeDuel}
@@ -2751,7 +2756,7 @@ const MainMenu: React.FC = () => {
         );
       case "notes":
         return (
-          <NotesWindow t={t} openAgentWindow={openAgentWindow} setCode={setCode} />
+          <NotesWindow t={t} openAgentWindow={openAgentWindow} setCode={setCode} isRoyal={isRoyal} />
         );
       case "problem":
         const currentUserId = session?.user ? (session.user as any).id : "guest";
