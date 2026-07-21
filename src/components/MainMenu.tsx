@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag, Zap } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag, Zap, Loader2 } from "lucide-react";
 import { Tour, TourStep } from "./Tour";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
@@ -389,16 +389,19 @@ const MainMenu: React.FC = () => {
   const [terminalHeight, setTerminalHeight] = useState(180);
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [newQuestion, setNewQuestion] = useState<{ id?: string; title: string; description: string; restrictions: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[]; timeLimit: number; memoryLimit: number; brokenCode?: string }>({ 
+  const [newQuestion, setNewQuestion] = useState<{ id?: string; title: string; description: string; restrictions: string; inputFormat?: string; outputFormat?: string; difficulty: string; testCases: { input: string; output: string }[]; hiddenTestCases: { input: string; output: string }[]; timeLimit: number; memoryLimit: number; brokenCode?: string; referenceCode?: string }>({ 
     title: "", 
     description: "", 
     restrictions: "",
+    inputFormat: "",
+    outputFormat: "",
     difficulty: "Easy", 
     testCases: [{ input: "", output: "" }], 
     hiddenTestCases: [],
     timeLimit: 5000,
     memoryLimit: 256,
-    brokenCode: ""
+    brokenCode: "",
+    referenceCode: ""
   });
   const [adminError, setAdminError] = useState<string | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
@@ -1458,7 +1461,9 @@ const MainMenu: React.FC = () => {
                    try {
                        const refs = JSON.parse(myQuestion.referenceCode);
                        if (refs[lang]) setCode(refs[lang]);
-                       else setCode("// No reference code available for this language");
+                       else if (refs["cpp"]) setCode(refs["cpp"]);
+                       else if (Object.values(refs).length > 0) setCode(Object.values(refs)[0] as string);
+                       else setCode("// No reference code available for this problem");
                    } catch(e) {}
                }
            } else if (activeDuel.phase === "FIXING") {
@@ -1716,12 +1721,15 @@ const MainMenu: React.FC = () => {
           title: "", 
           description: "", 
           restrictions: "",
+          inputFormat: "",
+          outputFormat: "",
           difficulty: "Easy", 
           testCases: [{ input: "", output: "" }], 
           hiddenTestCases: [],
           timeLimit: 5000,
           memoryLimit: 256,
-          brokenCode: ""
+          brokenCode: "",
+          referenceCode: ""
         });
         fetchQuestions();
         alert("Question published successfully!");
@@ -1753,12 +1761,15 @@ const MainMenu: React.FC = () => {
           title: "", 
           description: "", 
           restrictions: "",
+          inputFormat: "",
+          outputFormat: "",
           difficulty: "Easy", 
           testCases: [{ input: "", output: "" }], 
           hiddenTestCases: [],
           timeLimit: 5000,
           memoryLimit: 256,
-          brokenCode: ""
+          brokenCode: "",
+          referenceCode: ""
         });
         fetchQuestions();
         alert("Question updated successfully!");
@@ -1778,12 +1789,15 @@ const MainMenu: React.FC = () => {
       title: q.title,
       description: q.description,
       restrictions: q.restrictions || "",
+      inputFormat: q.inputFormat || "",
+      outputFormat: q.outputFormat || "",
       difficulty: q.difficulty,
       testCases: typeof q.testCases === 'string' ? JSON.parse(q.testCases) : q.testCases,
       hiddenTestCases: q.hiddenTestCases ? (typeof q.hiddenTestCases === 'string' ? JSON.parse(q.hiddenTestCases) : q.hiddenTestCases) : [],
       timeLimit: q.timeLimit ?? 5000,
       memoryLimit: q.memoryLimit ?? 256,
-      brokenCode: q.brokenCode || ""
+      brokenCode: q.brokenCode || "",
+      referenceCode: q.referenceCode || ""
     });
     
     setOpenWindows(prev => {
@@ -1872,7 +1886,19 @@ const MainMenu: React.FC = () => {
     
     let initialLang = lang;
     let initialCode = "";
-    if (currentDuel?.gameMode === "BUGHUNTER" && q.brokenCode) {
+    if (currentDuel?.gameMode === "HACKBOUNTY") {
+      initialLang = "cpp";
+      setLang(initialLang);
+      if (q.referenceCode) {
+        try {
+          const parsed = JSON.parse(q.referenceCode);
+          if (parsed["cpp"]) initialCode = parsed["cpp"];
+          else initialCode = Object.values(parsed)[0] as string || "";
+        } catch (e) {
+          console.error("Failed to parse referenceCode", e);
+        }
+      }
+    } else if (currentDuel?.gameMode === "BUGHUNTER" && q.brokenCode) {
       try {
         const parsed = JSON.parse(q.brokenCode);
         const availableLangs = Object.keys(parsed);
@@ -1931,7 +1957,19 @@ const MainMenu: React.FC = () => {
     let targetLang = lang;
     let newCode = problemCodesRef.current[targetQ.id];
     
-    if (currentDuel.gameMode === "BUGHUNTER" && targetQ.brokenCode) {
+    if (currentDuel.gameMode === "HACKBOUNTY") {
+      targetLang = "cpp";
+      setLang(targetLang);
+      if (newCode === undefined && targetQ.referenceCode) {
+        try {
+          const parsed = JSON.parse(targetQ.referenceCode);
+          if (parsed["cpp"]) newCode = parsed["cpp"];
+          else newCode = Object.values(parsed)[0] as string || "";
+        } catch (e) {
+          console.error("Failed to parse referenceCode", e);
+        }
+      }
+    } else if (currentDuel.gameMode === "BUGHUNTER" && targetQ.brokenCode) {
       try {
         const parsed = JSON.parse(targetQ.brokenCode);
         const availableLangs = Object.keys(parsed);
@@ -3545,8 +3583,8 @@ const MainMenu: React.FC = () => {
                         </span>
                         {id === 'editor' && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>
-                            <button onClick={(e) => { e.stopPropagation(); runCode(); }} disabled={isRunning} style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: isRunning ? 'wait' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: isRunning ? 0.7 : 1, marginRight: '0.5rem' }}>
-                              <Play size={10} fill="currentColor" /> {isRunning ? "..." : "RUN"}
+                            <button onClick={(e) => { e.stopPropagation(); runCode(); }} disabled={isRunning} className={`run-btn-animated ${isRunning ? 'running' : ''}`} style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: isRunning ? 'wait' : 'pointer', fontSize: '0.7rem', fontWeight: 700, marginRight: '0.5rem' }}>
+                              {isRunning ? <Loader2 size={10} /> : <Play size={10} fill="currentColor" />} {isRunning ? "RUNNING..." : "RUN"}
                             </button>
                             <button onClick={(e) => { e.stopPropagation(); handleRevert(); }} className="twm-btn" title="Revert to original code" style={{ padding: '0.1rem 0.3rem' }}><RotateCcw size={12} /></button>
                             <button onClick={(e) => { e.stopPropagation(); handleBeautify(); }} className="twm-btn" title="Beautify code (Format)" style={{ padding: '0.1rem 0.3rem' }}><Wand2 size={12} /></button>
@@ -3557,8 +3595,8 @@ const MainMenu: React.FC = () => {
                             <button 
                               onClick={(e) => { e.stopPropagation(); runTests(); }} 
                               disabled={isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")} 
-                              style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 0.7 : 1 }}>
-                              {isTesting ? "..." : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? <><Check size={12} fill="currentColor" /> SUBMITTED</> : (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING" ? <><Zap size={10} fill="currentColor" /> BREAKING...</> : <><Send size={10} fill="currentColor" /> SUBMIT</>))}
+                              className={`run-btn-animated ${(isTesting || (activeDuel?.status !== "FINISHED" && testResults?.passed === testResults?.total && testResults?.total > 0 && activeDuel?.status === "ACTIVE")) ? 'running' : ''}`} style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
+                              {isTesting ? <><Loader2 size={10} /> TESTING...</> : ((activeDuel?.status !== "FINISHED" && testResults?.passed === testResults?.total && testResults?.total > 0 && activeDuel?.status === "ACTIVE") ? <><Loader2 size={10} /> SUBMITTING...</> : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? <><Check size={12} fill="currentColor" /> SUBMITTED</> : (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING" ? <><Zap size={10} fill="currentColor" /> BREAKING...</> : <><Send size={10} fill="currentColor" /> SUBMIT</>)))}
                             </button>
                           </div>
                         )}

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Language } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
 import { TranslationKey } from "../../constants/translations";
-import { Brain, Code2, Sparkles, Loader2, History, Plus, X, MessageSquare, Trash2, Crown } from "lucide-react";
+import { Brain, Code2, Sparkles, Loader2, History, Plus, X, MessageSquare, Trash2, Crown, FileText, StickyNote } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { WindowSpinner } from "../WindowSpinner";
@@ -146,7 +146,7 @@ const TypewriterMarkdown = React.memo(({ content, isNew, setCode, scrollContaine
 export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code, setCode, isBattleActive, session }) => {
   const isRoyal = !!(session?.user as any)?.isRoyal;
   const chatContainerRef = React.useRef<HTMLDivElement>(null);
-  type ChatMessage = {role: 'user'|'assistant', content: string, isNew?: boolean};
+  type ChatMessage = {role: 'user'|'assistant', content: string, displayContent?: string, contextTags?: string[], customContexts?: {title: string}[], isNew?: boolean};
   type ChatSession = { id: string; title: string; updatedAt: number; messages: ChatMessage[] };
 
   const [prompt, setPrompt] = useState<string>("");
@@ -305,7 +305,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
       fullPrompt = (prompt.trim() ? prompt + "\n\n" : "") + contextStrs.join("\n\n");
     }
 
-    const userMsg = { role: 'user' as const, content: fullPrompt };
+    const userMsg: ChatMessage = { role: 'user', content: fullPrompt, displayContent: prompt.trim() || "", contextTags: [...contextTags], customContexts: customContexts.map(c => ({ title: c.title })) };
     // Remove isNew flag from previous messages
     const existingMessages = messages.map(m => ({...m, isNew: false}));
     const newMessages = [...existingMessages, userMsg];
@@ -318,7 +318,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
       const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, language: lang }),
+        body: JSON.stringify({ messages: newMessages.map(m => ({ role: m.role, content: m.content })), language: lang }),
       });
       const data = await res.json();
       setProvider(data?.provider ?? null);
@@ -475,11 +475,26 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
               overflowX: 'auto'
             }}>
               {msg.role === 'user' ? (
-                <div style={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>{msg.content}</div>
+                <div style={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>{msg.displayContent || msg.content || "(Context Provided)"}</div>
               ) : (
                 <TypewriterMarkdown content={msg.content} isNew={msg.isNew} setCode={setCode} scrollContainerRef={chatContainerRef} />
               )}
             </div>
+            
+            {msg.role === 'user' && (msg.contextTags?.length > 0 || msg.customContexts?.length > 0) && (
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: '0.1rem', marginRight: '0.2rem' }}>
+                {msg.contextTags?.map(tag => (
+                   <span key={tag} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', textTransform: 'uppercase' }}>
+                     <FileText size={10} /> {tag}
+                   </span>
+                ))}
+                {msg.customContexts?.map((c, idx) => (
+                   <span key={idx} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', textTransform: 'uppercase' }}>
+                     <StickyNote size={10} /> {c.title}
+                   </span>
+                ))}
+              </div>
+            )}
           </div>
         ))}
         {isLoading && (

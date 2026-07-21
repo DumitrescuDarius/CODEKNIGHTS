@@ -420,7 +420,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                   <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '1.1rem' }}>{rank}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{selectedGameMode === "BUGHUNTER" ? "BHP" : "CKP"}</span>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{selectedGameMode === "BUGHUNTER" ? "BHP" : selectedGameMode === "HACKBOUNTY" ? "HBP" : "CKP"}</span>
                   <span style={{ color: '#f1fa8c', fontWeight: 700, fontSize: '1.1rem' }}>{rating}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -558,7 +558,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
             {(["CODEKNIGHTS", "BUGHUNTER", "HACKBOUNTY", "MLMAGES"] as const).map((mode) => {
               const isActive = selectedGameMode === mode;
               const label = mode;
-              const isWip = mode === "HACKBOUNTY" || mode === "MLMAGES";
+              const isWip = mode === "MLMAGES";
               
               return (
                 <button
@@ -611,7 +611,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
           </div>
         </div>
 
-        {selectedGameMode === "CODEKNIGHTS" || selectedGameMode === "BUGHUNTER" ? (
+        {selectedGameMode === "CODEKNIGHTS" || selectedGameMode === "BUGHUNTER" || selectedGameMode === "HACKBOUNTY" ? (
           <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               {/* Activity Grid */}
@@ -683,13 +683,13 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                               const x = ratingHistory.length === 1 ? padding.left + chartWidth / 2 : padding.left + ((d.date.getTime() - minTime) / timeRange) * chartWidth;
                               const y = padding.top + chartHeight * (1 - (d.rating - paddedMin) / range);
                               const isPeak = d.rating === maxRating;
-                              const dotColor = isPeak ? '#ff5555' : 'var(--accent)';
                               
                               return (
                                   <g key={i} className="chart-node" style={{ cursor: 'pointer' }}>
                                       <circle cx={x} cy={y} r="8" fill="transparent" />
-                                      <circle cx={x} cy={y} r={isPeak ? "5" : "4"} fill={dotColor} vectorEffect="non-scaling-stroke" style={{ transition: 'all 0.2s ease' }} />
-                                      <title>{`${d.name}: ${d.rating} ${selectedGameMode === "BUGHUNTER" ? "BHP" : "CKP"} ${isPeak ? '(Peak)' : ''}`}</title>
+                                      <circle cx={x} cy={y} r={isPeak ? "5" : "4"} fill={isPeak ? "#f1fa8c" : "var(--accent)"} style={{ filter: isPeak ? 'drop-shadow(0 0 4px rgba(241, 250, 140, 0.8))' : 'none' }}>
+                                      <title>{`${d.name}: ${d.rating} ${selectedGameMode === "BUGHUNTER" ? "BHP" : selectedGameMode === "HACKBOUNTY" ? "HBP" : "CKP"} ${isPeak ? '(Peak)' : ''}`}</title>
+                                      </circle>
                                   </g>
                               );
                           })}

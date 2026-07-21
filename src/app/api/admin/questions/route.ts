@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
       referenceCode: referenceCode ? (typeof referenceCode === 'object' ? JSON.stringify(referenceCode) : referenceCode) : null,
       ...(timeLimit !== undefined && { timeLimit: Number(timeLimit) }),
       ...(memoryLimit !== undefined && { memoryLimit: Number(memoryLimit) }),
+      ...(inputFormat !== undefined && { inputFormat }),
+      ...(outputFormat !== undefined && { outputFormat }),
     };
 
     const question = await prisma.question.create({ data });
@@ -83,6 +85,8 @@ export async function PATCH(req: NextRequest) {
       referenceCode: referenceCode ? (typeof referenceCode === 'object' ? JSON.stringify(referenceCode) : referenceCode) : null,
       ...(timeLimit !== undefined && { timeLimit: Number(timeLimit) }),
       ...(memoryLimit !== undefined && { memoryLimit: Number(memoryLimit) }),
+      ...(inputFormat !== undefined && { inputFormat }),
+      ...(outputFormat !== undefined && { outputFormat }),
     };
 
     const question = await prisma.question.update({

@@ -162,9 +162,9 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
-        {["CODEKNIGHTS", "BUGHUNTER"].map((mode) => {
+        {["CODEKNIGHTS", "BUGHUNTER", "HACKBOUNTY"].map((mode) => {
           const isActive = selectedGameMode === mode;
-          const label = mode === "CODEKNIGHTS" ? "Code Knights" : "Bug Hunter";
+          const label = mode === "CODEKNIGHTS" ? "Code Knights" : mode === "BUGHUNTER" ? "Bug Hunter" : "Hack Bounty";
           return (
             <button
               key={mode}
@@ -249,7 +249,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
                     <span style={{ fontSize: "0.6rem", background: "var(--accent)", color: "#000", padding: "0.05rem 0.25rem", borderRadius: "0.2rem", fontWeight: 900, flexShrink: 0 }}>YOU</span>
                   </span>
                 </div>
-                <div style={{ textAlign: "right", fontWeight: 900, color: "var(--accent)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{currentUser[selectedGameMode === "BUGHUNTER" ? "ratingBugHunter" : "rating"] || 1000}</div>
+                <div style={{ textAlign: "right", fontWeight: 900, color: "var(--accent)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{currentUser[selectedGameMode === "BUGHUNTER" ? "ratingBugHunter" : selectedGameMode === "HACKBOUNTY" ? "ratingHackBounty" : "rating"] || 1000}</div>
                 {containerWidth >= 450 && (
                   <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{currentUser.rank || "Bronze"}</div>
                 )}
@@ -280,7 +280,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
           }}>
             <div>Rank</div>
             <div>Player</div>
-            <div style={{ textAlign: "right" }}>{selectedGameMode === "BUGHUNTER" ? "BHP" : "CKP"}</div>
+            <div style={{ textAlign: "right" }}>{selectedGameMode === "BUGHUNTER" ? "BHP" : selectedGameMode === "HACKBOUNTY" ? "HBP" : "CKP"}</div>
             {containerWidth >= 450 && <div style={{ textAlign: "right" }}>Title</div>}
             {containerWidth >= 580 && <div style={{ textAlign: "right" }}>Win Rate</div>}
           </div>
@@ -358,9 +358,9 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
                     {isMe && <span style={{ fontSize: "0.55rem", background: "rgba(122, 162, 247, 0.2)", color: "var(--accent)", padding: "0.05rem 0.2rem", borderRadius: "0.2rem", fontWeight: 800, flexShrink: 0 }}>YOU</span>}
                   </span>
                 </div>
-                <div style={{ textAlign: "right", fontWeight: 900, color: isMe ? "var(--accent)" : "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{leader[selectedGameMode === "BUGHUNTER" ? "ratingBugHunter" : "rating"] || 1000}</div>
+                <div style={{ textAlign: "right", fontWeight: 900, color: isMe ? "var(--accent)" : "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{leader[selectedGameMode === "BUGHUNTER" ? "ratingBugHunter" : selectedGameMode === "HACKBOUNTY" ? "ratingHackBounty" : "rating"] || 1000}</div>
                 {containerWidth >= 450 && (
-                  <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{leader.rank || "Bronze"}</div>
+                  <div style={{ textAlign: "right", fontSize: "0.75rem", color: isMe ? "var(--accent)" : "var(--text-muted)", fontWeight: 600, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{leader.rank || "Bronze"}</div>
                 )}
                 {containerWidth >= 580 && (
                   <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>

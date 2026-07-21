@@ -952,3 +952,31 @@ body.resizing * {
     display: none !important;
   }
 }
+
+
+@keyframes runPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.7); }
+  50% { transform: scale(1.05); box-shadow: 0 0 15px 5px rgba(var(--accent-rgb), 0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0); }
+}
+
+.run-btn-animated {
+  transition: all 0.2s ease;
+}
+
+.run-btn-animated:hover:not(:disabled) {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+.run-btn-animated.running {
+  animation: runPulse 1.2s infinite ease-in-out;
+  pointer-events: none;
+  opacity: 1 !important;
+  background: var(--accent) !important;
+  color: #000 !important;
+}
+
+.run-btn-animated.running svg {
+  animation: spin 1s linear infinite;
+}

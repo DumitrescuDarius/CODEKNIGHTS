@@ -28,8 +28,7 @@ const BUBBLE_OPTIONS = [
     name: "HACKBOUNTY",
     description: "High-stakes battles. Win matches within the ideal time complexity constraints to collect bonus rating bounties.",
     color: "#ffb86c",
-    icon: <i className="nf nf-fa-coins"></i>,
-    isWip: true
+    icon: <i className="nf nf-fa-coins"></i>
   },
   {
     id: "mlmages",
@@ -1262,7 +1261,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               {pendingChallengeMatch.numProblems} Problem{pendingChallengeMatch.numProblems > 1 ? 's' : ''} • {pendingChallengeMatch.totalTime}m • {pendingChallengeMatch.unrated ? 'Unrated' : 'Ranked'}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', fontWeight: 600 }}>
-              Queue: {pendingChallengeMatch.difficulty}
+              Queue: {pendingChallengeMatch.questions ? Object.entries(pendingChallengeMatch.questions.reduce((acc: any, q: any) => {
+                  const d = q.difficulty || "UNKNOWN";
+                  acc[d] = (acc[d] || 0) + 1;
+                  return acc;
+                }, {})).map(([d, c]) => `${c} ${d === 'CPP' ? 'C++' : d}`).join(", ").toUpperCase() : pendingChallengeMatch.difficulty}
             </div>
           </div>
 
@@ -1374,6 +1377,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
         </div>
 
         {/* Filters Section */}
+        {activePath !== "hackbounty" && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', flexShrink: 0 }}>
           
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter Matches</div>
@@ -1383,24 +1387,50 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             {/* Format filter (bubbles) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '250px' }}>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', opacity: filterDifficulties.length >= 5 ? 0.5 : 1, pointerEvents: filterDifficulties.length >= 5 ? 'none' : 'auto' }}>
-                <button onClick={() => setFilterDifficulties([...filterDifficulties, 'EASY'])} style={{ background: 'rgba(80, 250, 123, 0.1)', color: '#50fa7b', border: '1px solid rgba(80, 250, 123, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <Plus size={12} /> EASY
-                </button>
-                <button onClick={() => setFilterDifficulties([...filterDifficulties, 'MEDIUM'])} style={{ background: 'rgba(255, 184, 108, 0.1)', color: '#ffb86c', border: '1px solid rgba(255, 184, 108, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <Plus size={12} /> MEDIUM
-                </button>
-                <button onClick={() => setFilterDifficulties([...filterDifficulties, 'HARD'])} style={{ background: 'rgba(255, 85, 85, 0.1)', color: '#ff5555', border: '1px solid rgba(255, 85, 85, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <Plus size={12} /> HARD
-                </button>
+                {activePath === "bughunter" ? (
+                  <>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'PYTHON'])} style={{ background: 'rgba(241, 250, 140, 0.1)', color: '#f1fa8c', border: '1px solid rgba(241, 250, 140, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Plus size={12} /> PYTHON
+                    </button>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'CPP'])} style={{ background: 'rgba(139, 233, 253, 0.1)', color: '#8be9fd', border: '1px solid rgba(139, 233, 253, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Plus size={12} /> C++
+                    </button>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'C'])} style={{ background: 'rgba(189, 147, 249, 0.1)', color: '#bd93f9', border: '1px solid rgba(189, 147, 249, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Plus size={12} /> C
+                    </button>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'JAVA'])} style={{ background: 'rgba(255, 121, 198, 0.1)', color: '#ff79c6', border: '1px solid rgba(255, 121, 198, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Plus size={12} /> JAVA
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'EASY'])} style={{ background: 'rgba(80, 250, 123, 0.1)', color: '#50fa7b', border: '1px solid rgba(80, 250, 123, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Plus size={12} /> EASY
+                    </button>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'MEDIUM'])} style={{ background: 'rgba(255, 184, 108, 0.1)', color: '#ffb86c', border: '1px solid rgba(255, 184, 108, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Plus size={12} /> MEDIUM
+                    </button>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'HARD'])} style={{ background: 'rgba(255, 85, 85, 0.1)', color: '#ff5555', border: '1px solid rgba(255, 85, 85, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Plus size={12} /> HARD
+                    </button>
+                  </>
+                )}
               </div>
               
               {filterDifficulties.length > 0 && (
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                   {filterDifficulties.map((diff, i) => {
-                    const diffColor = diff === 'HARD' ? '#ff5555' : diff === 'MEDIUM' ? '#ffb86c' : '#50fa7b';
+                    let diffColor = '#50fa7b';
+                    if (diff === 'HARD') diffColor = '#ff5555';
+                    else if (diff === 'MEDIUM') diffColor = '#ffb86c';
+                    else if (diff === 'PYTHON') diffColor = '#f1fa8c';
+                    else if (diff === 'CPP') diffColor = '#8be9fd';
+                    else if (diff === 'C') diffColor = '#bd93f9';
+                    else if (diff === 'JAVA') diffColor = '#ff79c6';
+                    
                     return (
                       <div key={i} onClick={() => setFilterDifficulties(filterDifficulties.filter((_, index) => index !== i))} style={{ background: diffColor, color: '#000', padding: '0.1rem 0.5rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                        {diff} <X size={10} />
+                        {diff === 'CPP' ? 'C++' : diff} <X size={10} />
                       </div>
                     );
                   })}
@@ -1451,6 +1481,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
           </div>
         </div>
+        )}
 
         {/* Matches List Container */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem', justifyContent: publicMatches.length === 0 ? 'center' : 'flex-start', alignItems: publicMatches.length === 0 ? 'center' : 'stretch' }}>
@@ -1537,7 +1568,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   return acc;
                 }, {});
                 const formatDisplay = Object.entries(formatMap).length > 0
-                  ? Object.entries(formatMap).map(([d, c]) => `${c} ${d}`).join(", ").toUpperCase()
+                  ? Object.entries(formatMap).map(([d, c]) => `${c} ${d === 'CPP' ? 'C++' : d}`).join(", ").toUpperCase()
                   : match.difficulty;
 
               return (
