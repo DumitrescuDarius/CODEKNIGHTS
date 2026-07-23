@@ -15,7 +15,7 @@ CodeKnights offers a variety of game modes to test different programming skills:
 - **🕵️ HackBounty:** A two-phase adversarial mode:
   - *Phase 1 (Breaking):* Both players receive a working solution and have 2 minutes to maliciously modify it (up to 10% change) to introduce invisible bugs.
   - *Phase 2 (Fixing):* The codes are swapped! Players must hunt down and fix the bugs their opponent introduced.
-- **🪄 ML Mages:** Fast-paced solo or 1v1 optimization challenges where you improve the efficiency of machine learning and data science scripts.
+- **🪄 ML Mages:** Fast-paced solo or 1v1 optimization challenges where you improve the efficiency of machine learning and data science scripts. (!!!WIP!!!)
 
 ---
 
