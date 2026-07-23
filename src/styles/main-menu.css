@@ -158,7 +158,7 @@ body.resizing * {
 }
 
 .twm-window-header {
-  height: 2.25rem;
+  height: 3rem;
   padding: 0 0.75rem;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -180,15 +180,19 @@ body.resizing * {
   min-width: 0;
 }
 
-/* Title / tools column: may shrink; actions stay full width */
 .twm-window-header > *:first-child > div:first-child {
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
 }
 
+/* Ensure actions don't shrink */
+.twm-window-header > .twm-window-actions {
+  flex-shrink: 0;
+}
+
 .twm-window-title {
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;

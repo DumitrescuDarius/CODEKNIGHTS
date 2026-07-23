@@ -105,6 +105,7 @@ interface ProblemWindowProps {
   showQuitConfirmation: boolean;
   setShowQuitConfirmation: (val: boolean) => void;
   handleQuitBattle: () => void;
+  onSafeLeave?: () => void;
   runTests: () => void;
   isTesting: boolean;
   setStdin: (val: string) => void;
@@ -137,12 +138,13 @@ interface ProblemWindowProps {
 
 export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   userId, activeQuestion, testResults, totalPenalty, wrongAttemptCount, calculatePenalty, retryProblem, showQuitConfirmation, setShowQuitConfirmation,
-  handleQuitBattle, runTests, isTesting, setStdin, setShowTerminal,
+  handleQuitBattle, onSafeLeave, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
   analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin, onOpenUserProfile,
   activeQuestionIndex, changeActiveQuestion, problemTestResults, problemScores, problemWrongAttemptCounts, setCode
 }) => {
   const [isScrolledToTop, setIsScrolledToTop] = useState(true);
+
   const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setIsScrolledToTop(e.currentTarget.scrollTop < 5);
   }, []);
@@ -196,10 +198,16 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         </div>
         
         <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginBottom: '1.2rem' }}>
-          {stats.score} <span style={{ fontSize: '1rem', opacity: 0.6 }}>PTS</span>
+          {stats.score} <span style={{ fontSize: '1rem', opacity: 0.6 }}>{activeDuel?.gameMode === "BUGHUNTER" ? "SOLVED" : "PTS"}</span>
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+          <div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Typing Speed</div>
+            <div style={{ fontSize: '1rem', color: '#8be9fd', fontWeight: 800 }}>
+              {stats.solveTime && stats.codeLength ? Math.round((stats.codeLength / 5) / (stats.solveTime / 60000)) : 0} WPM
+            </div>
+          </div>
           <div>
             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Time Spent</div>
             <div style={{ fontSize: '1rem', color: '#f1fa8c', fontWeight: 800 }}>
@@ -367,6 +375,18 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
       const complexityTotal = analysis?.scores ? 
         (analysis.scores.efficiency + analysis.scores.readability + analysis.scores.maintainability + analysis.scores.security) * 50 : 0;
 
+      let totalTestsPassed = 0;
+      let totalTestsTotal = 0;
+      if (problemTestResults && Object.keys(problemTestResults).length > 0) {
+        Object.values(problemTestResults).forEach((res: any) => {
+          totalTestsPassed += (res.passed || 0);
+          totalTestsTotal += (res.total || 0);
+        });
+      } else if (testResults) {
+        totalTestsPassed = (testResults as any).passed || 0;
+        totalTestsTotal = (testResults as any).total || 0;
+      }
+
       await fetch("/api/duels/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -376,7 +396,9 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             solveTime: timeSeconds * 1000,
             complexityScore: complexityTotal,
             totalPenalty: totalPenalty,
-            hackBountySolved: (activeDuel?.gameMode === "HACKBOUNTY" && allProblemsSolved) ? true : undefined
+            hackBountySolved: (activeDuel?.gameMode === "HACKBOUNTY" && allProblemsSolved) ? true : undefined,
+            testsPassed: totalTestsPassed,
+            testsTotal: totalTestsTotal
         })
       });
       window.dispatchEvent(new CustomEvent("duel_update_required", { detail: activeDuel.id }));
@@ -583,7 +605,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             </div>
             
             <div style={{ fontSize: hostSurrendered ? '1rem' : '2.5rem', fontWeight: 900, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : '#fff'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textShadow: hostWin ? '0 0 20px rgba(80,250,123,0.3)' : 'none' }}>
-               {hostSurrendered ? <><Skull size={18} /> SURRENDERED</> : <>{hostScore} <span style={{ fontSize: '1rem', opacity: 0.7 }}>PTS</span></>}
+               {hostSurrendered ? <><Skull size={18} /> SURRENDERED</> : <>{hostScore} <span style={{ fontSize: '1rem', opacity: 0.7 }}>{activeDuel?.gameMode === "BUGHUNTER" ? "SOLVED" : "PTS"}</span></>}
             </div>
           </motion.div>
 
@@ -626,7 +648,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             </div>
             
             <div style={{ fontSize: guestSurrendered ? '1rem' : '2.5rem', fontWeight: 900, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : '#fff'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textShadow: guestWin ? '0 0 20px rgba(80,250,123,0.3)' : 'none' }}>
-               {guestSurrendered ? <><Skull size={18} /> SURRENDERED</> : <>{guestScore} <span style={{ fontSize: '1rem', opacity: 0.7 }}>PTS</span></>}
+               {guestSurrendered ? <><Skull size={18} /> SURRENDERED</> : <>{guestScore} <span style={{ fontSize: '1rem', opacity: 0.7 }}>{activeDuel?.gameMode === "BUGHUNTER" ? "SOLVED" : "PTS"}</span></>}
             </div>
           </motion.div>
         </div>
@@ -683,17 +705,16 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   if (userFinalized && !isDuelFinished) {
     return (
       <div style={{ padding: '2rem', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
-        <div style={{ background: 'rgba(122, 162, 247, 0.1)', color: 'var(--accent)', padding: '1.5rem', borderRadius: '50%', marginBottom: '1rem' }}>
-          <Activity size={48} />
-        </div>
+
         <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{t("waitingForOpponent")}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '400px', marginBottom: '1.5rem' }}>
           {t("waitingForOpponentMessage")}
         </p>
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '1.5rem' }}>
-           {timeLeft !== null && timeLeft !== undefined ? formatTime(timeLeft) : "--:--"}
-        </div>
-        
+        {totalPenalty !== undefined && totalPenalty !== null && (
+          <div style={{ marginBottom: '1.5rem', fontSize: '1.4rem', fontWeight: 900, color: '#50fa7b', textShadow: '0 2px 10px rgba(80,250,123,0.3)' }}>
+            Total Score: {Math.floor(totalPenalty)} pts
+          </div>
+        )}
         {opponentCode ? (
           <div style={{ width: '100%', maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.5rem', overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -720,6 +741,18 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <div style={{ width: '100%', maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.5rem', color: 'var(--text-muted)' }}>
              <p>{t("noCodeSynced")}</p>
           </div>
+        )}
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent)', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+           {timeLeft !== null && timeLeft !== undefined ? formatTime(timeLeft) : "--:--"}
+        </div>
+        {onSafeLeave && (
+          <button 
+            onClick={onSafeLeave}
+            className="btn"
+            style={{ padding: '0.5rem 1.5rem', background: 'var(--line)', border: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}
+          >
+            Close & Leave Window
+          </button>
         )}
       </div>
     );
@@ -851,25 +884,105 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             )}
             
             {allPassed && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.75rem 1.25rem',
-                background: 'rgba(80, 250, 123, 0.08)',
-                border: '1px solid rgba(80, 250, 123, 0.25)',
-                borderRadius: '0.5rem',
-                marginTop: '0.25rem',
-                marginBottom: '0.5rem',
-                boxShadow: '0 4px 15px rgba(80, 250, 123, 0.05)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <Trophy size={16} color="#50fa7b" />
-                  <span style={{ fontWeight: 800, color: '#50fa7b', fontSize: '0.85rem' }}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 20,
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem 1.5rem',
+                  background: 'linear-gradient(135deg, rgba(80, 250, 123, 0.15), rgba(80, 250, 123, 0.05))',
+                  border: '1px solid rgba(80, 250, 123, 0.4)',
+                  borderRadius: '0.75rem',
+                  marginTop: '0.25rem',
+                  marginBottom: '1rem',
+                  boxShadow: '0 8px 30px rgba(80, 250, 123, 0.15)',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: [0, 1.2, 1] }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', position: 'relative', zIndex: 1 }}
+                >
+                  <div style={{ background: '#50fa7b', color: '#000', padding: '0.5rem', borderRadius: '50%', display: 'flex' }}>
+                    <Trophy size={20} />
+                  </div>
+                  <span style={{ fontWeight: 900, color: '#50fa7b', fontSize: '1rem', letterSpacing: '0.5px' }}>
                     PROBLEM DONE! All test cases passed.
                   </span>
+                </motion.div>
+                
+                {/* Fire background effect */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+                  {[
+                    { left: '10%', delay: 0, duration: 1.2 },
+                    { left: '30%', delay: 0.5, duration: 1.5 },
+                    { left: '50%', delay: 0.2, duration: 1.1 },
+                    { left: '70%', delay: 0.7, duration: 1.4 },
+                    { left: '90%', delay: 0.1, duration: 1.3 },
+                    { left: '20%', delay: 0.4, duration: 1.6 },
+                    { left: '60%', delay: 0.8, duration: 1.2 },
+                    { left: '80%', delay: 0.3, duration: 1.5 }
+                  ].map((flame, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ y: 20, opacity: 0.8, scaleX: 1, scaleY: 1 }}
+                      animate={{ y: -40, opacity: 0, scaleX: 1.5, scaleY: 1.8 }}
+                      transition={{ 
+                        duration: flame.duration, 
+                        repeat: Infinity, 
+                        delay: flame.delay,
+                        ease: "easeOut"
+                      }}
+                      style={{
+                        position: 'absolute',
+                        bottom: '-10px',
+                        left: flame.left,
+                        width: '40px',
+                        height: '60px',
+                        background: 'radial-gradient(ellipse at bottom, rgba(80,250,123,0.7) 0%, rgba(40,200,80,0.4) 40%, transparent 70%)',
+                        filter: 'blur(8px)',
+                        borderRadius: '50% 50% 0 0',
+                        transform: 'translateX(-50%)',
+                        mixBlendMode: 'screen'
+                      }}
+                    />
+                  ))}
                 </div>
-              </div>
+              </motion.div>
+            )}
+            {otherFinalized && !userFinalized && activeDuel?.status === "ACTIVE" && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ 
+                  padding: '0.75rem 1.25rem', 
+                  background: 'rgba(255, 85, 85, 0.15)', 
+                  border: '1px solid rgba(255, 85, 85, 0.5)', 
+                  borderRadius: '0.5rem', 
+                  color: '#ff5555', 
+                  marginBottom: '1.5rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem',
+                  boxShadow: '0 4px 15px rgba(255, 85, 85, 0.2)'
+                }}
+              >
+                <div style={{ background: '#ff5555', color: '#000', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontWeight: 900, fontSize: '0.7rem' }}>URGENT</div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>Opponent has finalized!</div>
+                  <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>You have exactly 2 minutes remaining to submit your best solution. Test values are decreasing!</div>
+                </div>
+              </motion.div>
             )}
 
             <h2 style={{ 
@@ -1093,14 +1206,14 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                       </button>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', width: '100%' }}>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.03)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                       <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Input</div>
-                      <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: 'var(--text)', fontFamily: '"Fira Code", monospace' }}>{tc.input}</pre>
+                      <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: 'var(--text)', fontFamily: '"Fira Code", monospace', maxHeight: '250px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{tc.input}</pre>
                     </div>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.03)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                       <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Output</div>
-                      <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: '#50fa7b', fontFamily: '"Fira Code", monospace' }}>{tc.output}</pre>
+                      <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: '#50fa7b', fontFamily: '"Fira Code", monospace', maxHeight: '250px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{tc.output}</pre>
                     </div>
                   </div>
                 </div>

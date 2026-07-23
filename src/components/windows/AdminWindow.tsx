@@ -574,6 +574,37 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
           </div>
         )}
 
+        <div style={{ marginBottom: '2rem' }}>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Select Game Mode Environment</label>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {[
+              { label: "Standard (CodeKnights)", value: "CODEKNIGHTS" },
+              { label: "Bug Hunter (Fix Broken Code)", value: "BUGHUNTER" },
+              { label: "Hack Bounty (Break & Fix)", value: "HACKBOUNTY" }
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setGameModeSelection(opt.value as any)}
+                className="btn"
+                style={{
+                  flex: 1,
+                  padding: '0.8rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid var(--line)',
+                  background: gameModeSelection === opt.value ? 'var(--accent)' : 'transparent',
+                  color: gameModeSelection === opt.value ? '#000' : 'var(--text)',
+                  fontWeight: 900,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--line)' }}>
           <button 
             onClick={() => setActiveTab("CREATE")}
@@ -607,37 +638,6 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Challenge Game Mode</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {[
-                    { label: "Standard (CodeKnights)", value: "CODEKNIGHTS" },
-                    { label: "Bug Hunter (Fix Broken Code)", value: "BUGHUNTER" },
-                    { label: "Hack Bounty (Break & Fix)", value: "HACKBOUNTY" }
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setGameModeSelection(opt.value as any)}
-                      className="btn"
-                      style={{
-                        flex: 1,
-                        padding: '0.6rem',
-                        borderRadius: '0.4rem',
-                        border: '1px solid var(--line)',
-                        background: gameModeSelection === opt.value ? 'var(--accent)' : 'transparent',
-                        color: gameModeSelection === opt.value ? '#000' : 'var(--text)',
-                        fontWeight: 900,
-                        fontSize: '0.75rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div>
                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t("titleLabel")}</label>
                 <input 

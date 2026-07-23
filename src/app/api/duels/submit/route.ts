@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   try {
-    const { duelId, solveTime, surrender, complexityScore, totalPenalty, finalize, guestUserId, code, hackBountySolved } = await req.json();
+    const { duelId, solveTime, surrender, complexityScore, totalPenalty, finalize, guestUserId, code, hackBountySolved, testsPassed, testsTotal } = await req.json();
     const userId = session?.user ? (session.user as any).id : guestUserId || "guest";
     const TIME_LIMIT = 420 * 1000; // 7 minutes
 
@@ -55,11 +55,11 @@ export async function POST(req: NextRequest) {
     if (surrender) {
       if (isHost) { 
         updateData.hostPenalty = ZERO_SCORE; 
-        if (code) updateData.hostCode = code;
+        if (code) { updateData.hostCode = code; updateData.hostCodeLength = code.length; }
       }
       if (isGuest) { 
         updateData.guestPenalty = ZERO_SCORE; 
-        if (code) updateData.guestCode = code;
+        if (code) { updateData.guestCode = code; updateData.guestCodeLength = code.length; }
       }
       updateData.hostFinalized = true;
       updateData.guestFinalized = true;
@@ -85,21 +85,25 @@ export async function POST(req: NextRequest) {
     } else if (finalize) {
       if (isHost) {
         updateData.hostFinalized = true;
-        if (solveTime) updateData.hostSolveTime = solveTime;
-        if (complexityScore) updateData.hostComplexity = complexityScore;
+        if (solveTime !== undefined && solveTime !== null) updateData.hostSolveTime = solveTime;
+        if (complexityScore !== undefined) updateData.hostComplexity = complexityScore;
         if (code) updateData.hostCode = code;
         if (totalPenalty !== undefined && totalPenalty !== null) {
           updateData.hostPenalty = totalPenalty;
         }
+        if (testsPassed !== undefined) updateData.hostTestsPassed = testsPassed;
+        if (testsTotal !== undefined) updateData.hostTestsTotal = testsTotal;
       }
       if (isGuest) {
         updateData.guestFinalized = true;
-        if (solveTime) updateData.guestSolveTime = solveTime;
-        if (complexityScore) updateData.guestComplexity = complexityScore;
+        if (solveTime !== undefined && solveTime !== null) updateData.guestSolveTime = solveTime;
+        if (complexityScore !== undefined) updateData.guestComplexity = complexityScore;
         if (code) updateData.guestCode = code;
         if (totalPenalty !== undefined && totalPenalty !== null) {
           updateData.guestPenalty = totalPenalty;
         }
+        if (testsPassed !== undefined) updateData.guestTestsPassed = testsPassed;
+        if (testsTotal !== undefined) updateData.guestTestsTotal = testsTotal;
       }
     } else {
       if (isHost) {
@@ -163,8 +167,21 @@ export async function POST(req: NextRequest) {
         const isHostGuest = updatedDuel.host?.username?.startsWith("Guest Knight") || false;
         const isGuestGuest = updatedDuel.guest?.username?.startsWith("Guest Knight") || false;
         const hasGuest = isHostGuest || isGuestGuest;
+        const gameModeStr = updatedDuel.gameMode || "CODEKNIGHTS";
+        const ratingKeyStr = gameModeStr === "BUGHUNTER" ? "ratingBugHunter" : gameModeStr === "HACKBOUNTY" ? "ratingHackBounty" : gameModeStr === "MLMAGES" ? "ratingMlMages" : "rating";
+        const hostRating = updatedDuel.host ? ((updatedDuel.host as any)[ratingKeyStr] || 1000) : 1000;
+        const guestRating = updatedDuel.guest ? ((updatedDuel.guest as any)[ratingKeyStr] || 1000) : 1000;
+        
+        const winnerRating = hostWon ? hostRating : guestRating;
+        const loserRating = hostWon ? guestRating : hostRating;
+        const eloDiff = loserRating - winnerRating;
+        
+        let eloChange = 0;
+        if (!updatedDuel.unrated) {
+            eloChange = 50 + Math.floor(eloDiff * 0.1);
+            eloChange = Math.max(10, Math.min(100, eloChange));
+        }
 
-        const eloChange = updatedDuel.unrated ? 0 : (Math.floor(Math.random() * 21) + 50);
         const hostRatingChange = isDraw ? 0 : (hostWon ? eloChange : -eloChange);
         const guestRatingChange = isDraw ? 0 : (hostWon ? -eloChange : eloChange);
         let finishReason = "SOLVED";

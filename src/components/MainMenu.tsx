@@ -5,10 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag, Zap, Loader2 } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag, Zap, Loader2, Sparkles } from "lucide-react";
 import { Tour, TourStep } from "./Tour";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
 import { io, Socket } from "socket.io-client";
 import { Language, WindowId, UserStats, Question, SupportedLanguage, AnimationSpeed } from "../types";
 import { THEMES } from "../constants/themes";
@@ -506,6 +507,7 @@ const MainMenu: React.FC = () => {
   const [activeDuel, setActiveDuel] = useState<any>(null);
   const activeDuelRef = useRef<any>(null);
   const codeRef = useRef(code);
+  const hasLoadedOppCodeRef = useRef(false);
   const testResultsRef = useRef(testResults);
   
   const lastMaximizedDuelRef = useRef<string | null>(null);
@@ -637,6 +639,29 @@ const MainMenu: React.FC = () => {
     window.addEventListener("pin_copied", handlePinCopied);
     return () => window.removeEventListener("pin_copied", handlePinCopied);
   }, []);
+
+  const [sabotageWarning, setSabotageWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING" && activeQuestion?.referenceCode) {
+      try {
+        const parsed = JSON.parse(activeQuestion.referenceCode);
+        const originalCode = parsed[lang] || Object.values(parsed)[0] || "";
+        const cleanOriginal = originalCode.replace(/\s+/g, '');
+        const cleanCurrent = code.replace(/\s+/g, '');
+        if (cleanOriginal.length > 0) {
+          const dist = levenshtein(cleanOriginal, cleanCurrent);
+          if (dist > cleanOriginal.length * 0.1) {
+            setSabotageWarning("Warning: You have modified more than 10% of the code! Press Ctrl + Z to revert changes. Keep modifications minimal to avoid heavy penalties or having your changes rejected.");
+          } else {
+            setSabotageWarning(null);
+          }
+        }
+      } catch (e) {}
+    } else {
+      setSabotageWarning(null);
+    }
+  }, [code, activeDuel?.gameMode, activeDuel?.phase, activeQuestion?.referenceCode, lang]);
 
   useEffect(() => {
     if (showPinCopiedNotification) {
@@ -1455,7 +1480,7 @@ const MainMenu: React.FC = () => {
            setLastProcessedPhase(activeDuel.phase);
            
            if (activeDuel.phase === "BREAKING") {
-               const myQuestion = activeDuel.questions[0];
+               const myQuestion = activeDuel.questions.length > 1 ? (isHost ? activeDuel.questions[0] : activeDuel.questions[1]) : activeDuel.questions[0];
                setActiveQuestion(myQuestion);
                if (myQuestion?.referenceCode) {
                    try {
@@ -1467,16 +1492,39 @@ const MainMenu: React.FC = () => {
                    } catch(e) {}
                }
            } else if (activeDuel.phase === "FIXING") {
-               const oppQuestion = activeDuel.questions[0];
+                if (lastProcessedPhase === "BREAKING") {
+                    fetch("/api/duels/transition", {
+                       method: "POST",
+                       headers: { "Content-Type": "application/json" },
+                       body: JSON.stringify({ duelId: activeDuel.id, guestUserId: guestId, code: codeRef.current })
+                    }).catch(console.error);
+                }
+               const oppQuestion = activeDuel.questions.length > 1 ? (isHost ? activeDuel.questions[1] : activeDuel.questions[0]) : activeDuel.questions[0];
                setActiveQuestion(oppQuestion);
                const oppCode = isHost ? (activeDuel as any).guestSabotagedCode : (activeDuel as any).hostSabotagedCode;
-               if (oppCode) {
-                   setCode(oppCode);
-               }
+                if (oppCode) {
+                    setCode(oppCode);
+                    hasLoadedOppCodeRef.current = true;
+                }
            }
        }
     }
   }, [activeDuel, lastProcessedPhase, session, guestId, lang, setActiveQuestion, setCode]);
+
+  useEffect(() => {
+    if (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "FIXING" && !hasLoadedOppCodeRef.current) {
+      const currentUserId = session?.user ? (session.user as any).id : guestId;
+      const isHost = activeDuel.hostId === currentUserId;
+      const oppCode = isHost ? (activeDuel as any).guestSabotagedCode : (activeDuel as any).hostSabotagedCode;
+      if (oppCode) {
+         setCode(oppCode);
+         hasLoadedOppCodeRef.current = true;
+      }
+    } else if (activeDuel?.phase === "BREAKING") {
+      hasLoadedOppCodeRef.current = false;
+    }
+  }, [activeDuel, session, guestId, setCode]);
+
   useEffect(() => {
     const savedLang = localStorage.getItem("ck-lang") as Language;
     if (savedLang) setLang(savedLang);
@@ -2101,13 +2149,67 @@ const MainMenu: React.FC = () => {
       const newResults = { passed, total: allTestsLength, details, phase: activeDuel?.phase || null };
       setTestResults(newResults);
       setSubmissionFeedback(getSubmissionFeedback(passed, allTestsLength));
+      
+      let outStr = "";
       if (data.timedOut && data.executionNotice) {
-        setTerminalOutput(`${data.executionNotice}\n\nPartial score awarded for ${passed} passed test${passed === 1 ? "" : "s"}.`);
+        outStr += `${data.executionNotice}\n\nPartial score awarded for ${passed} passed test${passed === 1 ? "" : "s"}.\n\n`;
       }
+      
+      details.forEach((tc: any, i: number) => {
+        outStr += `Test ${i + 1}: ${tc.passed ? "PASS" : "FAIL"}\n`;
+        if (!tc.passed && tc.expected !== "HIDDEN" && tc.expected !== "HIDDEN TEST CASE") {
+           outStr += `Expected:\n${tc.expected}\nActual:\n${tc.actual}\n\n`;
+        }
+      });
+      
+      if (passed === allTestsLength && allTestsLength > 0) {
+         outStr += `\nAll ${passed} tests passed!`;
+      }
+      
+      setTerminalOutput(outStr.trim());
 
       if (activeQuestion) {
-        setProblemTestResults(prev => ({ ...prev, [activeQuestion.id]: newResults }));
+        setProblemTestResults(prev => {
+          const old = prev[activeQuestion.id];
+          if (old && old.passed > newResults.passed) {
+            return prev; // keep the best result
+          }
+          return { ...prev, [activeQuestion.id]: newResults };
+        });
         const allTestsPassed = passed === allTestsLength && allTestsLength > 0;
+        
+        if (allTestsPassed) {
+          const isBreaking = activeDuel?.gameMode === 'HACKBOUNTY' && activeDuel?.phase === 'BREAKING';
+
+          const accentHex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#50fa7b';
+          const getHexShades = (hex: string) => {
+              try {
+                  hex = hex.replace('#', '').trim();
+                  if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+                  if (hex.length !== 6) return ['#50fa7b', '#ff79c6', '#8be9fd', '#bd93f9', '#f1fa8c'];
+                  const r = parseInt(hex.substring(0, 2), 16);
+                  const g = parseInt(hex.substring(2, 4), 16);
+                  const b = parseInt(hex.substring(4, 6), 16);
+                  if (isNaN(r) || isNaN(g) || isNaN(b)) return ['#50fa7b', '#ff79c6', '#8be9fd', '#bd93f9', '#f1fa8c'];
+                  const adjust = (c: number, amt: number) => {
+                      const val = Math.max(0, Math.min(255, Math.floor(c + amt)));
+                      return val.toString(16).padStart(2, '0');
+                  };
+                  return [`#${hex}`, `#${adjust(r, 40)}${adjust(g, 40)}${adjust(b, 40)}`, `#${adjust(r, 80)}${adjust(g, 80)}${adjust(b, 80)}`, `#${adjust(r, -40)}${adjust(g, -40)}${adjust(b, -40)}`, `#${adjust(r, -80)}${adjust(g, -80)}${adjust(b, -80)}`];
+              } catch (e) {
+                  return ['#50fa7b', '#ff79c6', '#8be9fd', '#bd93f9', '#f1fa8c'];
+              }
+          };
+
+          if (!isBreaking) {
+            confetti({
+              particleCount: 150,
+              spread: 160,
+              origin: { y: 0.6 },
+              colors: getHexShades(accentHex)
+            });
+          }
+        }
         
         let currentProblemScore = 0;
         if (activeDuel && activeDuel.gameMode === "BUGHUNTER") {
@@ -2149,7 +2251,9 @@ const MainMenu: React.FC = () => {
         }
 
         setProblemScores(prev => {
-          const nextScores = { ...prev, [activeQuestion.id]: currentProblemScore };
+          const prevScore = prev[activeQuestion.id] || 0;
+          const bestScore = Math.max(prevScore, currentProblemScore);
+          const nextScores = { ...prev, [activeQuestion.id]: bestScore };
           const totalScore = Object.values(nextScores).reduce((sum, v) => sum + v, 0);
           setTotalPenalty(totalScore);
 
@@ -2377,22 +2481,20 @@ const MainMenu: React.FC = () => {
     
     // Check if we should allow closing (confirmation)
     if (id === "problem" && activeQuestion) {
-      const allPassed = testResults?.passed === testResults?.total && testResults?.total > 0;
       const isDuel = !!activeDuel;
       const isDuelFinished = activeDuel?.status === "FINISHED";
+      const isHost = session?.user?.id === activeDuel?.hostId;
+      const isGuest = session?.user?.id === activeDuel?.guestId;
+      const userFinalized = isHost ? activeDuel?.hostFinalized : (isGuest ? activeDuel?.guestFinalized : false);
 
       // If duel is active and not finished, apply restrictions
       if (isDuel && !isDuelFinished) {
-        if (allPassed && activeDuel.status === "ACTIVE") {
-            alert("Cannot leave the battle after submitting a solution!");
-            return;
-        }
-        if (!allPassed) {
+        if (!userFinalized) {
             setShowQuitConfirmation(true);
             return;
         }
       }
-      // If it's not a duel or duel is finished, allow closing (continue to setOpenWindows)
+      // If it's not a duel, or duel is finished, or user has finalized, allow closing (continue to setOpenWindows)
     }
 
     if (id === "battle" && activeDuel && activeDuel.status === "WAITING") {
@@ -2685,9 +2787,15 @@ const MainMenu: React.FC = () => {
     switch (id) {
       case "editor":
         return (
-          <EditorWindow 
-            lang={lang} setLang={setLang} code={code} setCode={setCode} fontSize={fontSize} fontFamily={fontFamily}
-            isRunning={isRunning} runCode={runCode} showTerminal={showTerminal} setShowTerminal={setShowTerminal}
+          <>
+            {sabotageWarning && (
+              <div style={{ backgroundColor: 'rgba(255, 85, 85, 0.1)', color: '#ff5555', padding: '0.4rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 900, borderBottom: '1px solid rgba(255, 85, 85, 0.3)' }}>
+                {sabotageWarning}
+              </div>
+            )}
+            <EditorWindow 
+              lang={lang} setLang={setLang} code={code} setCode={setCode} fontSize={fontSize} fontFamily={fontFamily}
+              isRunning={isRunning} runCode={runCode} showTerminal={showTerminal} setShowTerminal={setShowTerminal}
             terminalHeight={terminalHeight} startTerminalResizing={startTerminalResizing} stdin={stdin}
             setStdin={setStdin} terminalOutput={terminalOutput} terminalFontSize={terminalFontSize}
             vimMode={vimMode} vimStatusBarRef={vimStatusBarRef} editorRef={editorRef}
@@ -2705,6 +2813,7 @@ const MainMenu: React.FC = () => {
             activeQuestionId={activeQuestion?.id}
             isLangLocked={!!activeDuel && (activeDuel.gameMode === "BUGHUNTER" || activeDuel.gameMode === "HACKBOUNTY")}
           />
+          </>
         );
       case "settings":
         return (
@@ -2819,6 +2928,9 @@ const MainMenu: React.FC = () => {
               } else {
                 setActiveWindow(winId);
               }
+            }}
+            onSafeLeave={() => {
+              setOpenWindows(prev => prev.filter(w => w !== "problem"));
             }}
             handleQuitBattle={async () => {
               const currentDuel = activeDuel;
@@ -3583,8 +3695,8 @@ const MainMenu: React.FC = () => {
                         </span>
                         {id === 'editor' && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>
-                            <button onClick={(e) => { e.stopPropagation(); runCode(); }} disabled={isRunning} className={`run-btn-animated ${isRunning ? 'running' : ''}`} style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: isRunning ? 'wait' : 'pointer', fontSize: '0.7rem', fontWeight: 700, marginRight: '0.5rem' }}>
-                              {isRunning ? <Loader2 size={10} /> : <Play size={10} fill="currentColor" />} {isRunning ? "RUNNING..." : "RUN"}
+                            <button onClick={(e) => { e.stopPropagation(); runCode(); }} disabled={isRunning} className={`run-btn-animated ${isRunning ? 'running' : ''}`} style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: isRunning ? 'wait' : 'pointer', fontSize: '0.8rem', fontWeight: 700, marginRight: '0.5rem' }}>
+                              {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />} {isRunning ? "RUNNING..." : "RUN"}
                             </button>
                             <button onClick={(e) => { e.stopPropagation(); handleRevert(); }} className="twm-btn" title="Revert to original code" style={{ padding: '0.1rem 0.3rem' }}><RotateCcw size={12} /></button>
                             <button onClick={(e) => { e.stopPropagation(); handleBeautify(); }} className="twm-btn" title="Beautify code (Format)" style={{ padding: '0.1rem 0.3rem' }}><Wand2 size={12} /></button>
@@ -3592,12 +3704,17 @@ const MainMenu: React.FC = () => {
                         )}
                         {id === 'problem' && activeQuestion && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid var(--line)', paddingLeft: '1rem' }}>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); runTests(); }} 
-                              disabled={isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")} 
-                              className={`run-btn-animated ${(isTesting || (activeDuel?.status !== "FINISHED" && testResults?.passed === testResults?.total && testResults?.total > 0 && activeDuel?.status === "ACTIVE")) ? 'running' : ''}`} style={{ background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || (testResults?.passed === testResults?.total && testResults?.total > 0) || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
-                              {isTesting ? <><Loader2 size={10} /> TESTING...</> : ((activeDuel?.status !== "FINISHED" && testResults?.passed === testResults?.total && testResults?.total > 0 && activeDuel?.status === "ACTIVE") ? <><Loader2 size={10} /> SUBMITTING...</> : ((testResults?.passed === testResults?.total && testResults?.total > 0) ? <><Check size={12} fill="currentColor" /> SUBMITTED</> : (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING" ? <><Zap size={10} fill="currentColor" /> BREAKING...</> : <><Send size={10} fill="currentColor" /> SUBMIT</>)))}
-                            </button>
+                            {(() => {
+                              const isPerfect = testResults?.passed === testResults?.total && testResults?.total > 0;
+                              return (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); runTests(); }} 
+                                  disabled={isTesting || isPerfect || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")} 
+                                  className={`run-btn-animated ${isTesting ? 'running' : ''}`} style={{ background: isPerfect ? '#50fa7b' : 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || isPerfect || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>
+                                  {isTesting ? <><Loader2 size={14} className="animate-spin" /> TESTING...</> : (isPerfect ? <><Sparkles size={14} fill="currentColor" /> SUBMITTED</> : (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING" ? <><Zap size={14} fill="currentColor" /> BREAKING...</> : <><Send size={14} fill="currentColor" /> SUBMIT</>))}
+                                </button>
+                              );
+                            })()}
                           </div>
                         )}
                         {id === 'notes' && (
@@ -3605,7 +3722,7 @@ const MainMenu: React.FC = () => {
                         )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
-                        {id === 'problem' && activeQuestion && activeDuel && (() => {
+                        {id === 'problem' && activeQuestion && activeDuel && activeDuel.gameMode !== "HACKBOUNTY" && (() => {
                           const isFinished = activeDuel.status === "FINISHED";
                           const allSolved = activeDuel.questions && activeDuel.questions.length > 0 && activeDuel.questions.every((q: any) => {
                             const r = problemTestResults[q.id];
@@ -3619,8 +3736,8 @@ const MainMenu: React.FC = () => {
                                 if (!ended) { window.dispatchEvent(new Event("request_end_battle")); } 
                               }} 
                               disabled={ended}
-                              style={{ background: '#50fa7b', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.1rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: ended ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700, opacity: ended ? 0.7 : 1, marginRight: '0.5rem' }}>
-                              {ended ? <><Check size={12} fill="currentColor" /> FINISHED</> : <><Flag size={10} fill="currentColor" /> FINISH</>}
+                              style={{ background: '#50fa7b', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: ended ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700, opacity: ended ? 0.7 : 1, marginRight: '0.5rem' }}>
+                              {ended ? <><Check size={14} fill="currentColor" /> FINISHED</> : <><Flag size={14} fill="currentColor" /> FINISH</>}
                             </button>
                           );
                         })()}

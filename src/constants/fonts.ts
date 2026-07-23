@@ -29,4 +29,5 @@ export const FONTS: Font[] = [
   { name: "Syne Mono (Handwritten)", value: '"Syne Mono", monospace' },
   { name: "Ubuntu Sans Mono", value: '"Ubuntu Sans Mono", monospace' },
   { name: "Victor Mono (Italic)", value: '"Victor Mono", monospace' },
+  { name: "Comic Sans MS", value: '"Comic Sans MS", "Comic Sans", cursive' },
 ];

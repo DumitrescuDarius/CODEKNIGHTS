@@ -19,14 +19,14 @@ const BUBBLE_OPTIONS = [
   {
     id: "bughunter",
     name: "BUGHUNTER",
-    description: "Hunt down hidden bugs in real-time. Gain penalty reduction for clean, compiler-error-free submissions.",
+    description: "Step into the shoes of a code auditor! In BUGHUNTER mode, you are presented with a pre-written, flawed codebase containing subtle bugs, logical errors, or edge-case omissions. Your mission is to debug and correct the existing code rather than writing a solution from scratch. Points don't exist here—your final score is strictly the number of problems you completely fix. Only flawless solutions passing 100% of the tests count. Out-debug your opponent and solve the most problems to secure the victory!",
     color: "#50fa7b",
     icon: <i className="nf nf-fa-bug"></i>
   },
   {
     id: "hackbounty",
     name: "HACKBOUNTY",
-    description: "High-stakes battles. Win matches within the ideal time complexity constraints to collect bonus rating bounties.",
+    description: "Welcome to the ultimate Break & Fix challenge! HACKBOUNTY mode consists of two intense phases: First, you have 2 minutes to secretly 'hack' the provided code by introducing subtle bugs. Then, the codes are SWAPPED! You will have 10 minutes to debug and fix the code your opponent broke. Just like BugHunter, there is no partial credit; your final solution must pass 100% of the tests flawlessly to count. Outsmart your opponent's traps and claim the bounty!",
     color: "#ffb86c",
     icon: <i className="nf nf-fa-coins"></i>
   },
@@ -41,7 +41,7 @@ const BUBBLE_OPTIONS = [
   {
     id: "codeknights",
     name: "CODEKNIGHTS",
-    description: "The ultimate tournament. Face off in a standard bracket format to claim the title of Grand Master.",
+    description: "The ultimate tournament. Face off in a standard bracket format to claim the title of Grand Master. An easy problem has 10 tests, a medium has 15 tests, and a hard has 20 tests. Each test is initially worth 50 points, but this value decreases by up to 20 points as time runs out. Unlike BugHunter, partial test passes are worth points too!",
     color: "#38bdf8",
     icon: <i className="nf nf-fa-chess_knight"></i>
   }
@@ -166,6 +166,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   const [filterMinElo, setFilterMinElo] = useState<string>("");
   const [filterMaxElo, setFilterMaxElo] = useState<string>("");
   const [battleNotification, setBattleNotification] = useState<{message: string, isConfirm?: boolean, onConfirm?: () => void} | null>(null);
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
     if (battleNotification) {
@@ -210,7 +211,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   const fetchPublicMatches = React.useCallback(async () => {
     setIsFetchingMatches(true);
     try {
-      const mode = activePath === "bughunter" ? "BUGHUNTER" : "CODEKNIGHTS";
+      const mode = activePath === "bughunter" ? "BUGHUNTER" : activePath === "hackbounty" ? "HACKBOUNTY" : "CODEKNIGHTS";
       const res = await fetch(`/api/duels/public?gameMode=${mode}`);
       if (res.ok) {
         const data = await res.json();
@@ -612,211 +613,222 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, textAlign: 'center', color: 'var(--text)', letterSpacing: '0.05em' }}>
             MATCH CONFIGURATION
           </h2>
-
-          {/* Added Problems List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>SELECTED PROBLEMS QUEUE</label>
-            {selectedProblems.length === 0 ? (
-              <div style={{ padding: '1rem', border: '1px dashed var(--line)', borderRadius: '0.4rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                No problems selected. Add some below!
+          {activePath === "hackbounty" ? (
+            <div style={{ padding: '1.5rem', border: '1px solid var(--line)', borderRadius: '0.4rem', background: 'rgba(255, 255, 255, 0.02)', textAlign: 'center' }}>
+              <div style={{ color: '#ffb86c', fontWeight: 900, marginBottom: '0.5rem', fontSize: '1rem' }}>PREDEFINED BOUNTY MATCH</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                HackBounty duels use a fixed configuration:<br />
+                <span style={{ color: 'var(--text)', fontWeight: 800 }}>1 Problem • C++ Code • Break & Fix</span>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', paddingRight: '0.25rem' }}>
-                {selectedProblems.map((p, idx) => (
-                  <div 
-                    key={idx} 
-                    draggable
-                    onDragStart={(e) => {
-                      setDraggedProblemIndex(idx);
-                      e.dataTransfer.effectAllowed = 'move';
-                      e.dataTransfer.setData('text/plain', idx.toString());
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'move';
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (draggedProblemIndex !== null && draggedProblemIndex !== idx) {
-                        const updated = [...selectedProblems];
-                        const [moved] = updated.splice(draggedProblemIndex, 1);
-                        updated.splice(idx, 0, moved);
-                        setSelectedProblems(updated);
-                      }
-                      setDraggedProblemIndex(null);
-                    }}
-                    onDragEnd={() => setDraggedProblemIndex(null)}
-                    style={{ 
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                      background: draggedProblemIndex === idx ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)', 
-                      border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem',
-                      cursor: 'grab', opacity: draggedProblemIndex === idx ? 0.5 : 1
-                    }}
-                  >
-                    <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? '#50fa7b' : p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
-                      {idx + 1}. {p} (+{activePath === 'bughunter' ? 8 : p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <button
-                        onClick={() => moveSelectedProblem(idx, 'up')}
-                        disabled={idx === 0}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: idx === 0 ? 'rgba(255,255,255,0.07)' : 'var(--accent)',
-                          cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '0.2rem',
-                          borderRadius: '0.25rem',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <ChevronUp size={14} />
-                      </button>
-                      <button
-                        onClick={() => moveSelectedProblem(idx, 'down')}
-                        disabled={idx === selectedProblems.length - 1}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: idx === selectedProblems.length - 1 ? 'rgba(255,255,255,0.07)' : 'var(--accent)',
-                          cursor: idx === selectedProblems.length - 1 ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '0.2rem',
-                          borderRadius: '0.25rem',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <ChevronDown size={14} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedProblems(prev => prev.filter((_, i) => i !== idx));
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#ff5555',
-                          fontWeight: 900,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '0.2rem',
-                          borderRadius: '0.25rem'
-                        }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Add Problem Blocks Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>ADD PROBLEM BLOCK</label>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-              {activePath === "bughunter" ? (
-                (["PYTHON", "CPP", "C", "JAVA"] as string[]).map(l => (
-                  <button
-                    key={l}
-                    disabled={selectedProblems.length >= 5}
-                    onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, l] : prev)}
-                    style={{
-                      flex: '1 1 90px',
-                      padding: '0.6rem 0.25rem',
-                      borderRadius: '0.4rem',
-                      border: '1px solid rgba(80, 250, 123, 0.3)',
-                      background: 'rgba(80, 250, 123, 0.05)',
-                      color: '#50fa7b',
-                      fontWeight: 900,
-                      fontSize: '0.75rem',
-                      cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                      opacity: selectedProblems.length >= 5 ? 0.3 : 1,
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
-                    onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
-                  >
-                    + {l} (+8m)
-                  </button>
-                ))
-              ) : (
-                <>
-                  <button
-                    disabled={selectedProblems.length >= 5}
-                    onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
-                    style={{
-                      flex: 1,
-                      padding: '0.6rem 0.25rem',
-                      borderRadius: '0.4rem',
-                      border: '1px solid rgba(80, 250, 123, 0.3)',
-                      background: 'rgba(80, 250, 123, 0.05)',
-                      color: '#50fa7b',
-                      fontWeight: 900,
-                      fontSize: '0.75rem',
-                      cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                      opacity: selectedProblems.length >= 5 ? 0.3 : 1,
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
-                    onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
-                  >
-                    + EASY (+5m)
-                  </button>
-                  <button
-                    disabled={selectedProblems.length >= 5}
-                    onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
-                    style={{
-                      flex: 1,
-                      padding: '0.6rem 0.25rem',
-                      borderRadius: '0.4rem',
-                      border: '1px solid rgba(255, 184, 108, 0.3)',
-                      background: 'rgba(255, 184, 108, 0.05)',
-                      color: '#ffb86c',
-                      fontWeight: 900,
-                      fontSize: '0.75rem',
-                      cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                      opacity: selectedProblems.length >= 5 ? 0.3 : 1,
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
-                    onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
-                  >
-                    + MEDIUM (+9m)
-                  </button>
-                  <button
-                    disabled={selectedProblems.length >= 5}
-                    onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
-                    style={{
-                      flex: 1,
-                      padding: '0.6rem 0.25rem',
-                      borderRadius: '0.4rem',
-                      border: '1px solid rgba(189, 147, 249, 0.3)',
-                      background: 'rgba(189, 147, 249, 0.05)',
-                      color: '#bd93f9',
-                      fontWeight: 900,
-                      fontSize: '0.75rem',
-                      cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
-                      opacity: selectedProblems.length >= 5 ? 0.3 : 1,
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
-                    onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
-                  >
-                    + HARD (+14m)
-                  </button>
-                </>
-              )}
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Added Problems List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>SELECTED PROBLEMS QUEUE</label>
+                {selectedProblems.length === 0 ? (
+                  <div style={{ padding: '1rem', border: '1px dashed var(--line)', borderRadius: '0.4rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    No problems selected. Add some below!
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                    {selectedProblems.map((p, idx) => (
+                      <div 
+                        key={idx} 
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggedProblemIndex(idx);
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', idx.toString());
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedProblemIndex !== null && draggedProblemIndex !== idx) {
+                            const updated = [...selectedProblems];
+                            const [moved] = updated.splice(draggedProblemIndex, 1);
+                            updated.splice(idx, 0, moved);
+                            setSelectedProblems(updated);
+                          }
+                          setDraggedProblemIndex(null);
+                        }}
+                        onDragEnd={() => setDraggedProblemIndex(null)}
+                        style={{ 
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                          background: draggedProblemIndex === idx ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)', 
+                          border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem',
+                          cursor: 'grab', opacity: draggedProblemIndex === idx ? 0.5 : 1
+                        }}
+                      >
+                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? '#50fa7b' : p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
+                          {idx + 1}. {p} (+{activePath === 'bughunter' ? 8 : p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <button
+                            onClick={() => moveSelectedProblem(idx, 'up')}
+                            disabled={idx === 0}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: idx === 0 ? 'rgba(255,255,255,0.07)' : 'var(--accent)',
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '0.2rem',
+                              borderRadius: '0.25rem',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <ChevronUp size={14} />
+                          </button>
+                          <button
+                            onClick={() => moveSelectedProblem(idx, 'down')}
+                            disabled={idx === selectedProblems.length - 1}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: idx === selectedProblems.length - 1 ? 'rgba(255,255,255,0.07)' : 'var(--accent)',
+                              cursor: idx === selectedProblems.length - 1 ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '0.2rem',
+                              borderRadius: '0.25rem',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <ChevronDown size={14} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedProblems(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ff5555',
+                              fontWeight: 900,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '0.2rem',
+                              borderRadius: '0.25rem'
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add Problem Blocks Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>ADD PROBLEM BLOCK</label>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {activePath === "bughunter" ? (
+                    (["PYTHON", "CPP", "C", "JAVA"] as string[]).map(l => (
+                      <button
+                        key={l}
+                        disabled={selectedProblems.length >= 5}
+                        onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, l] : prev)}
+                        style={{
+                          flex: '1 1 90px',
+                          padding: '0.6rem 0.25rem',
+                          borderRadius: '0.4rem',
+                          border: '1px solid rgba(80, 250, 123, 0.3)',
+                          background: 'rgba(80, 250, 123, 0.05)',
+                          color: '#50fa7b',
+                          fontWeight: 900,
+                          fontSize: '0.75rem',
+                          cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                          opacity: selectedProblems.length >= 5 ? 0.3 : 1,
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
+                        onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
+                      >
+                        + {l} (+8m)
+                      </button>
+                    ))
+                  ) : (
+                    <>
+                      <button
+                        disabled={selectedProblems.length >= 5}
+                        onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
+                        style={{
+                          flex: 1,
+                          padding: '0.6rem 0.25rem',
+                          borderRadius: '0.4rem',
+                          border: '1px solid rgba(80, 250, 123, 0.3)',
+                          background: 'rgba(80, 250, 123, 0.05)',
+                          color: '#50fa7b',
+                          fontWeight: 900,
+                          fontSize: '0.75rem',
+                          cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                          opacity: selectedProblems.length >= 5 ? 0.3 : 1,
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.15)' }}
+                        onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(80, 250, 123, 0.05)' }}
+                      >
+                        + EASY (+5m)
+                      </button>
+                      <button
+                        disabled={selectedProblems.length >= 5}
+                        onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
+                        style={{
+                          flex: 1,
+                          padding: '0.6rem 0.25rem',
+                          borderRadius: '0.4rem',
+                          border: '1px solid rgba(255, 184, 108, 0.3)',
+                          background: 'rgba(255, 184, 108, 0.05)',
+                          color: '#ffb86c',
+                          fontWeight: 900,
+                          fontSize: '0.75rem',
+                          cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                          opacity: selectedProblems.length >= 5 ? 0.3 : 1,
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.15)' }}
+                        onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(255, 184, 108, 0.05)' }}
+                      >
+                        + MEDIUM (+9m)
+                      </button>
+                      <button
+                        disabled={selectedProblems.length >= 5}
+                        onClick={() => setSelectedProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
+                        style={{
+                          flex: 1,
+                          padding: '0.6rem 0.25rem',
+                          borderRadius: '0.4rem',
+                          border: '1px solid rgba(189, 147, 249, 0.3)',
+                          background: 'rgba(189, 147, 249, 0.05)',
+                          color: '#bd93f9',
+                          fontWeight: 900,
+                          fontSize: '0.75rem',
+                          cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
+                          opacity: selectedProblems.length >= 5 ? 0.3 : 1,
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.15)' }}
+                        onMouseLeave={e => { if (selectedProblems.length < 5) e.currentTarget.style.background = 'rgba(189, 147, 249, 0.05)' }}
+                      >
+                        + HARD (+14m)
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Time & Type Summary Block */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -869,16 +881,16 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               CANCEL
             </button>
             <button
-              disabled={selectedProblems.length === 0}
+              disabled={activePath !== 'hackbounty' && selectedProblems.length === 0}
               onClick={async () => {
                 setShowSettingsPanel(false);
                 if (startQuickMatch) {
                   setIsQuickMatchMode(true);
                   try {
                     await startQuickMatch('create', {
-                      problems: selectedProblems,
+                      problems: activePath === 'hackbounty' ? ['MIXED'] : selectedProblems,
                       isRanked,
-                      gameMode: activePath === "bughunter" ? "BUGHUNTER" : "CODEKNIGHTS"
+                      gameMode: activePath === "bughunter" ? "BUGHUNTER" : activePath === "hackbounty" ? "HACKBOUNTY" : activePath === "mlmages" ? "MLMAGES" : "CODEKNIGHTS"
                     });
                   } catch (e) {
                     setIsQuickMatchMode(false);
@@ -890,11 +902,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 padding: '0.75rem',
                 borderRadius: '0.4rem',
                 border: 'none',
-                background: selectedProblems.length === 0 ? 'var(--text-muted)' : themeColor,
+                background: (activePath !== 'hackbounty' && selectedProblems.length === 0) ? 'var(--text-muted)' : themeColor,
                 color: '#000',
                 fontWeight: 900,
-                cursor: selectedProblems.length === 0 ? 'not-allowed' : 'pointer',
-                boxShadow: selectedProblems.length === 0 ? 'none' : `0 4px 15px ${themeColor}33`
+                cursor: (activePath !== 'hackbounty' && selectedProblems.length === 0) ? 'not-allowed' : 'pointer',
+                boxShadow: (activePath !== 'hackbounty' && selectedProblems.length === 0) ? 'none' : `0 4px 15px ${themeColor}33`
               }}
             >
               CREATE LOBBY
@@ -1706,6 +1718,45 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
         </button>
       )}
 
+      {/* Top Right Rules Button */}
+      {(!activeDuel || activeDuel.status !== 'ACTIVE') && !isCreating && !isJoining && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowRules(!showRules);
+          }}
+          style={{
+            position: 'absolute',
+            top: '1.25rem',
+            right: '1.25rem',
+            width: showBubbles ? '38px' : '48px',
+            height: showBubbles ? '38px' : '48px',
+            borderRadius: '50%',
+            background: 'rgba(30, 30, 40, 0.6)',
+            border: `1.5px solid ${themeColor}`,
+            color: themeColor,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.12s ease',
+            zIndex: 110,
+            boxShadow: `0 0 10px ${themeColor}33`
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.08)';
+            e.currentTarget.style.boxShadow = `0 0 15px ${themeColor}66`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = `0 0 10px ${themeColor}33`;
+          }}
+          title="Game Rules"
+        >
+          <span style={{ fontSize: '1.4rem', fontWeight: 900, fontFamily: 'monospace' }}>?</span>
+        </button>
+      )}
+
       {/* Bubble Options Blur Overlay */}
       <AnimatePresence>
         {showBubbles && (
@@ -2115,6 +2166,87 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           </div>
         </div>
         {renderBattleNotification()}
+        <AnimatePresence>
+          {showRules && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(0, 0, 0, 0.4)',
+                  backdropFilter: 'blur(3px)',
+                  zIndex: 200,
+                }}
+                onClick={() => setShowRules(false)}
+              />
+              <motion.div 
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                style={{
+                  position: 'absolute',
+                  top: 0, right: 0, bottom: 0,
+                  width: '400px',
+                  maxWidth: '100%',
+                  background: 'var(--bg)',
+                  borderLeft: `1px solid ${themeColor}`,
+                  boxShadow: `-10px 0 40px ${themeColor}33`,
+                  zIndex: 201,
+                  padding: '2rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflowY: 'auto'
+                }}
+              >
+                <button 
+                  onClick={() => setShowRules(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '1rem',
+                    right: '1rem',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    zIndex: 202
+                  }}
+                >
+                  <X size={20} />
+                </button>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.5rem', color: themeColor }}>
+                  <span style={{ fontSize: '2rem' }}>
+                    {BUBBLE_OPTIONS.find(o => o.id === activePath)?.icon || <i className="nf nf-fa-chess_knight"></i>}
+                  </span>
+                  <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900 }}>
+                    {BUBBLE_OPTIONS.find(o => o.id === activePath)?.name || "RULES"}
+                  </h2>
+                </div>
+                
+                <div style={{ color: 'var(--text)', lineHeight: 1.6, fontSize: '1.1rem' }}>
+                  <p style={{ marginBottom: '1rem' }}>{BUBBLE_OPTIONS.find(o => o.id === activePath)?.description}</p>
+                  {activePath === 'codeknights' && (
+                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '0.5rem', marginTop: '1rem' }}>
+                      <h3 style={{ margin: '0 0 0.5rem 0', color: themeColor, fontSize: '1.1rem' }}>Scoring Details:</h3>
+                      <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)' }}>
+                        <li><strong>EASY:</strong> 10 tests</li>
+                        <li><strong>MEDIUM:</strong> 15 tests</li>
+                        <li><strong>HARD:</strong> 20 tests</li>
+                      </ul>
+                      <p style={{ marginTop: '0.8rem', marginBottom: 0, color: 'var(--text-muted)' }}>
+                        Each test is valued around <strong>50 points</strong> by default, but this value decreases by a maximum of <strong>20 points</strong> as time goes on.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

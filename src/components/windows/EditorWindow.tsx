@@ -112,6 +112,17 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
   }), [fontSize, fontFamily, isResizing, tabSize, insertSpaces]);
 
   useEffect(() => {
+    if (monaco) {
+      monaco.editor.remeasureFonts();
+      if (document.fonts) {
+        document.fonts.ready.then(() => {
+          monaco.editor.remeasureFonts();
+        });
+      }
+    }
+  }, [monaco, fontFamily]);
+
+  useEffect(() => {
     if (!isResizing && editorRef.current) {
       setTimeout(() => editorRef.current.layout(), 100);
     }

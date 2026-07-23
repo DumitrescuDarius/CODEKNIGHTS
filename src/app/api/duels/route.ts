@@ -46,7 +46,14 @@ export async function POST(req: NextRequest) {
       userId = newUser.id;
     }
 
-    const parsedProblems = Array.isArray(problems) && problems.length > 0 ? problems : ["EASY"];
+    let parsedProblems = Array.isArray(problems) && problems.length > 0 ? problems : ["EASY"];
+    
+    // In HACKBOUNTY, both players get the same problem to break and fix.
+    // Thus we need exactly 1 problem.
+    if (gameMode === "HACKBOUNTY") {
+      parsedProblems = ["MIXED", "MIXED"];
+    }
+
     const parsedNumProblems = parsedProblems.length;
     
     let parsedTotalTime = 0;

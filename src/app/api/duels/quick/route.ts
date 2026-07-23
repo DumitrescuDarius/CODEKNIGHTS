@@ -107,9 +107,13 @@ export async function POST(req: NextRequest) {
       return diff.charAt(0).toUpperCase() + diff.slice(1).toLowerCase();
     };
 
-    const problemList = (problems && Array.isArray(problems) && problems.length > 0) 
+    let problemList = (problems && Array.isArray(problems) && problems.length > 0) 
       ? problems 
       : ["EASY"];
+
+    if (gameMode === "HACKBOUNTY") {
+      problemList = ["MIXED"];
+    }
 
     // Calculate total time: Easy = 5m, Medium = 9m, Hard = 14m
     const calculatedTotalTime = problemList.reduce((sum: number, diff: string) => {

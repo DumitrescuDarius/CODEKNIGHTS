@@ -289,12 +289,15 @@ export async function POST(req: Request) {
       }
     };
 
+    let compiledWithDocker = false;
+
     // Attempt Compilation (Skip on production, let Piston handle it per-test)
     if (process.env.NODE_ENV === "development" || hasDocker) {
       try {
         if (hasDocker) {
           try {
             await runDockerCompile();
+            compiledWithDocker = true;
           } catch (e) {
             await runLocalCompile();
           }
@@ -342,12 +345,8 @@ export async function POST(req: Request) {
       if (process.env.NODE_ENV !== "development" && !hasDocker) {
         return await executeWithPiston(code, language, stdin);
       }
-      if (hasDocker) {
-        try {
-          return await executeDocker();
-        } catch (e) {
-          return await executeLocal();
-        }
+      if (hasDocker && compiledWithDocker) {
+        return await executeDocker();
       } else {
         return await executeLocal();
       }
