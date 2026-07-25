@@ -2,8 +2,6 @@
 
 CodeKnights is a premier competitive programming platform that brings developers together in high-stakes, real-time coding duels. Built with performance and user experience in mind, CodeKnights features a full-stack Next.js environment, sandboxed code execution, real-time Socket.io synchronization, and an innovative draggable window UI interface.
 
-![CodeKnights Arena](https://via.placeholder.com/800x400?text=CodeKnights+Arena)
-
 ---
 
 ## 🌟 Game Modes
