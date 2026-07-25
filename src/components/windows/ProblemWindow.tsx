@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye, Crown, Skull, Medal, ChevronDown } from "lucide-react";
+import { Play, Sword, Trophy, X, Zap, Cpu, Activity, ShieldCheck, MessageSquareQuote, Eye, Crown, Skull, Medal, ChevronDown, Volume2, VolumeX } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { Question } from "../../types";
 import { LANG_CONFIG } from "../../constants/languages";
@@ -150,6 +150,32 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 }) => {
   const [isScrolledToTop, setIsScrolledToTop] = useState(true);
   const [showEmotes, setShowEmotes] = useState(false);
+  const [muteOpponent, setMuteOpponent] = useState(false);
+
+  useEffect(() => {
+    if (opponentEmote && !muteOpponent) {
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+      } catch (e) {
+        console.warn("Audio Context not supported or failed to play");
+      }
+    }
+  }, [opponentEmote, muteOpponent]);
 
   const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setIsScrolledToTop(e.currentTarget.scrollTop < 5);
@@ -300,33 +326,6 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             }
           }}
         >
-          <AnimatePresence>
-            {opponentEmote && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.8 }}
-                style={{
-                  position: 'absolute',
-                  top: '120%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: 'var(--accent)',
-                  color: '#000',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '0.25rem',
-                  fontSize: '0.7rem',
-                  fontWeight: 800,
-                  whiteSpace: 'nowrap',
-                  zIndex: 100,
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-                  pointerEvents: 'none'
-                }}
-              >
-                {opponentEmote}
-              </motion.div>
-            )}
-          </AnimatePresence>
           {opponentAvatar ? (
             <img 
               src={opponentAvatar} 
@@ -855,6 +854,48 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
   return (
     <div style={{ padding: '1.5rem', height: '100%', overflow: 'auto', position: 'relative' }}>
+      <div style={{ position: 'sticky', top: '0', zIndex: 120, height: 0, pointerEvents: 'none' }}>
+        <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <AnimatePresence>
+            {!muteOpponent && opponentEmote && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.8 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.8 }}
+                style={{
+                  position: 'absolute',
+                  top: '0',
+                  background: 'var(--accent)',
+                  color: '#000',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 900,
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <div style={{ padding: '0.1rem 0.3rem', background: 'rgba(0,0,0,0.15)', borderRadius: '0.25rem', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Opponent</div>
+                {opponentEmote}
+                <div style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  left: '50%',
+                  transform: 'translateX(-50%) rotate(45deg)',
+                  width: '10px',
+                  height: '10px',
+                  background: 'var(--accent)',
+                  zIndex: -1
+                }} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
       {timeLeft !== null && timeLeft !== undefined && activeDuel && (
           <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
               {renderTimer()}
@@ -1254,87 +1295,134 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             </div>
           </div>
 
-          <div style={{ marginTop: 'auto', paddingTop: '2rem', display: 'flex', position: 'relative' }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowEmotes(!showEmotes); }}
-              style={{
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                padding: '0.5rem 1rem', borderRadius: '0.5rem', color: 'var(--text)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-                fontSize: '0.8rem', fontWeight: 800
-              }}
-            >
-              <MessageSquareQuote size={16} /> Emotes
-            </button>
-            <AnimatePresence>
-              {myEmote && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.8 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.8 }}
-                  style={{
-                    position: 'absolute',
-                    bottom: '120%',
-                    left: 0,
-                    background: 'var(--accent)',
-                    color: '#000',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.7rem',
-                    fontWeight: 800,
-                    whiteSpace: 'nowrap',
-                    pointerEvents: 'none',
-                    zIndex: 100,
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
-                  }}
-                >
-                  {myEmote}
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <AnimatePresence>
-              {showEmotes && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                  style={{
-                    position: 'absolute',
-                    bottom: 'calc(100% + 0.5rem)',
-                    left: 0,
-                    background: 'var(--bg)',
-                    border: '1px solid var(--line)',
-                    padding: '0.5rem',
-                    borderRadius: '0.5rem',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '0.5rem',
-                    zIndex: 110,
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-                  }}
-                >
-                  {EMOTES.map(em => (
-                    <button
-                      key={em}
-                      onClick={() => {
-                        if (sendEmote) sendEmote(em);
-                        setShowEmotes(false);
-                      }}
-                      style={{
-                        background: 'rgba(255,255,255,0.05)', border: 'none',
-                        padding: '0.5rem', borderRadius: '0.25rem', color: 'var(--text)',
-                        cursor: 'pointer', fontSize: '0.8rem', whiteSpace: 'nowrap',
-                        fontWeight: 700
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
+          <div style={{ position: 'sticky', bottom: '-0.5rem', marginTop: 'auto', paddingTop: '2rem', display: 'flex', justifyContent: 'flex-start', zIndex: 110, pointerEvents: 'none', paddingBottom: '0.5rem' }}>
+            <div style={{ position: 'relative', pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowEmotes(!showEmotes); }}
+                style={{
+                  background: 'var(--accent)', border: 'none',
+                  padding: '0.75rem', borderRadius: '50%', color: '#000',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 15px rgba(122, 162, 247, 0.4)',
+                  transition: 'transform 0.2s ease'
+                }}
+                title="Emotes"
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <MessageSquareQuote size={20} />
+              </button>
+              
+              <AnimatePresence>
+                {myEmote && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.8 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                    style={{
+                      position: 'absolute',
+                      bottom: '120%',
+                      left: 0,
+                      background: 'var(--accent)',
+                      color: '#000',
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 120,
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+                    }}
+                  >
+                    {myEmote}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '-4px',
+                      left: '1rem',
+                      transform: 'rotate(45deg)',
+                      width: '10px',
+                      height: '10px',
+                      background: 'var(--accent)',
+                      zIndex: -1
+                    }} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {showEmotes && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 1rem)',
+                      left: 0,
+                      background: 'var(--bg)',
+                      border: '1px solid var(--line)',
+                      padding: '0.75rem',
+                      borderRadius: '0.75rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      zIndex: 110,
+                      boxShadow: '0 10px 40px rgba(0,0,0,0.6)'
+                    }}
+                  >
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                      {EMOTES.map(em => (
+                        <button
+                          key={em}
+                          onClick={() => {
+                            if (sendEmote) sendEmote(em);
+                            setShowEmotes(false);
+                          }}
+                          style={{
+                            background: 'rgba(255,255,255,0.05)', border: 'none',
+                            padding: '0.6rem 0.75rem', borderRadius: '0.4rem', color: 'var(--text)',
+                            cursor: 'pointer', fontSize: '0.8rem', whiteSpace: 'nowrap',
+                            fontWeight: 700, transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
+                        >
+                          {em}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMuteOpponent(!muteOpponent); }}
+                        style={{
+                          width: '100%',
+                          background: muteOpponent ? 'rgba(255, 85, 85, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                          border: `1px solid ${muteOpponent ? 'rgba(255, 85, 85, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+                          padding: '0.6rem', borderRadius: '0.4rem', 
+                          color: muteOpponent ? '#ff5555' : 'var(--text-muted)',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                          fontSize: '0.8rem', fontWeight: 700,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = muteOpponent ? 'rgba(255, 85, 85, 0.25)' : 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.color = muteOpponent ? '#ff5555' : 'var(--text)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = muteOpponent ? 'rgba(255, 85, 85, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+                          e.currentTarget.style.color = muteOpponent ? '#ff5555' : 'var(--text-muted)';
+                        }}
+                      >
+                        {muteOpponent ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                        {muteOpponent ? "Opponent Emotes Muted" : "Mute Opponent Emotes"}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       )}
