@@ -42,6 +42,42 @@ interface Workspace {
 
 type Port = 'top' | 'right' | 'bottom' | 'left';
 
+const getDefaultWorkspaceData = (name: string, id: string): Workspace => ({
+  id,
+  name,
+  nodes: [
+    {
+      id: `${id}-node-1`,
+      title: "Welcome to Notes!",
+      content: "This is your infinite canvas.\n\n- Click anywhere to create a new note.\n- Drag the top bar to move them around.\n- Use the bottom-right corner to resize.",
+      x: 100,
+      y: 100,
+      width: 300,
+      height: 200
+    },
+    {
+      id: `${id}-node-2`,
+      title: "Connecting Notes",
+      content: "You can connect notes together to build mind maps or organize thoughts.\n\nClick the link icon on one note, then click on another note to connect them!",
+      x: 500,
+      y: 150,
+      width: 300,
+      height: 180
+    }
+  ],
+  edges: [
+    {
+      id: `${id}-edge-1`,
+      source: `${id}-node-1`,
+      target: `${id}-node-2`,
+      sourcePort: 'right',
+      targetPort: 'left'
+    }
+  ],
+  updatedAt: Date.now()
+});
+
+
 const getPortPos = (node: Node, port: Port = 'right') => {
   switch (port) {
     case 'top': return { x: node.x + node.width / 2, y: node.y };
@@ -399,13 +435,13 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
           // Migration from old single-workspace structure
           const oldNodes = Array.isArray(data?.nodes) ? data.nodes : [];
           const oldEdges = Array.isArray(data?.edges) ? data.edges : [];
-          const defaultWorkspace = {
+          const defaultWorkspace = oldNodes.length > 0 ? {
             id: Date.now().toString(),
             name: "",
             nodes: oldNodes,
             edges: oldEdges,
             updatedAt: Date.now()
-          };
+          } : getDefaultWorkspaceData("", Date.now().toString());
           setWorkspaces([defaultWorkspace]);
           setActiveWorkspaceId(defaultWorkspace.id);
           setNodes(oldNodes);
@@ -518,17 +554,11 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
       alert("Standard users are limited to 3 notes workspaces. Upgrade to Royal to add more!");
       return;
     }
-    const newWs: Workspace = {
-      id: Date.now().toString(),
-      name: "",
-      nodes: [],
-      edges: [],
-      updatedAt: Date.now()
-    };
+    const newWs = getDefaultWorkspaceData("", Date.now().toString());
     setWorkspaces([newWs, ...workspaces]);
     setActiveWorkspaceId(newWs.id);
-    setNodes([]);
-    setEdges([]);
+    setNodes(newWs.nodes);
+    setEdges(newWs.edges);
     setPan({ x: 0, y: 0 });
     setZoom(1);
   };
@@ -537,17 +567,11 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
     e.stopPropagation();
     const nextWorkspaces = workspaces.filter(w => w.id !== id);
     if (nextWorkspaces.length === 0) {
-      const newWs: Workspace = {
-        id: Date.now().toString(),
-        name: "",
-        nodes: [],
-        edges: [],
-        updatedAt: Date.now()
-      };
+      const newWs = getDefaultWorkspaceData("", Date.now().toString());
       setWorkspaces([newWs]);
       setActiveWorkspaceId(newWs.id);
-      setNodes([]);
-      setEdges([]);
+      setNodes(newWs.nodes);
+      setEdges(newWs.edges);
     } else {
       setWorkspaces(nextWorkspaces);
       if (activeWorkspaceId === id) {

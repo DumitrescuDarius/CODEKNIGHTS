@@ -509,6 +509,10 @@ const MainMenu: React.FC = () => {
   const codeRef = useRef(code);
   const hasLoadedOppCodeRef = useRef(false);
   const testResultsRef = useRef(testResults);
+  const [myEmote, setMyEmote] = useState<string | null>(null);
+  const [opponentEmote, setOpponentEmote] = useState<string | null>(null);
+  const myEmoteTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const oppEmoteTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const lastMaximizedDuelRef = useRef<string | null>(null);
   useEffect(() => {
@@ -1220,29 +1224,36 @@ const MainMenu: React.FC = () => {
     });
     
     socketRef.current.on("opponent_progress", (data) => {
-      setActiveDuel(prev => {
-        if (!prev || prev.id !== data.duelId) return prev;
-        const userId = sessionRef.current?.user ? (sessionRef.current.user as any).id : guestIdRef.current;
-        const isHost = prev.hostId === userId;
-        return {
-          ...prev,
-          ...(isHost ? {
-            guestCodeLength: data.codeLength,
-            guestLineCount: data.lineCount,
-            guestTestsPassed: data.testsPassed,
-            guestTestsTotal: data.testsTotal,
-            guestLastActive: new Date().toISOString(),
-            guestCode: data.code
-          } : {
-            hostCodeLength: data.codeLength,
-            hostLineCount: data.lineCount,
-            hostTestsPassed: data.testsPassed,
-            hostTestsTotal: data.testsTotal,
-            hostLastActive: new Date().toISOString(),
-            hostCode: data.code
-          })
-        };
-      });
+      if (data.emote && data.duelId === activeDuelRef.current?.id) {
+        setOpponentEmote(data.emote);
+        if (oppEmoteTimerRef.current) clearTimeout(oppEmoteTimerRef.current);
+        oppEmoteTimerRef.current = setTimeout(() => setOpponentEmote(null), 5000);
+      }
+      if (data.codeLength !== undefined) {
+        setActiveDuel(prev => {
+          if (!prev || prev.id !== data.duelId) return prev;
+          const userId = sessionRef.current?.user ? (sessionRef.current.user as any).id : guestIdRef.current;
+          const isHost = prev.hostId === userId;
+          return {
+            ...prev,
+            ...(isHost ? {
+              guestCodeLength: data.codeLength,
+              guestLineCount: data.lineCount,
+              guestTestsPassed: data.testsPassed,
+              guestTestsTotal: data.testsTotal,
+              guestLastActive: new Date().toISOString(),
+              guestCode: data.code
+            } : {
+              hostCodeLength: data.codeLength,
+              hostLineCount: data.lineCount,
+              hostTestsPassed: data.testsPassed,
+              hostTestsTotal: data.testsTotal,
+              hostLastActive: new Date().toISOString(),
+              hostCode: data.code
+            })
+          };
+        });
+      }
     });
 
     socketRef.current.on("duel_update", () => {
@@ -2324,6 +2335,14 @@ const MainMenu: React.FC = () => {
     }
   }, [code, lang]);
 
+  const sendEmote = (emote: string) => {
+    if (!activeDuel || !socketRef.current) return;
+    setMyEmote(emote);
+    if (myEmoteTimerRef.current) clearTimeout(myEmoteTimerRef.current);
+    myEmoteTimerRef.current = setTimeout(() => setMyEmote(null), 5000);
+    socketRef.current.emit("progress_update", { duelId: activeDuel.id, emote });
+  };
+
   const handleRevert = () => {
     if (confirm("Revert to default code for this language?")) {
       if (activeDuel?.gameMode === "BUGHUNTER" && activeQuestion?.brokenCode) {
@@ -2332,6 +2351,26 @@ const MainMenu: React.FC = () => {
           setCode(parsed[lang] || "");
         } catch (e) {
           console.error("Failed to revert to broken code", e);
+          setCode(LANG_CONFIG[lang].defaultCode);
+        }
+      } else if (activeDuel?.gameMode === "HACKBOUNTY") {
+        if (activeDuel.phase === "BREAKING" && activeQuestion?.referenceCode) {
+          try {
+            const parsed = JSON.parse(activeQuestion.referenceCode);
+            setCode(parsed[lang] || parsed["cpp"] || Object.values(parsed)[0] as string || "");
+          } catch (e) {
+            setCode(LANG_CONFIG[lang].defaultCode);
+          }
+        } else if (activeDuel.phase === "FIXING") {
+          const currentUserId = session?.user ? (session.user as any).id : guestId;
+          const isHost = activeDuel.hostId === currentUserId;
+          const oppCode = isHost ? (activeDuel as any).guestSabotagedCode : (activeDuel as any).hostSabotagedCode;
+          if (oppCode) {
+            setCode(oppCode);
+          } else {
+            setCode(LANG_CONFIG[lang].defaultCode);
+          }
+        } else {
           setCode(LANG_CONFIG[lang].defaultCode);
         }
       } else {
@@ -2911,6 +2950,9 @@ const MainMenu: React.FC = () => {
         return (
           <ProblemWindow
             userId={currentUserId}
+            myEmote={myEmote}
+            opponentEmote={opponentEmote}
+            sendEmote={sendEmote}
             activeQuestion={activeQuestion}
             testResults={testResults}
             totalPenalty={totalPenalty}

@@ -100,6 +100,9 @@ function ComplexityAnalysisError({
 
 interface ProblemWindowProps {
   userId: string;
+  myEmote?: string | null;
+  opponentEmote?: string | null;
+  sendEmote?: (emote: string) => void;
   activeQuestion: Question | null;
   testResults: { passed: number; total: number; details: any[] } | null;
   showQuitConfirmation: boolean;
@@ -124,26 +127,29 @@ interface ProblemWindowProps {
   totalPenalty: number | null;
   wrongAttemptCount: number;
   calculatePenalty: (time: number, wa: number, scores: any, actualComp: string | undefined, idealComp: string | undefined) => number;
-  retryProblem: () => void;
-  setActiveDuel?: (val: any) => void;
-  setDuelPin?: (val: string) => void;
+  retryProblem?: () => void;
+  setActiveDuel?: React.Dispatch<React.SetStateAction<any>>;
+  setDuelPin?: (pin: string | null) => void;
   onOpenUserProfile?: (userId: string) => void;
   activeQuestionIndex?: number;
-  changeActiveQuestion?: (index: number) => void;
-  problemTestResults?: Record<string, { passed: number; total: number; details: any[] }>;
-  problemScores?: Record<string, number>;
+  changeActiveQuestion?: (idx: number) => void;
+  problemTestResults?: Record<string, any>;
+  problemScores?: Record<string, any>;
   problemWrongAttemptCounts?: Record<string, number>;
-  setCode?: (val: string) => void;
+  setCode?: (code: string) => void;
 }
 
+const EMOTES = ["Skill issue", "EZ", "Cry about it", "Big Brain", "Gl Hf", "Oof", "No way", "Bro...", "You're cooked"];
+
 export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
-  userId, activeQuestion, testResults, totalPenalty, wrongAttemptCount, calculatePenalty, retryProblem, showQuitConfirmation, setShowQuitConfirmation,
+  userId, myEmote, opponentEmote, sendEmote, activeQuestion, testResults, totalPenalty, wrongAttemptCount, calculatePenalty, retryProblem, showQuitConfirmation, setShowQuitConfirmation,
   handleQuitBattle, onSafeLeave, runTests, isTesting, setStdin, setShowTerminal,
   setTerminalOutput, solveTime, lang, startNewBattle, runSingleTest, t,
   analysis, isAnalyzing, onAnalyzeComplexity, activeDuel, timeLeft, setActiveDuel, setDuelPin, onOpenUserProfile,
   activeQuestionIndex, changeActiveQuestion, problemTestResults, problemScores, problemWrongAttemptCounts, setCode
 }) => {
   const [isScrolledToTop, setIsScrolledToTop] = useState(true);
+  const [showEmotes, setShowEmotes] = useState(false);
 
   const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setIsScrolledToTop(e.currentTarget.scrollTop < 5);
@@ -294,6 +300,33 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             }
           }}
         >
+          <AnimatePresence>
+            {opponentEmote && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.8 }}
+                style={{
+                  position: 'absolute',
+                  top: '120%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'var(--accent)',
+                  color: '#000',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '0.25rem',
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  whiteSpace: 'nowrap',
+                  zIndex: 100,
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                  pointerEvents: 'none'
+                }}
+              >
+                {opponentEmote}
+              </motion.div>
+            )}
+          </AnimatePresence>
           {opponentAvatar ? (
             <img 
               src={opponentAvatar} 
@@ -1221,7 +1254,87 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             </div>
           </div>
 
-          <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
+          <div style={{ marginTop: 'auto', paddingTop: '2rem', display: 'flex', position: 'relative' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowEmotes(!showEmotes); }}
+              style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                padding: '0.5rem 1rem', borderRadius: '0.5rem', color: 'var(--text)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                fontSize: '0.8rem', fontWeight: 800
+              }}
+            >
+              <MessageSquareQuote size={16} /> Emotes
+            </button>
+            <AnimatePresence>
+              {myEmote && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.8 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                  style={{
+                    position: 'absolute',
+                    bottom: '120%',
+                    left: 0,
+                    background: 'var(--accent)',
+                    color: '#000',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                    zIndex: 100,
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  {myEmote}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {showEmotes && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                  style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 0.5rem)',
+                    left: 0,
+                    background: 'var(--bg)',
+                    border: '1px solid var(--line)',
+                    padding: '0.5rem',
+                    borderRadius: '0.5rem',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '0.5rem',
+                    zIndex: 110,
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                  }}
+                >
+                  {EMOTES.map(em => (
+                    <button
+                      key={em}
+                      onClick={() => {
+                        if (sendEmote) sendEmote(em);
+                        setShowEmotes(false);
+                      }}
+                      style={{
+                        background: 'rgba(255,255,255,0.05)', border: 'none',
+                        padding: '0.5rem', borderRadius: '0.25rem', color: 'var(--text)',
+                        cursor: 'pointer', fontSize: '0.8rem', whiteSpace: 'nowrap',
+                        fontWeight: 700
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       )}

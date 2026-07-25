@@ -77,6 +77,7 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
     minimap: { enabled: false }, 
     automaticLayout: true, 
     padding: { top: 0 }, 
+    glyphMargin: true,
     scrollBeyondLastLine: false, 
     roundedSelection: false, 
     fixedOverflowWidgets: false, 
@@ -150,6 +151,8 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
     };
   }, [editorRef]);
 
+  const errorDecorationsRef = React.useRef<string[]>([]);
+
   useEffect(() => {
     if (monaco && editorRef.current) {
       const model = editorRef.current.getModel();
@@ -163,6 +166,18 @@ export const EditorWindow: React.FC<EditorWindowProps> = React.memo(({
           severity: monaco.MarkerSeverity.Error,
         }));
         monaco.editor.setModelMarkers(model, "owner", markers);
+
+        const decorations = compileErrors.map(err => ({
+          range: new monaco.Range(err.line, 1, err.line, 1),
+          options: {
+            isWholeLine: true,
+            glyphMarginClassName: "error-glyph-margin",
+          }
+        }));
+        errorDecorationsRef.current = editorRef.current.deltaDecorations(
+          errorDecorationsRef.current,
+          decorations
+        );
       }
     }
   }, [compileErrors, monaco, editorRef, lang]);
