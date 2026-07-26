@@ -35,13 +35,15 @@ interface SettingsWindowProps {
   insertSpaces: boolean;
   setInsertSpaces: (val: boolean) => void;
   t: (key: TranslationKey) => string;
+  isAdmin?: boolean;
+  onReinitIntro?: () => void;
 }
 
 export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
   themeIndex, setThemeIndex, fontFamily, setFontFamily, fontSize, setFontSize,
   terminalFontSize, setTerminalFontSize, vimMode, setVimMode, uiLang, setUiLang,
   animationSpeed, setAnimationSpeed, windowRadius, setWindowRadius, windowGap, setWindowGap, windowBorderThickness, setWindowBorderThickness, navStyle, setNavStyle,
-  tabSize, setTabSize, insertSpaces, setInsertSpaces, t
+  tabSize, setTabSize, insertSpaces, setInsertSpaces, t, isAdmin, onReinitIntro
 }) => {
   const handleExport = () => {
     const settings = {
@@ -508,6 +510,24 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
           })}
         </div>
       </div>
+
+      {/* 6. Admin Settings */}
+      {isAdmin && (
+        <div className="settings-group" style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #ff5555', borderRadius: '0.5rem', background: 'rgba(255, 85, 85, 0.05)' }}>
+          <span className="settings-label" style={{ color: '#ff5555' }}>Admin Settings</span>
+          <div className="settings-options" style={{ marginTop: '1rem' }}>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => onReinitIntro && onReinitIntro()}
+              style={{ width: '100%', border: '1px solid rgba(255, 85, 85, 0.5)', color: '#ff5555' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              Reinitiate Introductory Animation
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
