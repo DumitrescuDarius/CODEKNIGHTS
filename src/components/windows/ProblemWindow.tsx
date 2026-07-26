@@ -299,7 +299,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     const isCurrentUserHost = activeDuel.hostId === userId;
     const opponent = isCurrentUserHost ? activeDuel.guest : activeDuel.host;
     const opponentName = isCurrentUserHost ? (activeDuel.guest?.username || activeDuel.guest?.name || "Guest") : (activeDuel.host?.username || activeDuel.host?.name || "Host");
-    const opponentAvatar = opponent?.image || `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(opponentName)}`;
+    const opponentAvatar = opponent?.image || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(opponentName)}`;
 
     const opponentCodeLength = isCurrentUserHost ? activeDuel.guestCodeLength : activeDuel.hostCodeLength;
     const opponentLineCount = isCurrentUserHost ? activeDuel.guestLineCount : activeDuel.hostLineCount;

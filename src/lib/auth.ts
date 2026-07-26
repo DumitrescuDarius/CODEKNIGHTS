@@ -9,7 +9,7 @@ export const authOptions: NextAuthOptions = {
     ...PrismaAdapter(prisma),
     createUser: async (data) => {
       const seed = Math.random().toString(36).substring(7);
-      const identiconUrl = `https://api.dicebear.com/9.x/bottts/svg?seed=${seed}`;
+      const identiconUrl = `https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}`;
       return prisma.user.create({
         data: {
           ...data,
