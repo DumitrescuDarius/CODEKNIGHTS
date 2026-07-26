@@ -30,10 +30,13 @@ async function seed() {
           inputFormat: p.inputFormat || '',
           outputFormat: p.outputFormat || '',
           idealComplexity: p.idealComplexity || '',
+          timeLimit: p.timeLimit || 5000,
+          memoryLimit: p.memoryLimit || 256,
+          problemId: p.problemId || null,
           testCases: JSON.stringify(p.testCases || []),
           hiddenTestCases: JSON.stringify(p.hiddenTestCases || []),
-          brokenCode: p.brokenCode ? (typeof p.brokenCode === 'object' ? JSON.stringify(p.brokenCode) : p.brokenCode) : null,
-          referenceCode: p.referenceCode ? (typeof p.referenceCode === 'object' ? JSON.stringify(p.referenceCode) : p.referenceCode) : null,
+          brokenCode: p.brokenCode ? (typeof p.brokenCode === 'object' ? JSON.stringify(p.brokenCode) : p.brokenCode) : p.brokenCode,
+          referenceCode: p.referenceCode ? (typeof p.referenceCode === 'object' ? JSON.stringify(p.referenceCode) : p.referenceCode) : p.referenceCode,
         },
         create: {
           title: p.title,
@@ -43,10 +46,13 @@ async function seed() {
           inputFormat: p.inputFormat || '',
           outputFormat: p.outputFormat || '',
           idealComplexity: p.idealComplexity || '',
+          timeLimit: p.timeLimit || 5000,
+          memoryLimit: p.memoryLimit || 256,
+          problemId: p.problemId || null,
           testCases: JSON.stringify(p.testCases || []),
           hiddenTestCases: JSON.stringify(p.hiddenTestCases || []),
-          brokenCode: p.brokenCode ? (typeof p.brokenCode === 'object' ? JSON.stringify(p.brokenCode) : p.brokenCode) : null,
-          referenceCode: p.referenceCode ? (typeof p.referenceCode === 'object' ? JSON.stringify(p.referenceCode) : p.referenceCode) : null,
+          brokenCode: p.brokenCode ? (typeof p.brokenCode === 'object' ? JSON.stringify(p.brokenCode) : p.brokenCode) : p.brokenCode,
+          referenceCode: p.referenceCode ? (typeof p.referenceCode === 'object' ? JSON.stringify(p.referenceCode) : p.referenceCode) : p.referenceCode,
         },
       });
       console.log(`Upserted: ${p.title}`);
@@ -59,4 +65,7 @@ async function seed() {
   console.log('Seeding complete.');
 }
 
-seed();
+seed().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
