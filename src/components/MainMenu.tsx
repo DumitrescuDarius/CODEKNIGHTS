@@ -262,6 +262,7 @@ const changeCodeIndentation = (
 
 const TOUR_STEPS: TourStep[] = [
   { target: '[data-tour="battle-btn"]', title: "The Battle Arena", content: "Click here to create a Quick Match or Duel a friend. This is where the magic happens!", position: "right" },
+  { target: '[data-tour="agent-btn"]', title: "AI Assistant", content: "Stuck on a problem? Click here to chat with our advanced AI coding assistant.", position: "right" },
   { target: '.workspace-selector', title: "Workspaces", content: "You can manage multiple layouts and duels simultaneously using 9 independent workspaces.", position: "bottom" },
   { target: '[data-tour="settings-btn"]', title: "Settings", content: "Customize themes, fonts, vim mode, and interface language to your liking.", position: "bottom" },
   { target: '[data-tour="profile-menu"]', title: "Your Profile", content: "Check your stats, manage your account, or edit your avatar here.", position: "bottom" }
@@ -683,13 +684,13 @@ const MainMenu: React.FC = () => {
 
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && status === "authenticated") {
       const seen = localStorage.getItem("ck-tutorial-seen");
       if (!seen) {
         setShowWelcomePopup(true);
       }
     }
-  }, []);
+  }, [status]);
 
   const [showWaitingPopup, setShowWaitingPopup] = useState(false);
   const [showInviteSentPopup, setShowInviteSentPopup] = useState(false);
@@ -2883,6 +2884,11 @@ const MainMenu: React.FC = () => {
             tabSize={tabSize} setTabSize={setTabSize}
             insertSpaces={insertSpaces} setInsertSpaces={setInsertSpaces}
             t={t}
+            isAdmin={(session?.user as any)?.isAdmin}
+            onReinitIntro={() => {
+              localStorage.removeItem("ck-tutorial-seen");
+              setShowWelcomePopup(true);
+            }}
           />
         );
 
