@@ -3476,7 +3476,7 @@ const MainMenu: React.FC = () => {
           </ul>
           <div className="nav-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             {(session && !isGuest) && (
-              <button onClick={() => toggleWindow("agent")} style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><Brain size={20} /></button>
+              <button onClick={() => toggleWindow("agent")} data-tour="agent-btn" style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><Brain size={20} /></button>
             )}
             <button onClick={() => toggleWindow("settings")} data-tour="settings-btn" style={{ background: 'transparent', border: 'none', color: '#f1fa8c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
             {(session || isGuest) ? (
