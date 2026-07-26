@@ -160,7 +160,7 @@ export const Tour: React.FC<TourProps> = ({ steps, isOpen, onClose }) => {
               )}
             </mask>
           </defs>
-          <rect width="100%" height="100%" fill="rgba(0,0,0,0.7)" mask="url(#tour-mask)" />
+          <rect width="100%" height="100%" fill="rgba(0,0,0,0.85)" mask="url(#tour-mask)" />
         </svg>
       </div>
 
