@@ -4,6 +4,7 @@ WORKDIR /app
 # Install Python/build tools just in case native modules need them during install
 RUN apk add --no-cache python3 make g++ 
 COPY package.json package-lock.json* ./
+COPY prisma ./prisma
 RUN npm install
 
 # Stage 2: Builder
