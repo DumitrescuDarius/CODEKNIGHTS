@@ -85,7 +85,7 @@ export const TutorialWindow: React.FC<{ t: (k: TranslationKey) => string }> = ({
           </ul>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#50fa7b', fontWeight: 800, marginTop: '1rem', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-green)', fontWeight: 800, marginTop: '1rem', justifyContent: 'center' }}>
           <CheckCircle size={20} /> You are ready for the arena!
         </div>
 

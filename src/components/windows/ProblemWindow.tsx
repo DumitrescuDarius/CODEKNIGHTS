@@ -68,7 +68,7 @@ function ComplexityAnalysisError({
           };
     return (
       <div style={boxStyle}>
-        <div style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: "0.5rem", color: "#f1fa8c" }}>
+        <div style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: "0.5rem", color: "var(--color-yellow)" }}>
           Complexity analysis unavailable
         </div>
         <p style={{ fontSize: "0.82rem", lineHeight: 1.55, margin: "0 0 0.75rem", color: "var(--text-muted)" }}>
@@ -88,8 +88,8 @@ function ComplexityAnalysisError({
   }
   const pStyle: React.CSSProperties =
     layout === "centered"
-      ? { color: "#ff5555", fontSize: "0.9rem", marginBottom: "1rem", marginTop: 0 }
-      : { color: "#ff5555", fontSize: "0.85rem", marginTop: "0.65rem", marginBottom: 0 };
+      ? { color: "var(--color-red)", fontSize: "0.9rem", marginBottom: "1rem", marginTop: 0 }
+      : { color: "var(--color-red)", fontSize: "0.85rem", marginTop: "0.65rem", marginBottom: 0 };
   return (
     <p style={pStyle}>
       {analysis.error}
@@ -189,10 +189,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   const otherFinalized = isHost ? activeDuel?.guestFinalized : (isGuest ? activeDuel?.hostFinalized : false);
 
   const allProblemsSolved = activeDuel?.questions && activeDuel.questions.length > 0
-    ? activeDuel.questions.every((q: any) => {
-        const res = problemTestResults?.[q.id];
-        return res && res.passed === res.total && res.total > 0 && (res as any).phase === (activeDuel?.phase || null);
-      })
+    ? (activeDuel?.gameMode === "HACKBOUNTY" 
+        ? (problemTestResults?.[activeQuestion?.id || ""]?.passed === problemTestResults?.[activeQuestion?.id || ""]?.total && problemTestResults?.[activeQuestion?.id || ""]?.total > 0 && (problemTestResults?.[activeQuestion?.id || ""] as any)?.phase === (activeDuel?.phase || null))
+        : activeDuel.questions.every((q: any) => {
+            const res = problemTestResults?.[q.id];
+            return res && res.passed === res.total && res.total > 0 && (res as any).phase === (activeDuel?.phase || null);
+          })
+      )
     : allPassed;
 
   const renderMatchStats = () => {
@@ -222,39 +225,39 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
     const secondStats = currentUserIsHost ? guestStats : hostStats;
 
     const renderCard = (stats: any, isMe: boolean) => (
-      <div key={stats.role} style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: `1px solid ${isMe ? 'var(--accent)' : 'var(--line)'}`, borderRadius: '0.8rem', position: 'relative', overflow: 'hidden' }}>
+      <div key={stats.role} style={{ padding: '1.5rem', background: 'var(--panel-bg)', border: `1px solid ${isMe ? 'var(--accent)' : 'var(--line)'}`, borderRadius: '0.8rem', position: 'relative', overflow: 'hidden' }}>
         {isMe && <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '3px', background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }} />}
         
         <div style={{ fontSize: '0.8rem', color: isMe ? 'var(--accent)' : 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem', fontWeight: 800 }}>
           {isMe ? "Your Stats" : "Opponent Stats"}
         </div>
         
-        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginBottom: '1.2rem' }}>
+        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text)', marginBottom: '1.2rem' }}>
           {stats.score} <span style={{ fontSize: '1rem', opacity: 0.6 }}>{activeDuel?.gameMode === "BUGHUNTER" ? "SOLVED" : "PTS"}</span>
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
           <div>
             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Typing Speed</div>
-            <div style={{ fontSize: '1rem', color: '#8be9fd', fontWeight: 800 }}>
+            <div style={{ fontSize: '1rem', color: 'var(--color-cyan)', fontWeight: 800 }}>
               {stats.solveTime && stats.codeLength ? Math.round((stats.codeLength / 5) / (stats.solveTime / 60000)) : 0} WPM
             </div>
           </div>
           <div>
             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Time Spent</div>
-            <div style={{ fontSize: '1rem', color: '#f1fa8c', fontWeight: 800 }}>
+            <div style={{ fontSize: '1rem', color: 'var(--color-yellow)', fontWeight: 800 }}>
               {stats.solveTime ? formatTime(Math.floor(stats.solveTime / 1000)) : "--:--"}
             </div>
           </div>
           <div>
             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Tests Passed</div>
-            <div style={{ fontSize: '1rem', color: '#50fa7b', fontWeight: 800 }}>
+            <div style={{ fontSize: '1rem', color: 'var(--color-green)', fontWeight: 800 }}>
               {stats.testsPassed} / {Math.max(stats.testsTotal, stats.testsPassed)}
             </div>
           </div>
           <div>
             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Code Length</div>
-            <div style={{ fontSize: '1rem', color: '#ff79c6', fontWeight: 800 }}>
+            <div style={{ fontSize: '1rem', color: 'var(--color-pink)', fontWeight: 800 }}>
               {stats.codeLength} chars
             </div>
           </div>
@@ -283,7 +286,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         borderRadius: '0.4rem',
         fontSize: '1rem',
         fontWeight: 800,
-        color: timeLeft < 60 ? '#ff5555' : 'var(--accent)',
+        color: timeLeft < 60 ? 'var(--color-red)' : 'var(--accent)',
         display: 'flex',
         alignItems: 'center',
         gap: '0.5rem'
@@ -365,7 +368,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         >
           {opponentName}
         </span>
-        <div style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 700, color: otherFinalized ? '#50fa7b' : 'var(--text-muted)' }}>
+        <div style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 700, color: otherFinalized ? 'var(--color-green)' : 'var(--text-muted)' }}>
           ({otherFinalized ? 'Finalized' : 'Coding...'})
         </div>
       </div>
@@ -527,24 +530,24 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           },
           pre({children, ...props}: any) {
             return <pre style={{ 
-              background: 'rgba(0,0,0,0.4)', 
+              background: 'var(--panel-bg)', 
               padding: '1.25rem', 
               borderRadius: '0.5rem', 
               overflow: 'auto',
-              border: '1px solid rgba(255,255,255,0.05)',
+              border: '1px solid var(--panel-bg-hover)',
               boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
             }} {...props}>{children}</pre>;
           },
           p({children, ...props}: any) {
-            return <p style={{ margin: '0.5rem 0', lineHeight: 1.8, fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)' }} {...props}>{children}</p>;
+            return <p style={{ margin: '0.5rem 0', lineHeight: 1.8, fontSize: '1.05rem', color: 'var(--text)' }} {...props}>{children}</p>;
           },
           ul({children, ...props}: any) {
-            return <ul style={{ paddingLeft: '1.5rem', margin: '0.5rem 0', color: 'rgba(255,255,255,0.85)' }} {...props}>{children}</ul>;
+            return <ul style={{ paddingLeft: '1.5rem', margin: '0.5rem 0', color: 'var(--text)' }} {...props}>{children}</ul>;
           },
           a({href, children, ...props}: any) {
             if (href === '#ck-mark') {
               return (
-                <mark style={{ background: 'rgba(255, 184, 108, 0.25)', color: '#ffb86c', padding: '0 0.3rem', borderRadius: '0.2rem', fontWeight: 700, boxShadow: '0 0 10px rgba(255, 184, 108, 0.1)' }}>
+                <mark style={{ background: 'rgba(255, 184, 108, 0.25)', color: 'var(--color-orange)', padding: '0 0.3rem', borderRadius: '0.2rem', fontWeight: 700, boxShadow: '0 0 10px rgba(255, 184, 108, 0.1)' }}>
                   {children}
                 </mark>
               );
@@ -605,10 +608,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
              initial={{ x: -30, opacity: 0 }}
              animate={{ x: 0, opacity: 1 }}
              transition={{ delay: 0.2 }}
-             style={{ flex: 1, minWidth: '220px', padding: '2rem 1.5rem', background: hostWin ? 'linear-gradient(145deg, rgba(80, 250, 123, 0.1), rgba(0,0,0,0.2))' : 'rgba(255,255,255,0.02)', border: `1px solid ${hostWin ? 'rgba(80, 250, 123, 0.5)' : 'var(--line)'}`, borderRadius: '1rem', textAlign: 'center', position: 'relative', boxShadow: hostWin ? '0 10px 40px rgba(80, 250, 123, 0.1)' : 'none', filter: guestWin ? 'grayscale(0.5) opacity(0.8)' : 'none' }}
+             style={{ flex: 1, minWidth: '220px', padding: '2rem 1.5rem', background: hostWin ? 'linear-gradient(145deg, rgba(80, 250, 123, 0.1), rgba(0,0,0,0.2))' : 'var(--panel-bg)', border: `1px solid ${hostWin ? 'rgba(80, 250, 123, 0.5)' : 'var(--line)'}`, borderRadius: '1rem', textAlign: 'center', position: 'relative', boxShadow: hostWin ? '0 10px 40px rgba(80, 250, 123, 0.1)' : 'none', filter: guestWin ? 'grayscale(0.5) opacity(0.8)' : 'none' }}
           >
-            {hostWin && <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.3rem 1rem', borderRadius: '2rem', fontSize: '0.75rem', fontWeight: 800, display: 'flex', gap: '0.3rem', alignItems: 'center', boxShadow: '0 0 15px rgba(80,250,123,0.5)' }}><Crown size={14} /> {t("winner")}</div>}
-            {guestWin && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.2rem 0.8rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
+            {hostWin && <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: 'var(--color-green)', color: 'var(--text-on-color)', padding: '0.3rem 1rem', borderRadius: '2rem', fontSize: '0.75rem', fontWeight: 800, display: 'flex', gap: '0.3rem', alignItems: 'center', boxShadow: '0 0 15px rgba(80,250,123,0.5)' }}><Crown size={14} /> {t("winner")}</div>}
+            {guestWin && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--color-red)', color: 'var(--text)', padding: '0.2rem 0.8rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
             
             <div 
               style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
@@ -621,22 +624,22 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                 size={80} 
                 image={activeDuel.host?.image}
                 isRoyal={!!activeDuel.host?.isRoyal}
-                style={{ border: hostWin ? '3px solid #50fa7b' : '2px solid var(--line)', padding: '3px', background: 'var(--bg)' }} 
+                style={{ border: hostWin ? '3px solid var(--color-green)' : '2px solid var(--line)', padding: '3px', background: 'var(--bg)' }} 
               />
             </div>
             
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#fff' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text)' }}>{activeDuel.host?.username || activeDuel.host?.name || "Host"}</div>
             
-            <div style={{ fontSize: '0.9rem', color: '#f1fa8c', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+            <div style={{ fontSize: '0.9rem', color: 'var(--color-yellow)', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
               Rating: {activeDuel.host?.rating ?? 1000}
               {activeDuel.hostRatingChange !== null && activeDuel.hostRatingChange !== undefined && (
-                <span style={{ color: activeDuel.hostRatingChange >= 0 ? '#50fa7b' : '#ff5555', display: 'flex', alignItems: 'center' }}>
+                <span style={{ color: activeDuel.hostRatingChange >= 0 ? 'var(--color-green)' : 'var(--color-red)', display: 'flex', alignItems: 'center' }}>
                   ({activeDuel.hostRatingChange >= 0 ? '+' : ''}{activeDuel.hostRatingChange})
                 </span>
               )}
             </div>
             
-            <div style={{ fontSize: hostSurrendered ? '1rem' : '2.5rem', fontWeight: 900, color: hostSurrendered ? '#ff5555' : (hostWin ? '#50fa7b' : '#fff'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textShadow: hostWin ? '0 0 20px rgba(80,250,123,0.3)' : 'none' }}>
+            <div style={{ fontSize: hostSurrendered ? '1rem' : '2.5rem', fontWeight: 900, color: hostSurrendered ? 'var(--color-red)' : (hostWin ? 'var(--color-green)' : 'var(--text)'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textShadow: hostWin ? '0 0 20px rgba(80,250,123,0.3)' : 'none' }}>
                {hostSurrendered ? <><Skull size={18} /> SURRENDERED</> : <>{hostScore} <span style={{ fontSize: '1rem', opacity: 0.7 }}>{activeDuel?.gameMode === "BUGHUNTER" ? "SOLVED" : "PTS"}</span></>}
             </div>
           </motion.div>
@@ -648,10 +651,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
              initial={{ x: 30, opacity: 0 }}
              animate={{ x: 0, opacity: 1 }}
              transition={{ delay: 0.3 }}
-             style={{ flex: 1, minWidth: '220px', padding: '2rem 1.5rem', background: guestWin ? 'linear-gradient(145deg, rgba(80, 250, 123, 0.1), rgba(0,0,0,0.2))' : 'rgba(255,255,255,0.02)', border: `1px solid ${guestWin ? 'rgba(80, 250, 123, 0.5)' : 'var(--line)'}`, borderRadius: '1rem', textAlign: 'center', position: 'relative', boxShadow: guestWin ? '0 10px 40px rgba(80, 250, 123, 0.1)' : 'none', filter: hostWin ? 'grayscale(0.5) opacity(0.8)' : 'none' }}
+             style={{ flex: 1, minWidth: '220px', padding: '2rem 1.5rem', background: guestWin ? 'linear-gradient(145deg, rgba(80, 250, 123, 0.1), rgba(0,0,0,0.2))' : 'var(--panel-bg)', border: `1px solid ${guestWin ? 'rgba(80, 250, 123, 0.5)' : 'var(--line)'}`, borderRadius: '1rem', textAlign: 'center', position: 'relative', boxShadow: guestWin ? '0 10px 40px rgba(80, 250, 123, 0.1)' : 'none', filter: hostWin ? 'grayscale(0.5) opacity(0.8)' : 'none' }}
           >
-            {guestWin && <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: '#50fa7b', color: '#000', padding: '0.3rem 1rem', borderRadius: '2rem', fontSize: '0.75rem', fontWeight: 800, display: 'flex', gap: '0.3rem', alignItems: 'center', boxShadow: '0 0 15px rgba(80,250,123,0.5)' }}><Crown size={14} /> {t("winner")}</div>}
-            {hostWin && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: '#ff5555', color: '#fff', padding: '0.2rem 0.8rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
+            {guestWin && <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: 'var(--color-green)', color: 'var(--text-on-color)', padding: '0.3rem 1rem', borderRadius: '2rem', fontSize: '0.75rem', fontWeight: 800, display: 'flex', gap: '0.3rem', alignItems: 'center', boxShadow: '0 0 15px rgba(80,250,123,0.5)' }}><Crown size={14} /> {t("winner")}</div>}
+            {hostWin && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--color-red)', color: 'var(--text)', padding: '0.2rem 0.8rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800 }}>DEFEATED</div>}
             
             <div 
               style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
@@ -664,22 +667,22 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                 size={80} 
                 image={activeDuel.guest?.image}
                 isRoyal={!!activeDuel.guest?.isRoyal}
-                style={{ border: guestWin ? '3px solid #50fa7b' : '2px solid var(--line)', padding: '3px', background: 'var(--bg)' }} 
+                style={{ border: guestWin ? '3px solid var(--color-green)' : '2px solid var(--line)', padding: '3px', background: 'var(--bg)' }} 
               />
             </div>
             
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#fff' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text)' }}>{activeDuel.guest?.username || activeDuel.guest?.name || "Guest"}</div>
             
-            <div style={{ fontSize: '0.9rem', color: '#f1fa8c', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+            <div style={{ fontSize: '0.9rem', color: 'var(--color-yellow)', marginBottom: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
               Rating: {activeDuel.guest?.rating ?? 1000}
               {activeDuel.guestRatingChange !== null && activeDuel.guestRatingChange !== undefined && (
-                <span style={{ color: activeDuel.guestRatingChange >= 0 ? '#50fa7b' : '#ff5555', display: 'flex', alignItems: 'center' }}>
+                <span style={{ color: activeDuel.guestRatingChange >= 0 ? 'var(--color-green)' : 'var(--color-red)', display: 'flex', alignItems: 'center' }}>
                   ({activeDuel.guestRatingChange >= 0 ? '+' : ''}{activeDuel.guestRatingChange})
                 </span>
               )}
             </div>
             
-            <div style={{ fontSize: guestSurrendered ? '1rem' : '2.5rem', fontWeight: 900, color: guestSurrendered ? '#ff5555' : (guestWin ? '#50fa7b' : '#fff'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textShadow: guestWin ? '0 0 20px rgba(80,250,123,0.3)' : 'none' }}>
+            <div style={{ fontSize: guestSurrendered ? '1rem' : '2.5rem', fontWeight: 900, color: guestSurrendered ? 'var(--color-red)' : (guestWin ? 'var(--color-green)' : 'var(--text)'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textShadow: guestWin ? '0 0 20px rgba(80,250,123,0.3)' : 'none' }}>
                {guestSurrendered ? <><Skull size={18} /> SURRENDERED</> : <>{guestScore} <span style={{ fontSize: '1rem', opacity: 0.7 }}>{activeDuel?.gameMode === "BUGHUNTER" ? "SOLVED" : "PTS"}</span></>}
             </div>
           </motion.div>
@@ -692,7 +695,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
         </motion.div>
 
         {draw && !hostSurrendered && !guestSurrendered && (
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.4 }} style={{ background: 'rgba(139, 233, 253, 0.1)', padding: '0.75rem 2rem', borderRadius: '2rem', border: '1px solid rgba(139, 233, 253, 0.3)', color: '#8be9fd', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '1px' }}>
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.4 }} style={{ background: 'rgba(139, 233, 253, 0.1)', padding: '0.75rem 2rem', borderRadius: '2rem', border: '1px solid rgba(139, 233, 253, 0.3)', color: 'var(--color-cyan)', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '1px' }}>
             {t("fairDraw").toUpperCase()}
           </motion.div>
         )}
@@ -702,7 +705,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
           onClick={() => { setActiveDuel?.(null); setDuelPin?.(""); handleQuitBattle(); }} 
           className="btn" 
-          style={{ width: '100%', maxWidth: '300px', background: 'var(--accent)', color: '#000', border: 'none', padding: '1.2rem', borderRadius: '0.5rem', fontWeight: 800, fontSize: '1.1rem', boxShadow: '0 5px 20px rgba(189,147,249,0.3)' }}
+          style={{ width: '100%', maxWidth: '300px', background: 'var(--accent)', color: 'var(--text-on-color)', border: 'none', padding: '1.2rem', borderRadius: '0.5rem', fontWeight: 800, fontSize: '1.1rem', boxShadow: '0 5px 20px rgba(189,147,249,0.3)' }}
         >
           {t("backToArena")}
         </motion.button>
@@ -743,13 +746,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           {t("waitingForOpponentMessage")}
         </p>
         {totalPenalty !== undefined && totalPenalty !== null && (
-          <div style={{ marginBottom: '1.5rem', fontSize: '1.4rem', fontWeight: 900, color: '#50fa7b', textShadow: '0 2px 10px rgba(80,250,123,0.3)' }}>
+          <div style={{ marginBottom: '1.5rem', fontSize: '1.4rem', fontWeight: 900, color: 'var(--color-green)', textShadow: '0 2px 10px rgba(80,250,123,0.3)' }}>
             Total Score: {Math.floor(totalPenalty)} pts
           </div>
         )}
         {opponentCode ? (
           <div style={{ width: '100%', maxWidth: '600px', flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '0.5rem', overflow: 'hidden' }}>
-            <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ padding: '0.5rem', background: 'var(--panel-bg)', borderBottom: '1px solid var(--line)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Eye size={14} /> {t("liveOpponentCode")}
             </div>
             <div style={{ flex: 1, position: 'relative' }}>
@@ -774,7 +777,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
              <p>{t("noCodeSynced")}</p>
           </div>
         )}
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent)', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: 'var(--header-bg)', border: '1px solid var(--line)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent)', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
            {timeLeft !== null && timeLeft !== undefined ? formatTime(timeLeft) : "--:--"}
         </div>
         {onSafeLeave && (
@@ -806,7 +809,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               handleFinalSubmit();
             }}
             className="btn"
-            style={{ flex: 1, background: 'rgba(80, 250, 123, 0.1)', color: '#50fa7b', borderColor: '#50fa7b44', cursor: 'pointer' }}
+            style={{ flex: 1, background: 'rgba(80, 250, 123, 0.1)', color: 'var(--color-green)', borderColor: 'var(--color-green)44', cursor: 'pointer' }}
           >
             {t("yesQuit") === "Da, părăsește" ? "Da, finalizează" : "Yes, Finalize"}
           </button>
@@ -825,7 +828,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
   if (showQuitConfirmation) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
-        <X size={48} color="#ff5555" style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
+        <X size={48} color="var(--color-red)" style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
         <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>SURRENDER?</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem', maxWidth: '400px', lineHeight: 1.5 }}>
           Surrender? Keep in mind that your lack of ambition will cause your oponent to win!
@@ -834,7 +837,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
           <button 
             onClick={handleQuitBattle}
             className="btn"
-            style={{ flex: 1, background: 'rgba(255, 85, 85, 0.1)', color: '#ff5555', borderColor: '#ff555544', cursor: 'pointer' }}
+            style={{ flex: 1, background: 'rgba(255, 85, 85, 0.1)', color: 'var(--color-red)', borderColor: 'var(--color-red)44', cursor: 'pointer' }}
           >
             {t("yesQuit")}
           </button>
@@ -866,7 +869,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                   position: 'absolute',
                   top: '0',
                   background: 'var(--accent)',
-                  color: '#000',
+                  color: 'var(--text-on-color)',
                   padding: '0.4rem 0.75rem',
                   borderRadius: '0.5rem',
                   fontSize: '0.8rem',
@@ -913,10 +916,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             flexDirection: 'column',
             gap: '0.5rem',
             paddingBottom: '1.25rem',
-            borderBottom: '1px solid rgba(255,255,255,0.05)'
+            borderBottom: '1px solid var(--panel-bg-hover)'
           }}>
             {renderOpponentProgress()}
-            {activeDuel?.questions && activeDuel.questions.length > 1 && (
+            {activeDuel?.questions && activeDuel.questions.length > 1 && activeDuel?.gameMode !== "HACKBOUNTY" && (
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginRight: '0.25rem', letterSpacing: '0.05em' }}>
                   PROBLEMS:
@@ -939,7 +942,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                         padding: '0 0.75rem',
                         borderRadius: '0.4rem',
                         border: isSelected ? '2px solid var(--accent)' : '1px solid var(--line)',
-                        background: isSelected ? 'rgba(122, 162, 247, 0.15)' : 'rgba(255,255,255,0.03)',
+                        background: isSelected ? 'rgba(122, 162, 247, 0.15)' : 'var(--header-bg)',
                         color: isSelected ? 'var(--accent)' : 'var(--text-muted)',
                         fontWeight: 900,
                         fontSize: '0.8rem',
@@ -987,10 +990,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                   transition={{ delay: 0.2, duration: 0.4 }}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', position: 'relative', zIndex: 1 }}
                 >
-                  <div style={{ background: '#50fa7b', color: '#000', padding: '0.5rem', borderRadius: '50%', display: 'flex' }}>
+                  <div style={{ background: 'var(--color-green)', color: 'var(--text-on-color)', padding: '0.5rem', borderRadius: '50%', display: 'flex' }}>
                     <Trophy size={20} />
                   </div>
-                  <span style={{ fontWeight: 900, color: '#50fa7b', fontSize: '1rem', letterSpacing: '0.5px' }}>
+                  <span style={{ fontWeight: 900, color: 'var(--color-green)', fontSize: '1rem', letterSpacing: '0.5px' }}>
                     PROBLEM DONE! All test cases passed.
                   </span>
                 </motion.div>
@@ -1043,7 +1046,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                   background: 'rgba(255, 85, 85, 0.15)', 
                   border: '1px solid rgba(255, 85, 85, 0.5)', 
                   borderRadius: '0.5rem', 
-                  color: '#ff5555', 
+                  color: 'var(--color-red)', 
                   marginBottom: '1.5rem', 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -1051,7 +1054,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                   boxShadow: '0 4px 15px rgba(255, 85, 85, 0.2)'
                 }}
               >
-                <div style={{ background: '#ff5555', color: '#000', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontWeight: 900, fontSize: '0.7rem' }}>URGENT</div>
+                <div style={{ background: 'var(--color-red)', color: 'var(--text-on-color)', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontWeight: 900, fontSize: '0.7rem' }}>URGENT</div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>Opponent has finalized!</div>
                   <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>You have exactly 2 minutes remaining to submit your best solution. Test values are decreasing!</div>
@@ -1063,7 +1066,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               fontSize: '1.8rem', 
               fontWeight: 900, 
               margin: 0, 
-              background: 'linear-gradient(135deg, var(--accent) 0%, #fff 100%)',
+              background: 'linear-gradient(135deg, var(--accent) 0%, var(--text) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               letterSpacing: '-0.02em',
@@ -1074,7 +1077,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             </h2>
             
             {activeDuel?.gameMode === "HACKBOUNTY" && activeDuel.phase === "BREAKING" && (
-              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(255, 85, 85, 0.1)', border: '1px solid rgba(255, 85, 85, 0.4)', borderRadius: '0.5rem', color: '#ff5555', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(255, 85, 85, 0.1)', border: '1px solid rgba(255, 85, 85, 0.4)', borderRadius: '0.5rem', color: 'var(--color-red)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <Zap size={20} />
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>PHASE 1: SABOTAGE!</div>
@@ -1084,7 +1087,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             )}
             
             {activeDuel?.gameMode === "HACKBOUNTY" && activeDuel.phase === "FIXING" && (
-              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(80, 250, 123, 0.1)', border: '1px solid rgba(80, 250, 123, 0.4)', borderRadius: '0.5rem', color: '#50fa7b', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(80, 250, 123, 0.1)', border: '1px solid rgba(80, 250, 123, 0.4)', borderRadius: '0.5rem', color: 'var(--color-green)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <ShieldCheck size={20} />
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>PHASE 2: FIX IT!</div>
@@ -1121,14 +1124,14 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               >
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '0.25rem' }}>BUG HUNTER MODE</div>
-                  <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>Load the broken code into your editor to start debugging.</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Load the broken code into your editor to start debugging.</div>
                 </div>
                 <button
                   onClick={() => setCode?.(snippet)}
                   style={{
                     padding: '0.6rem 1.2rem',
                     background: 'var(--accent)',
-                    color: '#000',
+                    color: 'var(--text-on-color)',
                     border: 'none',
                     borderRadius: '0.4rem',
                     fontWeight: 800,
@@ -1142,9 +1145,75 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
             );
           })()}
 
+          {(() => {
+            if (activeDuel?.gameMode !== "HACKBOUNTY") return null;
+            
+            let snippet = "";
+            let title = "";
+            let subtitle = "";
+            let btnText = "";
+            
+            if (activeDuel.phase === "BREAKING") {
+              if (!activeQuestion.referenceCode) return null;
+              try {
+                const parsed = JSON.parse(activeQuestion.referenceCode);
+                snippet = parsed[lang.toLowerCase()] || "";
+              } catch (e) {}
+              
+              title = "BREAKING PHASE";
+              subtitle = "Load the working reference code to sabotage it.";
+              btnText = "Restore reference code";
+            } else if (activeDuel.phase === "FIXING") {
+              snippet = isHost ? activeDuel.guestSabotagedCode : activeDuel.hostSabotagedCode;
+              
+              title = "FIXING PHASE";
+              subtitle = "Load the opponent's sabotaged code to fix it.";
+              btnText = "Restore broken code";
+            }
+            
+            if (!snippet) return null;
+            
+            return (
+              <div 
+                style={{ 
+                  padding: '1.25rem', 
+                  background: 'rgba(255, 85, 85, 0.05)', 
+                  border: '1px dashed rgba(255, 85, 85, 0.4)',
+                  borderRadius: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '1.5rem'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-red)', marginBottom: '0.25rem' }}>{title}</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{subtitle}</div>
+                </div>
+                <button
+                  onClick={() => setCode?.(snippet)}
+                  style={{
+                    padding: '0.6rem 1.2rem',
+                    background: 'var(--color-red)',
+                    color: 'var(--text-on-color)',
+                    border: 'none',
+                    borderRadius: '0.4rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {btnText}
+                </button>
+              </div>
+            );
+          })()}
+
           <div style={{ 
             lineHeight: 1.8, 
-            color: 'rgba(255,255,255,0.85)', 
+            color: 'var(--text)', 
             fontSize: '1.05rem'
           }}>
             {renderFormattedText(activeQuestion.description)}
@@ -1153,10 +1222,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
           {activeQuestion.inputFormat && (
             <div style={{ marginTop: '1.5rem' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
                 Input Format
               </div>
-              <div style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.6, padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', border: '1px solid var(--panel-bg-hover)' }}>
                 {renderFormattedText(activeQuestion.inputFormat)}
               </div>
             </div>
@@ -1164,10 +1233,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
 
           {activeQuestion.outputFormat && (
             <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
                 Output Format
               </div>
-              <div style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.6, padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', border: '1px solid var(--panel-bg-hover)' }}>
                 {renderFormattedText(activeQuestion.outputFormat)}
               </div>
             </div>
@@ -1179,7 +1248,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               style={{ 
                 padding: '1.25rem', 
                 background: 'linear-gradient(to right, rgba(255,85,85,0.05), rgba(255,85,85,0.01))', 
-                borderLeft: '4px solid #ff5555',
+                borderLeft: '4px solid var(--color-red)',
                 borderRadius: '0 0.5rem 0.5rem 0',
                 position: 'relative',
                 overflow: 'hidden'
@@ -1188,10 +1257,10 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
               <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.05, transform: 'translate(20%, -20%)' }}>
                 <ShieldCheck size={100} />
               </div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#ff5555', textTransform: 'uppercase', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', letterSpacing: '0.1em' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-red)', textTransform: 'uppercase', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', letterSpacing: '0.1em' }}>
                 <ShieldCheck size={16} /> RESTRICTIONS
               </div>
-              <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 {renderFormattedText(activeQuestion.restrictions)}
               </div>
             </div>
@@ -1235,8 +1304,8 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                 <div 
                   key={i} 
                   style={{ 
-                    background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', 
-                    border: '1px solid rgba(255,255,255,0.05)', 
+                    background: 'linear-gradient(145deg, var(--header-bg) 0%, rgba(255,255,255,0.01) 100%)', 
+                    border: '1px solid var(--panel-bg-hover)', 
                     borderRadius: '0.75rem', 
                     padding: '1.5rem',
                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
@@ -1254,13 +1323,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                         onClick={() => { setStdin(tc.input); setShowTerminal(true); }}
                         style={{ 
                           fontSize: '0.75rem', padding: '0.4rem 0.75rem', cursor: 'pointer',
-                          background: 'rgba(255,255,255,0.05)', color: 'var(--text)',
-                          border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.4rem',
+                          background: 'var(--panel-bg-hover)', color: 'var(--text)',
+                          border: '1px solid var(--panel-border)', borderRadius: '0.4rem',
                           display: 'flex', alignItems: 'center', gap: '0.4rem',
                           transition: 'all 0.2s ease'
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--panel-border)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--panel-bg-hover)'; }}
                       >
                         {t("addToStdin")}
                       </button>
@@ -1268,7 +1337,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                         onClick={() => { setStdin(tc.input); runSingleTest(tc.input, i); }}
                         style={{ 
                           fontSize: '0.75rem', padding: '0.4rem 1rem', cursor: 'pointer',
-                          background: 'var(--accent)', color: '#000',
+                          background: 'var(--accent)', color: 'var(--text-on-color)',
                           border: 'none', borderRadius: '0.4rem', fontWeight: 700,
                           display: 'flex', alignItems: 'center', gap: '0.4rem',
                           transition: 'all 0.2s ease'
@@ -1281,13 +1350,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', width: '100%' }}>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.03)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Input</div>
+                    <div style={{ background: 'var(--panel-bg)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid var(--header-bg)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Input</div>
                       <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: 'var(--text)', fontFamily: '"Fira Code", monospace', maxHeight: '250px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{tc.input}</pre>
                     </div>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.03)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Output</div>
-                      <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: '#50fa7b', fontFamily: '"Fira Code", monospace', maxHeight: '250px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{tc.output}</pre>
+                    <div style={{ background: 'var(--panel-bg)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid var(--header-bg)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Output</div>
+                      <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: 'var(--color-green)', fontFamily: '"Fira Code", monospace', maxHeight: '250px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{tc.output}</pre>
                     </div>
                   </div>
                 </div>
@@ -1301,7 +1370,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                 onClick={(e) => { e.stopPropagation(); setShowEmotes(!showEmotes); }}
                 style={{
                   background: 'var(--accent)', border: 'none',
-                  padding: '0.75rem', borderRadius: '50%', color: '#000',
+                  padding: '0.75rem', borderRadius: '50%', color: 'var(--text-on-color)',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 4px 15px rgba(122, 162, 247, 0.4)',
                   transition: 'transform 0.2s ease'
@@ -1324,7 +1393,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                       bottom: '120%',
                       left: 0,
                       background: 'var(--accent)',
-                      color: '#000',
+                      color: 'var(--text-on-color)',
                       padding: '0.4rem 0.75rem',
                       borderRadius: '0.5rem',
                       fontSize: '0.75rem',
@@ -1380,13 +1449,13 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                             setShowEmotes(false);
                           }}
                           style={{
-                            background: 'rgba(255,255,255,0.05)', border: 'none',
+                            background: 'var(--panel-bg-hover)', border: 'none',
                             padding: '0.6rem 0.75rem', borderRadius: '0.4rem', color: 'var(--text)',
                             cursor: 'pointer', fontSize: '0.8rem', whiteSpace: 'nowrap',
                             fontWeight: 700, transition: 'all 0.2s ease'
                           }}
                           onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--panel-bg-hover)'; e.currentTarget.style.color = 'var(--text)'; }}
                         >
                           {em}
                         </button>
@@ -1398,21 +1467,21 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                         onClick={(e) => { e.stopPropagation(); setMuteOpponent(!muteOpponent); }}
                         style={{
                           width: '100%',
-                          background: muteOpponent ? 'rgba(255, 85, 85, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                          border: `1px solid ${muteOpponent ? 'rgba(255, 85, 85, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+                          background: muteOpponent ? 'rgba(255, 85, 85, 0.15)' : 'var(--panel-bg-hover)',
+                          border: `1px solid ${muteOpponent ? 'rgba(255, 85, 85, 0.4)' : 'var(--panel-border)'}`,
                           padding: '0.6rem', borderRadius: '0.4rem', 
-                          color: muteOpponent ? '#ff5555' : 'var(--text-muted)',
+                          color: muteOpponent ? 'var(--color-red)' : 'var(--text-muted)',
                           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                           fontSize: '0.8rem', fontWeight: 700,
                           transition: 'all 0.2s ease'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = muteOpponent ? 'rgba(255, 85, 85, 0.25)' : 'rgba(255, 255, 255, 0.1)';
-                          e.currentTarget.style.color = muteOpponent ? '#ff5555' : 'var(--text)';
+                          e.currentTarget.style.background = muteOpponent ? 'rgba(255, 85, 85, 0.25)' : 'var(--panel-border)';
+                          e.currentTarget.style.color = muteOpponent ? 'var(--color-red)' : 'var(--text)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = muteOpponent ? 'rgba(255, 85, 85, 0.15)' : 'rgba(255, 255, 255, 0.05)';
-                          e.currentTarget.style.color = muteOpponent ? '#ff5555' : 'var(--text-muted)';
+                          e.currentTarget.style.background = muteOpponent ? 'rgba(255, 85, 85, 0.15)' : 'var(--panel-bg-hover)';
+                          e.currentTarget.style.color = muteOpponent ? 'var(--color-red)' : 'var(--text-muted)';
                         }}
                       >
                         {muteOpponent ? <VolumeX size={16} /> : <Volume2 size={16} />}

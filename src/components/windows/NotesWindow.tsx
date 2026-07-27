@@ -177,7 +177,7 @@ const simpleHighlightCpp = (code: string) => {
   const keywords = /\b(int|float|double|char|bool|void|include|iostream|vector|unordered_map|algorithm|using|namespace|std|return|for|while|if|else|cin|cout|endl)\b/g;
   const parts = code.split(keywords);
   return parts.map((part, i) => {
-    if (keywords.test(part)) return <span key={i} style={{ color: '#ff79c6' }}>{part}</span>;
+    if (keywords.test(part)) return <span key={i} style={{ color: 'var(--color-pink)' }}>{part}</span>;
     return <span key={i} style={{ color: 'var(--text)' }}>{part}</span>;
   });
 };
@@ -949,7 +949,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
                       transition: 'color 0.2s, background 0.2s',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.2rem'
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = '#ff5555'; e.currentTarget.style.background = isActive ? 'rgba(0,0,0,0.1)' : 'rgba(255,85,85,0.1)'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-red)'; e.currentTarget.style.background = isActive ? 'rgba(0,0,0,0.1)' : 'rgba(255,85,85,0.1)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.color = isActive ? 'rgba(0,0,0,0.4)' : 'transparent'; e.currentTarget.style.background = 'transparent'; }}
                     title={t("deleteWorkspace")}
                   >
@@ -1263,7 +1263,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center', 
-                      color: addedContextIds.has(node.id) ? '#50fa7b' : 'var(--text-muted)', 
+                      color: addedContextIds.has(node.id) ? 'var(--color-green)' : 'var(--text-muted)', 
                       borderRadius: '4px',
                       background: 'transparent',
                       transition: 'background 0.2s, color 0.2s'
@@ -1325,7 +1325,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
                       background: 'transparent',
                       transition: 'background 0.2s, color 0.2s'
                     }} 
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#ff555520'; e.currentTarget.style.color = '#ff5555'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-red)20'; e.currentTarget.style.color = 'var(--color-red)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                     onClick={(e) => {
                       e.stopPropagation();

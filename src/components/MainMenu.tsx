@@ -151,13 +151,13 @@ function levenshtein(a: string, b: string): number {
 function getSubmissionFeedback(passed: number, total: number): SubmissionFeedback {
   const percentage = total > 0 ? (passed / total) * 100 : 0;
 
-  if (percentage === 100) return { message: "Perfect! All test cases passed.", color: "#50fa7b" };
-  if (percentage > 75) return { message: "Good enough! More than 75% of test cases passed.", color: "#8be9fd" };
-  if (percentage > 50) return { message: "Almost there! More than half of the test cases passed.", color: "#f1fa8c" };
-  if (percentage > 25) return { message: "Keep improving! A few more test cases need work.", color: "#ffb86c" };
-  if (percentage > 0) return { message: "A start! Review the failed test cases and try again.", color: "#ff79c6" };
+  if (percentage === 100) return { message: "Perfect! All test cases passed.", color: "var(--color-green)" };
+  if (percentage > 75) return { message: "Good enough! More than 75% of test cases passed.", color: "var(--color-cyan)" };
+  if (percentage > 50) return { message: "Almost there! More than half of the test cases passed.", color: "var(--color-yellow)" };
+  if (percentage > 25) return { message: "Keep improving! A few more test cases need work.", color: "var(--color-orange)" };
+  if (percentage > 0) return { message: "A start! Review the failed test cases and try again.", color: "var(--color-pink)" };
 
-  return { message: "No test cases passed yet. Check your approach and try again.", color: "#ff5555" };
+  return { message: "No test cases passed yet. Check your approach and try again.", color: "var(--color-red)" };
 }
 
 interface CompileError {
@@ -629,6 +629,8 @@ const MainMenu: React.FC = () => {
   const [showWorkspaceWarning, setShowWorkspaceWarning] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState<SubmissionFeedback | null>(null);
   const [showAiDisabledWarning, setShowAiDisabledWarning] = useState(false);
+  const [showOpponentFinishedWarning, setShowOpponentFinishedWarning] = useState(false);
+  const [hasNotifiedTwoMins, setHasNotifiedTwoMins] = useState(false);
   const [showDuelInBattleWarning, setShowDuelInBattleWarning] = useState(false);
   const [showDuelHasUplinkWarning, setShowDuelHasUplinkWarning] = useState(false);
   const [showUplinkPendingWarning, setShowUplinkPendingWarning] = useState(false);
@@ -717,6 +719,13 @@ const MainMenu: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [showAiDisabledWarning]);
+
+  useEffect(() => {
+    if (showOpponentFinishedWarning) {
+      const timer = setTimeout(() => setShowOpponentFinishedWarning(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showOpponentFinishedWarning]);
 
   useEffect(() => {
     if (showDuelInBattleWarning) {
@@ -1428,16 +1437,32 @@ const MainMenu: React.FC = () => {
       
       const currentUserId = session?.user ? (session.user as any).id : guestId;
       const isHostLocal = activeDuel.hostId === currentUserId;
-      const opponentFinalized = isHostLocal ? (activeDuel as any).guestFinalized : (activeDuel as any).hostFinalized;
-      const opponentSolveTimeMs = isHostLocal ? activeDuel.guestSolveTime : activeDuel.hostSolveTime;
+      const hostFinalized = (activeDuel as any).hostFinalized;
+      const guestFinalized = (activeDuel as any).guestFinalized;
+      const opponentFinalized = isHostLocal ? guestFinalized : hostFinalized;
+      const anyFinalized = hostFinalized || guestFinalized;
+      
+      let finalizedSolveTimeMs = null;
+      if (hostFinalized && guestFinalized) {
+          finalizedSolveTimeMs = Math.min(activeDuel.hostSolveTime || Infinity, activeDuel.guestSolveTime || Infinity);
+      } else if (hostFinalized) {
+          finalizedSolveTimeMs = activeDuel.hostSolveTime;
+      } else if (guestFinalized) {
+          finalizedSolveTimeMs = activeDuel.guestSolveTime;
+      }
       
       let deadline: number;
       if (activeDuel.phase === "BREAKING" && activeDuel.phaseEndsAt) {
           deadline = new Date(activeDuel.phaseEndsAt).getTime() - clockOffset;
       } else {
-          if (opponentFinalized && opponentSolveTimeMs) {
-              const opponentSecs = Math.floor(opponentSolveTimeMs / 1000);
-              limit = Math.min(limit, opponentSecs + 120);
+          if (anyFinalized) {
+              const solveTimeMs = finalizedSolveTimeMs || (Date.now() - new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime());
+              const finalizedSecs = Math.floor(solveTimeMs / 1000);
+              limit = Math.min(limit, finalizedSecs + 120);
+              if (opponentFinalized && !hasNotifiedTwoMins && (Date.now() - new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime()) < limit * 1000) {
+                  setShowOpponentFinishedWarning(true);
+                  setHasNotifiedTwoMins(true);
+              }
           }
           const startTime = new Date(activeDuel.startedAt || activeDuel.createdAt || Date.now()).getTime() - clockOffset;
           deadline = startTime + limit * 1000;
@@ -1615,7 +1640,21 @@ const MainMenu: React.FC = () => {
     const isLightTheme = theme.light;
     root.style.setProperty('--text', isLightTheme ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)');
     root.style.setProperty('--text-muted', isLightTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)');
-    root.style.setProperty('--header-bg', isLightTheme ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)');
+    root.style.setProperty('--header-bg', isLightTheme ? 'rgba(0, 0, 0, 0.03)' : 'var(--header-bg)');
+    root.style.setProperty('--panel-bg', isLightTheme ? 'rgba(0, 0, 0, 0.03)' : 'var(--panel-bg)');
+    root.style.setProperty('--panel-bg-hover', isLightTheme ? 'rgba(0, 0, 0, 0.06)' : 'var(--panel-bg-hover)');
+    root.style.setProperty('--panel-border', isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'var(--panel-bg-hover)');
+    
+    root.style.setProperty('--color-green', isLightTheme ? '#059669' : '#50fa7b');
+    root.style.setProperty('--color-red', isLightTheme ? '#dc2626' : '#ff5555');
+    root.style.setProperty('--color-yellow', isLightTheme ? '#d97706' : '#f1fa8c');
+    root.style.setProperty('--color-cyan', isLightTheme ? '#0891b2' : '#8be9fd');
+    root.style.setProperty('--color-pink', isLightTheme ? '#db2777' : '#ff79c6');
+    root.style.setProperty('--color-orange', isLightTheme ? '#ea580c' : '#ffb86c');
+    root.style.setProperty('--color-purple', isLightTheme ? '#7c3aed' : '#bd93f9');
+    root.style.setProperty('--color-blue', isLightTheme ? '#2563eb' : '#38bdf8');
+    root.style.setProperty('--color-gold', isLightTheme ? '#d4af37' : '#ffd700');
+    root.style.setProperty('--text-on-color', isLightTheme ? '#ffffff' : '#000000');
   }, [themeIndex, isLoaded]);
 
   // MONACO THEME EFFECT
@@ -1935,7 +1974,14 @@ const MainMenu: React.FC = () => {
     
     const currentDuel = overrideDuel || activeDuel;
     
-    setActiveQuestion(q);
+    if (currentDuel?.gameMode === "HACKBOUNTY" && currentDuel.questions && currentDuel.questions.length > 1) {
+        const currentUserId = session?.user ? (session.user as any).id : guestId;
+        const isHost = currentDuel.hostId === currentUserId;
+        setActiveQuestion(isHost ? currentDuel.questions[0] : currentDuel.questions[1]);
+    } else {
+        setActiveQuestion(q);
+    }
+    
     setTestResults(null);
     setProblemTestResults({});
     setProblemScores({});
@@ -1988,6 +2034,7 @@ const MainMenu: React.FC = () => {
     setBattleStartTime(startTime);
     
     setSolveTime(null);
+    setHasNotifiedTwoMins(false);
     
     if (maximizedWindow === "battle") setMaximizedWindow(null);
 
@@ -2193,23 +2240,23 @@ const MainMenu: React.FC = () => {
         if (allTestsPassed) {
           const isBreaking = activeDuel?.gameMode === 'HACKBOUNTY' && activeDuel?.phase === 'BREAKING';
 
-          const accentHex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#50fa7b';
+          const accentHex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || 'var(--color-green)';
           const getHexShades = (hex: string) => {
               try {
                   hex = hex.replace('#', '').trim();
                   if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
-                  if (hex.length !== 6) return ['#50fa7b', '#ff79c6', '#8be9fd', '#bd93f9', '#f1fa8c'];
+                  if (hex.length !== 6) return ['var(--color-green)', 'var(--color-pink)', 'var(--color-cyan)', 'var(--color-purple)', 'var(--color-yellow)'];
                   const r = parseInt(hex.substring(0, 2), 16);
                   const g = parseInt(hex.substring(2, 4), 16);
                   const b = parseInt(hex.substring(4, 6), 16);
-                  if (isNaN(r) || isNaN(g) || isNaN(b)) return ['#50fa7b', '#ff79c6', '#8be9fd', '#bd93f9', '#f1fa8c'];
+                  if (isNaN(r) || isNaN(g) || isNaN(b)) return ['var(--color-green)', 'var(--color-pink)', 'var(--color-cyan)', 'var(--color-purple)', 'var(--color-yellow)'];
                   const adjust = (c: number, amt: number) => {
                       const val = Math.max(0, Math.min(255, Math.floor(c + amt)));
                       return val.toString(16).padStart(2, '0');
                   };
                   return [`#${hex}`, `#${adjust(r, 40)}${adjust(g, 40)}${adjust(b, 40)}`, `#${adjust(r, 80)}${adjust(g, 80)}${adjust(b, 80)}`, `#${adjust(r, -40)}${adjust(g, -40)}${adjust(b, -40)}`, `#${adjust(r, -80)}${adjust(g, -80)}${adjust(b, -80)}`];
               } catch (e) {
-                  return ['#50fa7b', '#ff79c6', '#8be9fd', '#bd93f9', '#f1fa8c'];
+                  return ['var(--color-green)', 'var(--color-pink)', 'var(--color-cyan)', 'var(--color-purple)', 'var(--color-yellow)'];
               }
           };
 
@@ -2829,7 +2876,7 @@ const MainMenu: React.FC = () => {
         return (
           <>
             {sabotageWarning && (
-              <div style={{ backgroundColor: 'rgba(255, 85, 85, 0.1)', color: '#ff5555', padding: '0.4rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 900, borderBottom: '1px solid rgba(255, 85, 85, 0.3)' }}>
+              <div style={{ backgroundColor: 'rgba(255, 85, 85, 0.1)', color: 'var(--color-red)', padding: '0.4rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 900, borderBottom: '1px solid rgba(255, 85, 85, 0.3)' }}>
                 {sabotageWarning}
               </div>
             )}
@@ -3250,10 +3297,10 @@ const MainMenu: React.FC = () => {
               zIndex: 1000,
               background: showRatingChangePopup.isWin ? 'rgba(80, 250, 123, 0.1)' : 'rgba(255, 85, 85, 0.1)',
               backdropFilter: 'blur(10px)',
-              border: `1px solid ${showRatingChangePopup.isWin ? '#50fa7b' : '#ff5555'}`,
+              border: `1px solid ${showRatingChangePopup.isWin ? 'var(--color-green)' : 'var(--color-red)'}`,
               padding: '1rem 2rem',
               borderRadius: '0.5rem',
-              color: showRatingChangePopup.isWin ? '#50fa7b' : '#ff5555',
+              color: showRatingChangePopup.isWin ? 'var(--color-green)' : 'var(--color-red)',
               fontWeight: 900,
               fontSize: '1.2rem',
               display: 'flex',
@@ -3283,17 +3330,18 @@ const MainMenu: React.FC = () => {
         <AnimatePresence>
           {[
             showLimitWarning && { id: 'limit', color: 'var(--accent)', content: <span>Maximum of {maxWindows} windows allowed.</span> },
-            showWorkspaceWarning && { id: 'workspace', color: '#ff5555', content: <span>You need at least one workspace available.</span> },
+            showWorkspaceWarning && { id: 'workspace', color: 'var(--color-red)', content: <span>You need at least one workspace available.</span> },
             submissionFeedback && { id: 'submission-feedback', color: submissionFeedback.color, content: <span>{submissionFeedback.message}</span> },
             showInviteSentPopup && { id: 'invite', color: 'var(--text-muted)', content: <span>Invite sent! Waiting for response...</span> },
             isAcceptingInvite && { id: 'accepting', color: 'var(--accent)', content: <span>Loading problems...</span> },
 
-            showOpponentFoundPopup && { id: 'opponent', color: '#50fa7b', content: <span>Opponent found!</span> },
-            showAiDisabledWarning && { id: 'ai-disabled', color: '#ff5555', content: <span>AI assistance is disabled during active duels!</span> },
-            showDuelInBattleWarning && { id: 'duel-in-battle', color: '#ff5555', content: <span>You cannot invite someone to a duel while in a battle!</span> },
-            showDuelHasUplinkWarning && { id: 'duel-has-uplink', color: '#ff5555', content: <span>You cannot invite someone to a duel while you have an active matchmaking uplink!</span> },
-            showUplinkPendingWarning && { id: 'uplink-pending', color: '#ff5555', content: <span>You cannot generate an uplink while waiting for a duel invite response!</span> },
-            showPinCopiedNotification && { id: 'pin-copied', color: '#50fa7b', icon: <Check size={18} color="#50fa7b" />, content: <span>Uplink PIN copied to clipboard!</span> },
+            showOpponentFoundPopup && { id: 'opponent', color: 'var(--color-green)', content: <span>Opponent found!</span> },
+            showOpponentFinishedWarning && { id: 'opponent-finished', color: 'var(--color-orange)', content: <span>Opponent has finished! You have 2 minutes left to submit.</span> },
+            showAiDisabledWarning && { id: 'ai-disabled', color: 'var(--color-red)', content: <span>AI assistance is disabled during active duels!</span> },
+            showDuelInBattleWarning && { id: 'duel-in-battle', color: 'var(--color-red)', content: <span>You cannot invite someone to a duel while in a battle!</span> },
+            showDuelHasUplinkWarning && { id: 'duel-has-uplink', color: 'var(--color-red)', content: <span>You cannot invite someone to a duel while you have an active matchmaking uplink!</span> },
+            showUplinkPendingWarning && { id: 'uplink-pending', color: 'var(--color-red)', content: <span>You cannot generate an uplink while waiting for a duel invite response!</span> },
+            showPinCopiedNotification && { id: 'pin-copied', color: 'var(--color-green)', icon: <Check size={18} color="var(--color-green)" />, content: <span>Uplink PIN copied to clipboard!</span> },
             incomingInvite && {
               id: 'incoming',
               color: 'var(--accent)',
@@ -3476,9 +3524,9 @@ const MainMenu: React.FC = () => {
           </ul>
           <div className="nav-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             {(session && !isGuest) && (
-              <button onClick={() => toggleWindow("agent")} data-tour="agent-btn" style={{ background: 'transparent', border: 'none', color: '#ffb86c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><Brain size={20} /></button>
+              <button onClick={() => toggleWindow("agent")} data-tour="agent-btn" style={{ background: 'transparent', border: 'none', color: 'var(--color-orange)', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("agent") ? 1 : 0.7 }} title="Agent"><Brain size={20} /></button>
             )}
-            <button onClick={() => toggleWindow("settings")} data-tour="settings-btn" style={{ background: 'transparent', border: 'none', color: '#f1fa8c', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
+            <button onClick={() => toggleWindow("settings")} data-tour="settings-btn" style={{ background: 'transparent', border: 'none', color: 'var(--color-yellow)', cursor: 'pointer', padding: '0.4rem', fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: openWindows.includes("settings") ? 1 : 0.7 }} title="Settings"><Settings size={20} /></button>
             {(session || isGuest) ? (
               <div style={{ position: 'relative' }} data-tour="profile-menu">
                 <button 
@@ -3507,7 +3555,7 @@ const MainMenu: React.FC = () => {
 
                         {!isGuest && (
                           <>
-                            <button onClick={() => { toggleWindow("profile"); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'inherit', background: 'rgba(255,255,255,0.02)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                            <button onClick={() => { toggleWindow("profile"); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'inherit', background: 'var(--panel-bg)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={14} /><span style={{ fontSize: '0.85rem' }}>{t("profileOverview")}</span></div>
                               <ChevronRight size={12} />
                             </button>
@@ -3522,7 +3570,7 @@ const MainMenu: React.FC = () => {
                                 borderRadius: '0.4rem', 
                                 border: 'none', 
                                 color: 'inherit', 
-                                background: 'rgba(255,255,255,0.02)', 
+                                background: 'var(--panel-bg)', 
                                 cursor: 'pointer', 
                                 textAlign: 'left', 
                                 width: '100%',
@@ -3561,7 +3609,7 @@ const MainMenu: React.FC = () => {
                                    justifyContent: 'space-between',
                                    padding: '0.5rem 0.75rem',
                                    borderRadius: '0.4rem',
-                                   color: '#ffd700',
+                                   color: 'var(--color-gold)',
                                    background: 'rgba(255, 215, 0, 0.08)',
                                    border: '1px solid rgba(255, 215, 0, 0.25)',
                                    marginTop: '0.25rem',
@@ -3576,7 +3624,7 @@ const MainMenu: React.FC = () => {
                                    <Crown size={14} fill="currentColor" />
                                    <span style={{ fontSize: '0.85rem' }}>Royal Member</span>
                                  </div>
-                                 <ChevronRight size={12} color="#ffd700" />
+                                 <ChevronRight size={12} color="var(--color-gold)" />
                                </button>
                             ) : (
                               <button 
@@ -3589,7 +3637,7 @@ const MainMenu: React.FC = () => {
                                   borderRadius: '0.4rem', 
                                   border: '1px solid rgba(255, 215, 0, 0.3)', 
                                   color: '#120824', 
-                                  background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)', 
+                                  background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-orange) 100%)', 
                                   cursor: 'pointer', 
                                   textAlign: 'left', 
                                   width: '100%', 
@@ -3620,7 +3668,7 @@ const MainMenu: React.FC = () => {
                                     borderRadius: '0.4rem', 
                                     border: 'none', 
                                     color: 'inherit', 
-                                    background: 'rgba(255,255,255,0.02)', 
+                                    background: 'var(--panel-bg)', 
                                     cursor: 'pointer', 
                                     textAlign: 'left', 
                                     width: '100%',
@@ -3634,7 +3682,7 @@ const MainMenu: React.FC = () => {
                                   <ChevronRight size={12} />
                                 </button>
 
-                                <button onClick={() => { if (!openWindows.includes("battle")) toggleWindow("battle"); setShowSignInOptions(true); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'inherit', background: 'rgba(255,255,255,0.02)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                                <button onClick={() => { if (!openWindows.includes("battle")) toggleWindow("battle"); setShowSignInOptions(true); setIsProfileMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'inherit', background: 'var(--panel-bg)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LogIn size={14} /><span style={{ fontSize: '0.85rem' }}>{t("signIn")}</span></div>
                                   <ChevronRight size={12} />
                                 </button>
@@ -3656,7 +3704,7 @@ const MainMenu: React.FC = () => {
                                 await signOut({ redirect: false });
                                 window.location.href = '/';
                               }
-                            }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: '#ff5555', background: 'rgba(255, 85, 85, 0.05)', cursor: 'pointer', textAlign: 'left' }}>
+                            }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', color: 'var(--color-red)', background: 'rgba(255, 85, 85, 0.05)', cursor: 'pointer', textAlign: 'left' }}>
                             <LogOut size={14} /><span style={{ fontSize: '0.85rem' }}>{isGuest ? t("exitGuest") : t("signOut")}</span>
                             </button>                      </motion.div>
                     </>
@@ -3684,7 +3732,7 @@ const MainMenu: React.FC = () => {
             if (id === 'privacy') icon = <Shield size={16} />;
             if (id === 'agent') icon = <Brain size={16} />;
             if (id === 'feedback') icon = <MessageSquare size={16} />;
-            if (id === 'royal') icon = <Crown size={16} color="#ffd700" fill="#ffd700" />;
+            if (id === 'royal') icon = <Crown size={16} color="var(--color-gold)" fill="var(--color-gold)" />;
             if (id === 'leaderboard') icon = <Trophy size={16} />;
             if (id.startsWith('profile')) icon = <User size={16} />;
             const rawId = id.startsWith('profile_') ? 'profile' : id;
@@ -3758,7 +3806,7 @@ const MainMenu: React.FC = () => {
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); runTests(); }} 
                                   disabled={isTesting || isPerfect || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")} 
-                                  className={`run-btn-animated ${isTesting ? 'running' : ''}`} style={{ background: isPerfect ? '#50fa7b' : 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || isPerfect || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>
+                                  className={`run-btn-animated ${isTesting ? 'running' : ''}`} style={{ background: isPerfect ? 'var(--color-green)' : 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: (isTesting || isPerfect || (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING")) ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>
                                   {isTesting ? <><Loader2 size={14} className="animate-spin" /> TESTING...</> : (isPerfect ? <><Sparkles size={14} fill="currentColor" /> SUBMITTED</> : (activeDuel?.gameMode === "HACKBOUNTY" && activeDuel?.phase === "BREAKING" ? <><Zap size={14} fill="currentColor" /> BREAKING...</> : <><Send size={14} fill="currentColor" /> SUBMIT</>))}
                                 </button>
                               );
@@ -3784,7 +3832,7 @@ const MainMenu: React.FC = () => {
                                 if (!ended) { window.dispatchEvent(new Event("request_end_battle")); } 
                               }} 
                               disabled={ended}
-                              style={{ background: '#50fa7b', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: ended ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700, opacity: ended ? 0.7 : 1, marginRight: '0.5rem' }}>
+                              style={{ background: 'var(--color-green)', color: '#000', border: 'none', borderRadius: '0.2rem', padding: '0.3rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: ended ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700, opacity: ended ? 0.7 : 1, marginRight: '0.5rem' }}>
                               {ended ? <><Check size={14} fill="currentColor" /> FINISHED</> : <><Flag size={14} fill="currentColor" /> FINISH</>}
                             </button>
                           );
@@ -3945,7 +3993,7 @@ const MainMenu: React.FC = () => {
                       }
                     }}
                     style={{
-                      background: 'rgba(255, 255, 255, 0.02)',
+                      background: 'var(--panel-bg)',
                       border: '1px solid var(--line)',
                       borderRadius: '0.75rem',
                       padding: '1.25rem',
@@ -3958,12 +4006,12 @@ const MainMenu: React.FC = () => {
                       gap: '0.5rem',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                      e.currentTarget.style.borderColor = isActive ? 'var(--accent)' : '#ffaa00';
+                      e.currentTarget.style.background = 'var(--panel-bg-hover)';
+                      e.currentTarget.style.borderColor = isActive ? 'var(--accent)' : 'var(--color-orange)';
                       e.currentTarget.style.transform = 'translateY(-2px)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                      e.currentTarget.style.background = 'var(--panel-bg)';
                       e.currentTarget.style.borderColor = 'var(--line)';
                       e.currentTarget.style.transform = 'none';
                     }}
@@ -3976,7 +4024,7 @@ const MainMenu: React.FC = () => {
                         padding: '0.15rem 0.4rem',
                         borderRadius: '0.25rem',
                         background: isActive ? 'rgba(80, 250, 123, 0.15)' : 'rgba(255, 170, 0, 0.15)',
-                        color: isActive ? '#50fa7b' : '#ffaa00',
+                        color: isActive ? 'var(--color-green)' : 'var(--color-orange)',
                       }}>
                         {mode.status}
                       </span>
@@ -3994,7 +4042,7 @@ const MainMenu: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: 'rgba(255, 255, 255, 0.02)',
+              background: 'var(--panel-bg)',
               border: '1px solid var(--line)',
               borderRadius: '0.75rem',
               padding: '1rem',
@@ -4043,7 +4091,7 @@ const MainMenu: React.FC = () => {
                   transition: 'all 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                  e.currentTarget.style.background = 'var(--header-bg)';
                   e.currentTarget.style.color = 'var(--text)';
                 }}
                 onMouseLeave={(e) => {
@@ -4100,14 +4148,14 @@ const MainMenu: React.FC = () => {
                   placeholder="Enter username..."
                   style={{
                     padding: '0.75rem', borderRadius: '0.4rem', border: '1px solid var(--line)',
-                    background: 'rgba(255,255,255,0.05)', color: 'var(--text)', fontSize: '1rem',
+                    background: 'var(--panel-bg-hover)', color: 'var(--text)', fontSize: '1rem',
                     outline: 'none', transition: 'border-color 0.2s ease'
                   }}
                   onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
                   onBlur={(e) => e.target.style.borderColor = 'var(--line)'}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSaveUsername(); }}
                 />
-                {usernameError && <span style={{ color: '#ff5555', fontSize: '0.8rem' }}>{usernameError}</span>}
+                {usernameError && <span style={{ color: 'var(--color-red)', fontSize: '0.8rem' }}>{usernameError}</span>}
               </div>
 
               <button 

@@ -192,7 +192,7 @@ export async function POST(req: Request) {
     jobDir = path.join(fs.existsSync(tempRoot) ? tempRoot : os.tmpdir(), `job_${jobId}`);
     fs.mkdirSync(jobDir, { recursive: true, mode: 0o777 });
 
-    const forceDocker = hiddenTests.length > 0;
+    const forceDocker = process.env.NODE_ENV !== "development" && hiddenTests.length > 0;
     const hasDocker = shouldUseDocker(forceDocker);
     
     if (forceDocker && !hasDocker) {

@@ -128,8 +128,8 @@ export async function POST(req: NextRequest) {
     });
     
     // Now evaluate if the duel should be finished based on the FRESH updatedDuel
-    const hostSurrendered = (isHost && surrender) || updatedDuel.hostPenalty === ZERO_SCORE || (isTimedOut && updatedDuel.hostPenalty === null);
-    const guestSurrendered = (isGuest && surrender) || updatedDuel.guestPenalty === ZERO_SCORE || (isTimedOut && updatedDuel.guestPenalty === null);
+    const hostSurrendered = (isHost && surrender);
+    const guestSurrendered = (isGuest && surrender);
     const bothFinalized = updatedDuel.hostFinalized && updatedDuel.guestFinalized;
     const hackBountyEarlyWin = duel.gameMode === "HACKBOUNTY" && duel.phase === "FIXING" && hackBountySolved;
 
@@ -160,8 +160,24 @@ export async function POST(req: NextRequest) {
             const hostScore = updatedDuel.hostPenalty ?? ZERO_SCORE;
             const guestScore = updatedDuel.guestPenalty ?? ZERO_SCORE;
             const isClose = Math.abs(hostScore - guestScore) < 0.0001;
-            isDraw = isClose;
-            hostWon = !isClose && hostScore > guestScore;
+            
+            if (isClose) {
+                if (hostScore === 0) {
+                    isDraw = true;
+                } else {
+                    const hostTime = updatedDuel.hostSolveTime ?? 9999999;
+                    const guestTime = updatedDuel.guestSolveTime ?? 9999999;
+                    if (hostTime === guestTime) {
+                        isDraw = true;
+                    } else {
+                        isDraw = false;
+                        hostWon = hostTime < guestTime;
+                    }
+                }
+            } else {
+                isDraw = false;
+                hostWon = hostScore > guestScore;
+            }
         }
 
         const isHostGuest = updatedDuel.host?.username?.startsWith("Guest Knight") || false;

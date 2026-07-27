@@ -83,7 +83,7 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session, t }) => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            style={{ padding: '1rem', background: 'rgba(80, 250, 123, 0.1)', border: '1px solid rgba(80, 250, 123, 0.3)', color: '#50fa7b', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', zIndex: 1, boxShadow: '0 4px 12px rgba(80, 250, 123, 0.05)' }}
+            style={{ padding: '1rem', background: 'rgba(80, 250, 123, 0.1)', border: '1px solid rgba(80, 250, 123, 0.3)', color: 'var(--color-green)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', zIndex: 1, boxShadow: '0 4px 12px rgba(80, 250, 123, 0.05)' }}
           >
             <CheckCircle size={18} />
             <span style={{ fontWeight: 600 }}>{t("feedbackSuccess")}</span>
@@ -95,7 +95,7 @@ const FeedbackWindow: React.FC<FeedbackWindowProps> = ({ session, t }) => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            style={{ padding: '1rem', background: 'rgba(255, 85, 85, 0.1)', border: '1px solid rgba(255, 85, 85, 0.3)', color: '#ff5555', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', zIndex: 1, boxShadow: '0 4px 12px rgba(255, 85, 85, 0.05)' }}
+            style={{ padding: '1rem', background: 'rgba(255, 85, 85, 0.1)', border: '1px solid rgba(255, 85, 85, 0.3)', color: 'var(--color-red)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', zIndex: 1, boxShadow: '0 4px 12px rgba(255, 85, 85, 0.05)' }}
           >
             <AlertTriangle size={18} />
             <span style={{ fontWeight: 600 }}>{errorMessage}</span>

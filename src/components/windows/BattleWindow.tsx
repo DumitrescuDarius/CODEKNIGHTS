@@ -20,21 +20,21 @@ const BUBBLE_OPTIONS = [
     id: "bughunter",
     name: "BUGHUNTER",
     description: "Step into the shoes of a code auditor! In BUGHUNTER mode, you are presented with a pre-written, flawed codebase containing subtle bugs, logical errors, or edge-case omissions. Your mission is to debug and correct the existing code rather than writing a solution from scratch. Points don't exist here—your final score is strictly the number of problems you completely fix. Only flawless solutions passing 100% of the tests count. Out-debug your opponent and solve the most problems to secure the victory!",
-    color: "#50fa7b",
+    color: "var(--color-green)",
     icon: <i className="nf nf-fa-bug"></i>
   },
   {
     id: "hackbounty",
     name: "HACKBOUNTY",
     description: "Welcome to the ultimate Break & Fix challenge! HACKBOUNTY mode consists of two intense phases: First, you have 2 minutes to secretly 'hack' the provided code by introducing subtle bugs. Then, the codes are SWAPPED! You will have 10 minutes to debug and fix the code your opponent broke. Just like BugHunter, there is no partial credit; your final solution must pass 100% of the tests flawlessly to count. Outsmart your opponent's traps and claim the bounty!",
-    color: "#ffb86c",
+    color: "var(--color-orange)",
     icon: <i className="nf nf-fa-coins"></i>
   },
   {
     id: "mlmages",
     name: "MLMAGES",
     description: "Cast code generation spells. Harness AI-powered snippets to solve complex algorithms at lightning speed.",
-    color: "#bd93f9",
+    color: "var(--color-purple)",
     icon: <i className="nf nf-fa-hat_wizard"></i>,
     isWip: true
   },
@@ -42,7 +42,7 @@ const BUBBLE_OPTIONS = [
     id: "codeknights",
     name: "CODEKNIGHTS",
     description: "The ultimate tournament. Face off in a standard bracket format to claim the title of Grand Master. An easy problem has 10 tests, a medium has 15 tests, and a hard has 20 tests. Each test is initially worth 50 points, but this value decreases by up to 20 points as time runs out. Unlike BugHunter, partial test passes are worth points too!",
-    color: "#38bdf8",
+    color: "var(--color-blue)",
     icon: <i className="nf nf-fa-chess_knight"></i>
   }
 ];
@@ -184,10 +184,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
             style={{
-              background: 'rgba(20, 20, 25, 0.95)',
+              background: 'var(--panel-bg)',
               backdropFilter: 'blur(10px)',
               border: '1px solid var(--line)',
-              borderLeft: '4px solid #ff5555',
+              borderLeft: '4px solid var(--color-red)',
               padding: '0.75rem 1rem',
               borderRadius: '0.4rem',
               color: 'var(--text)',
@@ -235,7 +235,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   }, [isBrowsingPublicMatches, fetchPublicMatches]);
 
   const isAdmin = !!session?.user?.isAdmin;
-  const themeColor = activePath === "bughunter" ? "#50fa7b" : activePath === "hackbounty" ? "#ffb86c" : activePath === "mlmages" ? "#bd93f9" : "#38bdf8";
+  const themeColor = activePath === "bughunter" ? "var(--color-green)" : activePath === "hackbounty" ? "var(--color-orange)" : activePath === "mlmages" ? "var(--color-purple)" : "var(--color-blue)";
 
   useEffect(() => {
     const isBughunter = activePath === "bughunter";
@@ -301,9 +301,9 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               justifyContent: 'center',
               gap: '0.75rem',
               padding: '1rem', 
-              background: 'rgba(255,255,255,0.05)', 
-              color: '#fff', 
-              border: '1px solid rgba(255,255,255,0.1)', 
+              background: 'var(--panel-bg-hover)', 
+              color: 'var(--text)', 
+              border: '1px solid var(--panel-border)', 
               borderRadius: '0.75rem', 
               fontWeight: 600,
               fontSize: '1rem',
@@ -330,8 +330,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               justifyContent: 'center',
               gap: '0.75rem',
               padding: '1rem', 
-              background: '#24292e', 
-              color: '#fff', 
+              background: 'var(--panel-bg)', 
+              color: 'var(--text)', 
               border: 'none', 
               borderRadius: '0.75rem', 
               fontWeight: 600,
@@ -355,7 +355,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               padding: '1rem', 
               background: 'transparent', 
               color: 'var(--text)', 
-              border: '1px solid rgba(255,255,255,0.2)', 
+              border: '1px solid var(--panel-border)', 
               borderRadius: '0.75rem', 
               fontWeight: 700,
               fontSize: '1rem',
@@ -373,7 +373,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
         <div style={{ background: 'rgba(255, 85, 85, 0.1)', padding: '1.5rem', borderRadius: '50%', marginBottom: '2rem' }}>
-          <X size={64} color="#ff5555" />
+          <X size={64} color="var(--color-red)" />
         </div>
         <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '1rem' }}>{t("cancelDuel")}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '3rem', maxWidth: '400px' }}>
@@ -382,7 +382,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
         <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: '400px' }}>
           <button 
             onClick={handleCancelDuel}
-            style={{ flex: 1, background: 'rgba(255, 85, 85, 0.1)', color: '#ff5555', border: '1px solid rgba(255, 85, 85, 0.3)', padding: '1rem', borderRadius: '0.4rem', fontWeight: 800, cursor: 'pointer' }}
+            style={{ flex: 1, background: 'rgba(255, 85, 85, 0.1)', color: 'var(--color-red)', border: '1px solid rgba(255, 85, 85, 0.3)', padding: '1rem', borderRadius: '0.4rem', fontWeight: 800, cursor: 'pointer' }}
           >
             {t("terminate")}
           </button>
@@ -411,7 +411,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           background: 'var(--bg)', border: '1px solid var(--line)',
           padding: '0.2rem 0.6rem', borderRadius: '0.4rem',
           fontSize: '0.85rem', fontWeight: 800,
-          color: (timeLeft || 0) < 60 ? '#ff5555' : 'var(--accent)',
+          color: (timeLeft || 0) < 60 ? 'var(--color-red)' : 'var(--accent)',
           display: 'flex', alignItems: 'center', gap: '0.4rem'
         }}>
           <Zap size={14} /> {timeLeft !== null ? formatTime(timeLeft) : "--:--"}
@@ -426,8 +426,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           style={{ 
             marginBottom: '1rem', 
             background: 'rgba(255, 85, 85, 0.1)', 
-            border: '1px solid #ff5555', 
-            color: '#ff5555', 
+            border: '1px solid var(--color-red)', 
+            color: 'var(--color-red)', 
             fontWeight: 800, 
             padding: '0.4rem 1rem',
             borderRadius: '0.4rem',
@@ -440,12 +440,12 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             transition: 'all 0.2s ease'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#ff5555';
+            e.currentTarget.style.background = 'var(--color-red)';
             e.currentTarget.style.color = '#000';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)';
-            e.currentTarget.style.color = '#ff5555';
+            e.currentTarget.style.color = 'var(--color-red)';
           }}
         >
           <X size={14} strokeWidth={3} /> {t("abortUplink") === "ABORT UPLINK" ? "TERMINATE DUEL" : "Terminează Duelul"}
@@ -464,7 +464,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           }}
           title="Click to copy PIN"
           style={{ 
-            background: 'rgba(255,255,255,0.03)', 
+            background: 'var(--header-bg)', 
             border: '1px solid var(--line)', 
             padding: '1.5rem 3rem', 
             borderRadius: '1rem', 
@@ -482,7 +482,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = 'var(--line)';
-            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+            e.currentTarget.style.background = 'var(--header-bg)';
           }}
         >
           <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.2em' }}>{t("duelPin")}</div>
@@ -557,7 +557,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           alignItems: 'center',
           gap: '0.75rem',
           justifyContent: 'center',
-          background: 'rgba(255,255,255,0.03)',
+          background: 'var(--header-bg)',
           padding: '0.75rem 1.5rem',
           borderRadius: '2rem',
           border: '1px solid var(--line)'
@@ -572,8 +572,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           style={{
             marginTop: '1.5rem', 
             background: 'rgba(255, 85, 85, 0.1)', 
-            border: '1px solid #ff5555', 
-            color: '#ff5555', 
+            border: '1px solid var(--color-red)', 
+            color: 'var(--color-red)', 
             fontWeight: 800, 
             padding: '0.6rem 1.5rem',
             borderRadius: '0.5rem',
@@ -586,12 +586,12 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             transition: 'all 0.2s ease'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#ff5555';
+            e.currentTarget.style.background = 'var(--color-red)';
             e.currentTarget.style.color = '#000';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)';
-            e.currentTarget.style.color = '#ff5555';
+            e.currentTarget.style.color = 'var(--color-red)';
           }}
         >
           <X size={18} strokeWidth={3} /> TERMINATE SEARCH
@@ -608,14 +608,14 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '2rem', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ width: '100%', maxWidth: '480px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', borderRadius: '0.8rem', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ width: '100%', maxWidth: '480px', background: 'var(--header-bg)', border: '1px solid var(--line)', borderRadius: '0.8rem', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           
           <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, textAlign: 'center', color: 'var(--text)', letterSpacing: '0.05em' }}>
             MATCH CONFIGURATION
           </h2>
           {activePath === "hackbounty" ? (
-            <div style={{ padding: '1.5rem', border: '1px solid var(--line)', borderRadius: '0.4rem', background: 'rgba(255, 255, 255, 0.02)', textAlign: 'center' }}>
-              <div style={{ color: '#ffb86c', fontWeight: 900, marginBottom: '0.5rem', fontSize: '1rem' }}>PREDEFINED BOUNTY MATCH</div>
+            <div style={{ padding: '1.5rem', border: '1px solid var(--line)', borderRadius: '0.4rem', background: 'var(--panel-bg)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--color-orange)', fontWeight: 900, marginBottom: '0.5rem', fontSize: '1rem' }}>PREDEFINED BOUNTY MATCH</div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                 HackBounty duels use a fixed configuration:<br />
                 <span style={{ color: 'var(--text)', fontWeight: 800 }}>1 Problem • C++ Code • Break & Fix</span>
@@ -658,12 +658,12 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                         onDragEnd={() => setDraggedProblemIndex(null)}
                         style={{ 
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                          background: draggedProblemIndex === idx ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)', 
+                          background: draggedProblemIndex === idx ? 'var(--panel-border)' : 'rgba(0,0,0,0.2)', 
                           border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem',
                           cursor: 'grab', opacity: draggedProblemIndex === idx ? 0.5 : 1
                         }}
                       >
-                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? '#50fa7b' : p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? 'var(--color-green)' : p === 'EASY' ? 'var(--color-green)' : p === 'MEDIUM' ? 'var(--color-orange)' : 'var(--color-purple)' }}>
                           {idx + 1}. {p} (+{activePath === 'bughunter' ? 8 : p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -710,7 +710,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                             style={{
                               background: 'transparent',
                               border: 'none',
-                              color: '#ff5555',
+                              color: 'var(--color-red)',
                               fontWeight: 900,
                               cursor: 'pointer',
                               display: 'flex',
@@ -745,7 +745,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                           borderRadius: '0.4rem',
                           border: '1px solid rgba(80, 250, 123, 0.3)',
                           background: 'rgba(80, 250, 123, 0.05)',
-                          color: '#50fa7b',
+                          color: 'var(--color-green)',
                           fontWeight: 900,
                           fontSize: '0.75rem',
                           cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
@@ -769,7 +769,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                           borderRadius: '0.4rem',
                           border: '1px solid rgba(80, 250, 123, 0.3)',
                           background: 'rgba(80, 250, 123, 0.05)',
-                          color: '#50fa7b',
+                          color: 'var(--color-green)',
                           fontWeight: 900,
                           fontSize: '0.75rem',
                           cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
@@ -790,7 +790,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                           borderRadius: '0.4rem',
                           border: '1px solid rgba(255, 184, 108, 0.3)',
                           background: 'rgba(255, 184, 108, 0.05)',
-                          color: '#ffb86c',
+                          color: 'var(--color-orange)',
                           fontWeight: 900,
                           fontSize: '0.75rem',
                           cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
@@ -811,7 +811,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                           borderRadius: '0.4rem',
                           border: '1px solid rgba(189, 147, 249, 0.3)',
                           background: 'rgba(189, 147, 249, 0.05)',
-                          color: '#bd93f9',
+                          color: 'var(--color-purple)',
                           fontWeight: 900,
                           fontSize: '0.75rem',
                           cursor: selectedProblems.length >= 5 ? 'not-allowed' : 'pointer',
@@ -832,7 +832,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
           {/* Time & Type Summary Block */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', border: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--panel-bg)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', border: '1px solid var(--line)' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>TOTAL TIME:</span>
               <span style={{ fontSize: '0.8rem', fontWeight: 900, color: themeColor }}>{calculatedTime} MINUTES</span>
             </div>
@@ -850,7 +850,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     padding: '0.4rem 0.8rem',
                     borderRadius: '0.4rem',
                     border: isRanked === opt.value ? `2px solid ${themeColor}` : '1px solid var(--line)',
-                    background: isRanked === opt.value ? `${themeColor}22` : 'rgba(0,0,0,0.2)',
+                    background: isRanked === opt.value ? `color-mix(in srgb, ${themeColor} 15%, transparent)` : 'rgba(0,0,0,0.2)',
                     color: isRanked === opt.value ? themeColor : 'var(--text)',
                     fontWeight: 900,
                     fontSize: '0.75rem',
@@ -872,7 +872,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 padding: '0.75rem',
                 borderRadius: '0.4rem',
                 border: '1px solid var(--line)',
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--panel-bg-hover)',
                 color: 'var(--text)',
                 fontWeight: 900,
                 cursor: 'pointer'
@@ -903,10 +903,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 borderRadius: '0.4rem',
                 border: 'none',
                 background: (activePath !== 'hackbounty' && selectedProblems.length === 0) ? 'var(--text-muted)' : themeColor,
-                color: '#000',
+                color: 'var(--text-on-color)',
                 fontWeight: 900,
                 cursor: (activePath !== 'hackbounty' && selectedProblems.length === 0) ? 'not-allowed' : 'pointer',
-                boxShadow: (activePath !== 'hackbounty' && selectedProblems.length === 0) ? 'none' : `0 4px 15px ${themeColor}33`
+                boxShadow: (activePath !== 'hackbounty' && selectedProblems.length === 0) ? 'none' : `0 4px 15px color-mix(in srgb, ${themeColor} 20%, transparent)`
               }}
             >
               CREATE LOBBY
@@ -926,7 +926,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '2rem', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ width: '100%', maxWidth: '480px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', borderRadius: '0.8rem', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ width: '100%', maxWidth: '480px', background: 'var(--header-bg)', border: '1px solid var(--line)', borderRadius: '0.8rem', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           
           <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, textAlign: 'center', color: 'var(--text)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             UPLINK CONFIGURATION
@@ -968,12 +968,12 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                       onDragEnd={() => setDraggedProblemIndex(null)}
                       style={{ 
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                        background: draggedProblemIndex === idx ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)', 
+                        background: draggedProblemIndex === idx ? 'var(--panel-border)' : 'rgba(0,0,0,0.2)', 
                         border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem',
                         cursor: 'grab', opacity: draggedProblemIndex === idx ? 0.5 : 1
                       }}
                     >
-                      <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? '#50fa7b' : p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
+                      <span style={{ fontWeight: 800, fontSize: '0.8rem', color: activePath === 'bughunter' ? 'var(--color-green)' : p === 'EASY' ? 'var(--color-green)' : p === 'MEDIUM' ? 'var(--color-orange)' : 'var(--color-purple)' }}>
                         {idx + 1}. {p} (+{activePath === 'bughunter' ? 8 : p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -1020,7 +1020,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                           style={{
                             background: 'transparent',
                             border: 'none',
-                            color: '#ff5555',
+                            color: 'var(--color-red)',
                             fontWeight: 900,
                             cursor: 'pointer',
                             display: 'flex',
@@ -1057,7 +1057,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                         borderRadius: '0.4rem',
                         border: '1px solid rgba(80, 250, 123, 0.3)',
                         background: 'rgba(80, 250, 123, 0.05)',
-                        color: '#50fa7b',
+                        color: 'var(--color-green)',
                         fontWeight: 900,
                         fontSize: '0.75rem',
                         cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
@@ -1081,7 +1081,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                         borderRadius: '0.4rem',
                         border: '1px solid rgba(80, 250, 123, 0.3)',
                         background: 'rgba(80, 250, 123, 0.05)',
-                        color: '#50fa7b',
+                        color: 'var(--color-green)',
                         fontWeight: 900,
                         fontSize: '0.75rem',
                         cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
@@ -1102,7 +1102,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                         borderRadius: '0.4rem',
                         border: '1px solid rgba(255, 184, 108, 0.3)',
                         background: 'rgba(255, 184, 108, 0.05)',
-                        color: '#ffb86c',
+                        color: 'var(--color-orange)',
                         fontWeight: 900,
                         fontSize: '0.75rem',
                         cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
@@ -1123,7 +1123,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                         borderRadius: '0.4rem',
                         border: '1px solid rgba(189, 147, 249, 0.3)',
                         background: 'rgba(189, 147, 249, 0.05)',
-                        color: '#bd93f9',
+                        color: 'var(--color-purple)',
                         fontWeight: 900,
                         fontSize: '0.75rem',
                         cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
@@ -1143,7 +1143,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
           {/* Time & Type Summary Block */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', border: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--panel-bg)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', border: '1px solid var(--line)' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>TOTAL TIME:</span>
               <span style={{ fontSize: '0.8rem', fontWeight: 900, color: themeColor }}>{calculatedUplinkTime} MINUTES</span>
             </div>
@@ -1161,7 +1161,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     padding: '0.4rem 0.8rem',
                     borderRadius: '0.4rem',
                     border: uplinkIsRanked === opt.value ? `2px solid ${themeColor}` : '1px solid var(--line)',
-                    background: uplinkIsRanked === opt.value ? `${themeColor}22` : 'rgba(0,0,0,0.2)',
+                    background: uplinkIsRanked === opt.value ? `color-mix(in srgb, ${themeColor} 15%, transparent)` : 'rgba(0,0,0,0.2)',
                     color: uplinkIsRanked === opt.value ? themeColor : 'var(--text)',
                     fontWeight: 900,
                     fontSize: '0.75rem',
@@ -1188,7 +1188,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 padding: '0.75rem',
                 borderRadius: '0.4rem',
                 border: '1px solid var(--line)',
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--panel-bg-hover)',
                 color: 'var(--text)',
                 fontWeight: 900,
                 cursor: 'pointer'
@@ -1228,10 +1228,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 borderRadius: '0.4rem',
                 border: 'none',
                 background: (activePath !== 'hackbounty' && uplinkProblems.length === 0) ? 'var(--text-muted)' : themeColor,
-                color: '#000',
+                color: 'var(--text-on-color)',
                 fontWeight: 900,
                 cursor: (activePath !== 'hackbounty' && uplinkProblems.length === 0) ? 'not-allowed' : 'pointer',
-                boxShadow: (activePath !== 'hackbounty' && uplinkProblems.length === 0) ? 'none' : `0 4px 15px ${themeColor}33`
+                boxShadow: (activePath !== 'hackbounty' && uplinkProblems.length === 0) ? 'none' : `0 4px 15px color-mix(in srgb, ${themeColor} 20%, transparent)`
               }}
             >
               {inviteTargetForConfig ? `INVITE ${inviteTargetForConfig.name.toUpperCase()}` : "CREATE UPLINK"}
@@ -1251,11 +1251,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '2rem', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-        <div style={{ width: '100%', maxWidth: '440px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', borderRadius: '0.8rem', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+        <div style={{ width: '100%', maxWidth: '440px', background: 'var(--header-bg)', border: '1px solid var(--line)', borderRadius: '0.8rem', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
           
           <div style={{ position: 'relative', width: '80px', height: '80px' }}>
             <DefaultAvatar name={hostName} size={80} image={hostImage} isRoyal={isRoyal} />
-            {isRoyal && <Crown size={20} fill="#ffd700" color="#ffd700" style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)' }} />}
+            {isRoyal && <Crown size={20} fill="var(--color-gold)" color="var(--color-gold)" style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)' }} />}
           </div>
 
           <div>
@@ -1267,10 +1267,10 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             </p>
           </div>
 
-          <div style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '1rem', boxSizing: 'border-box' }}>
+          <div style={{ width: '100%', background: 'var(--panel-bg)', border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '1rem', boxSizing: 'border-box' }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem' }}>MATCH CONFIGURATION</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 800, color: themeColor }}>
-              {pendingChallengeMatch.numProblems} Problem{pendingChallengeMatch.numProblems > 1 ? 's' : ''} • {pendingChallengeMatch.totalTime}m • {pendingChallengeMatch.unrated ? 'Unrated' : 'Ranked'}
+              {pendingChallengeMatch.gameMode === "HACKBOUNTY" ? 1 : pendingChallengeMatch.numProblems} Problem{(pendingChallengeMatch.gameMode === "HACKBOUNTY" ? 1 : pendingChallengeMatch.numProblems) > 1 ? 's' : ''} • {pendingChallengeMatch.totalTime}m • {pendingChallengeMatch.unrated ? 'Unrated' : 'Ranked'}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', fontWeight: 600 }}>
               Queue: {pendingChallengeMatch.questions ? Object.entries(pendingChallengeMatch.questions.reduce((acc: any, q: any) => {
@@ -1288,9 +1288,9 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 flex: 1,
                 padding: '1rem',
                 borderRadius: '0.4rem',
-                border: '1px solid #ff5555',
+                border: '1px solid var(--color-red)',
                 background: 'rgba(255,85,85,0.05)',
-                color: '#ff5555',
+                color: 'var(--color-red)',
                 fontWeight: 900,
                 cursor: 'pointer',
                 fontSize: '0.9rem',
@@ -1318,12 +1318,12 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 borderRadius: '0.4rem',
                 border: 'none',
                 background: themeColor,
-                color: '#000',
+                color: 'var(--text-on-color)',
                 fontWeight: 900,
                 cursor: 'pointer',
                 fontSize: '0.9rem',
                 letterSpacing: '0.05em',
-                boxShadow: `0 4px 15px ${themeColor}33`
+                boxShadow: `0 4px 15px color-mix(in srgb, ${themeColor} 20%, transparent)`
               }}
             >
               ACCEPT FIGHT
@@ -1343,7 +1343,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
           <button 
             onClick={() => setIsBrowsingPublicMatches(false)}
             style={{ 
-              background: 'rgba(255,255,255,0.05)', 
+              background: 'var(--panel-bg-hover)', 
               border: '1px solid var(--line)', 
               color: 'var(--text)', 
               padding: '0.5rem 1rem', 
@@ -1356,8 +1356,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               gap: '0.5rem',
               transition: 'all 0.2s ease'
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--panel-border)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--panel-bg-hover)' }}
           >
             <ArrowLeft size={14} /> BACK
           </button>
@@ -1401,28 +1401,28 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', opacity: filterDifficulties.length >= 5 ? 0.5 : 1, pointerEvents: filterDifficulties.length >= 5 ? 'none' : 'auto' }}>
                 {activePath === "bughunter" ? (
                   <>
-                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'PYTHON'])} style={{ background: 'rgba(241, 250, 140, 0.1)', color: '#f1fa8c', border: '1px solid rgba(241, 250, 140, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'PYTHON'])} style={{ background: 'rgba(241, 250, 140, 0.1)', color: 'var(--color-yellow)', border: '1px solid rgba(241, 250, 140, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <Plus size={12} /> PYTHON
                     </button>
-                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'CPP'])} style={{ background: 'rgba(139, 233, 253, 0.1)', color: '#8be9fd', border: '1px solid rgba(139, 233, 253, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'CPP'])} style={{ background: 'rgba(139, 233, 253, 0.1)', color: 'var(--color-cyan)', border: '1px solid rgba(139, 233, 253, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <Plus size={12} /> C++
                     </button>
-                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'C'])} style={{ background: 'rgba(189, 147, 249, 0.1)', color: '#bd93f9', border: '1px solid rgba(189, 147, 249, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'C'])} style={{ background: 'rgba(189, 147, 249, 0.1)', color: 'var(--color-purple)', border: '1px solid rgba(189, 147, 249, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <Plus size={12} /> C
                     </button>
-                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'JAVA'])} style={{ background: 'rgba(255, 121, 198, 0.1)', color: '#ff79c6', border: '1px solid rgba(255, 121, 198, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'JAVA'])} style={{ background: 'rgba(255, 121, 198, 0.1)', color: 'var(--color-pink)', border: '1px solid rgba(255, 121, 198, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <Plus size={12} /> JAVA
                     </button>
                   </>
                 ) : (
                   <>
-                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'EASY'])} style={{ background: 'rgba(80, 250, 123, 0.1)', color: '#50fa7b', border: '1px solid rgba(80, 250, 123, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'EASY'])} style={{ background: 'rgba(80, 250, 123, 0.1)', color: 'var(--color-green)', border: '1px solid rgba(80, 250, 123, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <Plus size={12} /> EASY
                     </button>
-                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'MEDIUM'])} style={{ background: 'rgba(255, 184, 108, 0.1)', color: '#ffb86c', border: '1px solid rgba(255, 184, 108, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'MEDIUM'])} style={{ background: 'rgba(255, 184, 108, 0.1)', color: 'var(--color-orange)', border: '1px solid rgba(255, 184, 108, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <Plus size={12} /> MEDIUM
                     </button>
-                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'HARD'])} style={{ background: 'rgba(255, 85, 85, 0.1)', color: '#ff5555', border: '1px solid rgba(255, 85, 85, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <button onClick={() => setFilterDifficulties([...filterDifficulties, 'HARD'])} style={{ background: 'rgba(255, 85, 85, 0.1)', color: 'var(--color-red)', border: '1px solid rgba(255, 85, 85, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <Plus size={12} /> HARD
                     </button>
                   </>
@@ -1432,16 +1432,16 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               {filterDifficulties.length > 0 && (
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                   {filterDifficulties.map((diff, i) => {
-                    let diffColor = '#50fa7b';
-                    if (diff === 'HARD') diffColor = '#ff5555';
-                    else if (diff === 'MEDIUM') diffColor = '#ffb86c';
-                    else if (diff === 'PYTHON') diffColor = '#f1fa8c';
-                    else if (diff === 'CPP') diffColor = '#8be9fd';
-                    else if (diff === 'C') diffColor = '#bd93f9';
-                    else if (diff === 'JAVA') diffColor = '#ff79c6';
+                    let diffColor = 'var(--color-green)';
+                    if (diff === 'HARD') diffColor = 'var(--color-red)';
+                    else if (diff === 'MEDIUM') diffColor = 'var(--color-orange)';
+                    else if (diff === 'PYTHON') diffColor = 'var(--color-yellow)';
+                    else if (diff === 'CPP') diffColor = 'var(--color-cyan)';
+                    else if (diff === 'C') diffColor = 'var(--color-purple)';
+                    else if (diff === 'JAVA') diffColor = 'var(--color-pink)';
                     
                     return (
-                      <div key={i} onClick={() => setFilterDifficulties(filterDifficulties.filter((_, index) => index !== i))} style={{ background: diffColor, color: '#000', padding: '0.1rem 0.5rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                      <div key={i} onClick={() => setFilterDifficulties(filterDifficulties.filter((_, index) => index !== i))} style={{ background: diffColor, color: 'var(--text-on-color)', padding: '0.1rem 0.5rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                         {diff === 'CPP' ? 'C++' : diff} <X size={10} />
                       </div>
                     );
@@ -1454,7 +1454,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             {/* Elo filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '250px' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>OPP ELO:</div>
-              <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.4rem', padding: '0.2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '0.4rem', padding: '0.2rem' }}>
                 <button onClick={() => setFilterMinElo(prev => String(Math.max(0, (parseInt(prev || "0") - 50))))} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '0.25rem' }}>
                   <Minus size={14} />
                 </button>
@@ -1472,7 +1472,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 </button>
               </div>
               <span style={{ color: 'var(--text-muted)', fontWeight: 800 }}>-</span>
-              <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.4rem', padding: '0.2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '0.4rem', padding: '0.2rem' }}>
                 <button onClick={() => setFilterMaxElo(prev => String(Math.max(0, (parseInt(prev || "9999") - 50))))} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '0.25rem' }}>
                   <Minus size={14} />
                 </button>
@@ -1507,7 +1507,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
-                    border: '3px solid rgba(255, 255, 255, 0.05)',
+                    border: '3px solid var(--panel-bg-hover)',
                     borderTopColor: 'var(--accent)',
                     boxShadow: '0 0 15px rgba(122, 162, 247, 0.2)'
                   }}
@@ -1573,7 +1573,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               const hostElo = match.host?.rating ?? 1000;
               const hostImage = match.host?.image;
               const isRoyal = !!match.host?.isRoyal;
-              const diffColor = match.question?.difficulty === 'HARD' ? '#ff5555' : match.question?.difficulty === 'MEDIUM' ? '#ffb86c' : '#50fa7b';
+              const diffColor = match.question?.difficulty === 'HARD' ? 'var(--color-red)' : match.question?.difficulty === 'MEDIUM' ? 'var(--color-orange)' : 'var(--color-green)';
                 const formatMap = (match.questions || []).reduce((acc: any, q: any) => {
                   const d = q.difficulty || "UNKNOWN";
                   acc[d] = (acc[d] || 0) + 1;
@@ -1590,7 +1590,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'space-between', 
-                    background: 'rgba(255,255,255,0.02)', 
+                    background: 'var(--panel-bg)', 
                     border: '1px solid var(--line)', 
                     borderRadius: '0.6rem', 
                     padding: '1rem 1.25rem',
@@ -1598,8 +1598,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     flexWrap: 'wrap',
                     transition: 'all 0.2s ease'
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(122, 162, 247, 0.4)'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(122, 162, 247, 0.4)'; e.currentTarget.style.background = 'var(--header-bg)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'var(--panel-bg)' }}
                 >
                   {/* Left Column: User details */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -1607,9 +1607,9 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <div style={{ fontWeight: 800, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         {hostName}
-                        {isRoyal && <Crown size={12} fill="#ffd700" color="#ffd700" />}
+                        {isRoyal && <Crown size={12} fill="var(--color-gold)" color="var(--color-gold)" />}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: '#f1fa8c', fontWeight: 600 }}>Rating: {hostElo} ELO</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-yellow)', fontWeight: 600 }}>Rating: {hostElo} ELO</div>
                     </div>
                   </div>
 
@@ -1617,7 +1617,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                     <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 800 }}>Match Configuration</div>
                     <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text)' }}>
-                      {match.numProblems} Problem{match.numProblems > 1 ? 's' : ''} ({formatDisplay})
+                      {match.gameMode === "HACKBOUNTY" ? 1 : match.numProblems} Problem{(match.gameMode === "HACKBOUNTY" ? 1 : match.numProblems) > 1 ? 's' : ''} ({formatDisplay})
                     </div>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                       Duration: {match.totalTime}m • {match.unrated ? 'Unrated' : 'Ranked'}
@@ -1645,7 +1645,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                     disabled={isJoining}
                     style={{
                       background: themeColor,
-                      color: '#000',
+                      color: 'var(--text-on-color)',
                       border: 'none',
                       padding: '0.6rem 1.5rem',
                       borderRadius: '0.4rem',
@@ -1654,7 +1654,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                       fontSize: '0.85rem',
                       letterSpacing: '0.05em',
                       transition: 'all 0.2s ease',
-                      boxShadow: `0 4px 12px ${themeColor}22`
+                      boxShadow: `0 4px 12px color-mix(in srgb, ${themeColor} 15%, transparent)`
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
                     onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
@@ -1689,7 +1689,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             width: showBubbles ? '38px' : '48px',
             height: showBubbles ? '38px' : '48px',
             borderRadius: '50%',
-            background: 'rgba(30, 30, 40, 0.6)',
+            background: 'var(--panel-bg)',
             border: `1.5px solid ${themeColor}`,
             color: themeColor,
             display: 'flex',
@@ -1698,15 +1698,15 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             cursor: 'pointer',
             transition: 'all 0.12s ease',
             zIndex: 110,
-            boxShadow: `0 0 10px ${themeColor}33`
+            boxShadow: `0 0 10px color-mix(in srgb, ${themeColor} 20%, transparent)`
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.08)';
-            e.currentTarget.style.boxShadow = `0 0 15px ${themeColor}66`;
+            e.currentTarget.style.boxShadow = `0 0 15px color-mix(in srgb, ${themeColor} 40%, transparent)`;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = `0 0 10px ${themeColor}33`;
+            e.currentTarget.style.boxShadow = `0 0 10px color-mix(in srgb, ${themeColor} 20%, transparent)`;
           }}
           title="Select Path"
         >
@@ -1732,7 +1732,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             width: showBubbles ? '38px' : '48px',
             height: showBubbles ? '38px' : '48px',
             borderRadius: '50%',
-            background: 'rgba(30, 30, 40, 0.6)',
+            background: 'var(--panel-bg)',
             border: `1.5px solid ${themeColor}`,
             color: themeColor,
             display: 'flex',
@@ -1741,15 +1741,15 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
             cursor: 'pointer',
             transition: 'all 0.12s ease',
             zIndex: 110,
-            boxShadow: `0 0 10px ${themeColor}33`
+            boxShadow: `0 0 10px color-mix(in srgb, ${themeColor} 20%, transparent)`
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.08)';
-            e.currentTarget.style.boxShadow = `0 0 15px ${themeColor}66`;
+            e.currentTarget.style.boxShadow = `0 0 15px color-mix(in srgb, ${themeColor} 40%, transparent)`;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = `0 0 10px ${themeColor}33`;
+            e.currentTarget.style.boxShadow = `0 0 10px color-mix(in srgb, ${themeColor} 20%, transparent)`;
           }}
           title="Game Rules"
         >
@@ -1770,8 +1770,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'rgba(0, 0, 0, 0.25)',
-                backdropFilter: 'blur(3px)',
+                background: 'var(--panel-bg-hover)',
+                backdropFilter: 'blur(5px)',
                 zIndex: 90,
               }}
               onClick={() => {
@@ -1838,9 +1838,9 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                       width: '44px',
                       height: '44px',
                       borderRadius: '50%',
-                      background: 'rgba(30, 30, 40, 0.95)',
+                      background: 'var(--panel-bg)',
                       border: `2px solid ${b.color}`,
-                      color: '#fff',
+                      color: 'var(--text)',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
@@ -1879,7 +1879,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                       position: 'absolute',
                       left: `${bubbleX + 54}px`,
                       top: `${bubbleY - 20}px`,
-                      background: 'rgba(20, 20, 30, 0.95)',
+                      background: 'var(--header-bg)',
+                      backdropFilter: 'blur(10px)',
                       border: `1px solid ${hoveredOption?.color}`,
                       borderRadius: '0.8rem',
                       padding: '1rem',
@@ -1904,7 +1905,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                         <span style={{ 
                           fontSize: '0.55rem', 
                           background: 'rgba(255, 170, 0, 0.15)', 
-                          color: '#ffaa00', 
+                          color: 'var(--color-orange)', 
                           padding: '0.1rem 0.3rem', 
                           borderRadius: '0.2rem',
                           fontWeight: 800,
@@ -1950,13 +1951,13 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
         }}>
           {/* Dynamic Header Titles based on path */}
           {activePath === "bughunter" ? (
-            <h2 style={{ fontSize: 'clamp(1.5rem, 10cqw, 5.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>BUG<span style={{ color: '#50fa7b' }}>HUNTER</span></h2>
+            <h2 style={{ fontSize: 'clamp(1.5rem, 10cqw, 5.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>BUG<span style={{ color: 'var(--color-green)' }}>HUNTER</span></h2>
           ) : activePath === "hackbounty" ? (
-            <h2 style={{ fontSize: 'clamp(1.5rem, 10cqw, 5.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>HACK<span style={{ color: '#ffb86c' }}>BOUNTY</span></h2>
+            <h2 style={{ fontSize: 'clamp(1.5rem, 10cqw, 5.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>HACK<span style={{ color: 'var(--color-orange)' }}>BOUNTY</span></h2>
           ) : activePath === "mlmages" ? (
-            <h2 style={{ fontSize: 'clamp(1.5rem, 10cqw, 5.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>ML<span style={{ color: '#bd93f9' }}>MAGES</span></h2>
+            <h2 style={{ fontSize: 'clamp(1.5rem, 10cqw, 5.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>ML<span style={{ color: 'var(--color-purple)' }}>MAGES</span></h2>
           ) : (
-            <h2 style={{ fontSize: 'clamp(1.5rem, 10cqw, 5.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>CODE<span style={{ color: '#38bdf8' }}>KNIGHTS</span></h2>
+            <h2 style={{ fontSize: 'clamp(1.5rem, 10cqw, 5.5rem)', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>CODE<span style={{ color: 'var(--color-blue)' }}>KNIGHTS</span></h2>
           )}
           {/* Win streak under the title */}
           {session && (() => {
@@ -1965,8 +1966,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                             activePath === "hackbounty" ? (userStats?.hackBountyStreak || 0) :
                             activePath === "mlmages" ? (userStats?.mlMagesStreak || 0) : 0;
              return (
-               <div title={`Current Win Streak: ${streak}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: streak > 0 ? '#ffb86c' : 'var(--text-muted)', filter: streak > 0 ? 'drop-shadow(0 0 8px rgba(255, 184, 108, 0.4))' : 'none', background: streak > 0 ? 'rgba(255, 184, 108, 0.1)' : 'rgba(255,255,255,0.05)', padding: '0.5rem 1.25rem', borderRadius: '2rem', border: streak > 0 ? '1px solid rgba(255, 184, 108, 0.2)' : '1px solid var(--line)', marginTop: '0.5rem' }}>
-                  <Flame size={20} fill={streak > 0 ? "#ffb86c" : "none"} />
+               <div title={`Current Win Streak: ${streak}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: streak > 0 ? 'var(--color-orange)' : 'var(--text-muted)', filter: streak > 0 ? 'drop-shadow(0 0 8px rgba(255, 184, 108, 0.4))' : 'none', background: streak > 0 ? 'rgba(255, 184, 108, 0.1)' : 'var(--panel-bg-hover)', padding: '0.5rem 1.25rem', borderRadius: '2rem', border: streak > 0 ? '1px solid rgba(255, 184, 108, 0.2)' : '1px solid var(--line)', marginTop: '0.5rem' }}>
+                  <Flame size={20} fill={streak > 0 ? "var(--color-orange)" : "none"} />
                   <span style={{ fontWeight: 900, fontSize: '1rem', letterSpacing: '0.05em' }}>{streak} {t("currentStreak")?.toUpperCase() || "STREAK"}</span>
                </div>
              );
@@ -2003,7 +2004,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               disabled={isJoining || isCreating}
               style={{ 
                 background: themeColor, 
-                color: '#000', 
+                color: 'var(--text-on-color)', 
                 border: 'none', 
                 padding: '0 1.5rem', 
                 borderRadius: '0.4rem', 
@@ -2011,7 +2012,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 fontSize: '1.1rem', 
                 cursor: 'pointer', 
                 letterSpacing: '0.1em',
-                boxShadow: `0 0 25px ${themeColor}33`,
+                boxShadow: `0 0 25px color-mix(in srgb, ${themeColor} 20%, transparent)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2051,9 +2052,9 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               }}
               disabled={isCreating || isJoining || isWaitingForResponse}
               style={{ 
-                background: 'rgba(255,255,255,0.05)', 
+                background: 'var(--panel-bg-hover)', 
                 color: themeColor, 
-                border: `1px solid ${themeColor}33`, 
+                border: `1px solid color-mix(in srgb, ${themeColor} 20%, transparent)`, 
                 padding: '0 1.5rem', 
                 borderRadius: '0.4rem', 
                 fontWeight: 900, 
@@ -2102,7 +2103,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 minHeight: '4rem',
                 width: '100%'
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = `${themeColor}10` }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = `color-mix(in srgb, ${themeColor} 5%, transparent)` }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'transparent' }}
             >
               <Users size={22} /> {activePath === "bughunter" ? "FIND DEBUG MATCH" : activePath === "hackbounty" ? "FIND BOUNTY DUEL" : activePath === "mlmages" ? "FIND GENERATION MATCH" : "FIND PUBLIC MATCH"}
@@ -2121,7 +2122,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   style={{ 
                     width: '100%', 
                     height: '100%', 
-                    background: 'rgba(0,0,0,0.3)', 
+                    background: 'var(--panel-bg)', 
                     border: '1px solid var(--line)', 
                     borderRadius: '0.4rem', 
                     color: 'inherit', 
@@ -2148,8 +2149,8 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 disabled={isJoining || isCreating}
                 style={{ 
                   height: '100%', 
-                  background: (activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? 'var(--text)' : 'rgba(255,255,255,0.05)', 
-                  color: (activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? '#000' : 'var(--text-muted)', 
+                  background: (activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? 'var(--text)' : 'var(--panel-bg-hover)', 
+                  color: (activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? 'var(--text-on-color)' : 'var(--text-muted)', 
                   border: (activePath === "codeknights" || activePath === "bughunter" || activePath === "hackbounty") ? 'none' : '1px solid var(--line)', 
                   fontWeight: 900, 
                   padding: '0 1.5rem',
@@ -2194,7 +2195,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                   maxWidth: '100%',
                   background: 'var(--bg)',
                   borderLeft: `1px solid ${themeColor}`,
-                  boxShadow: `-10px 0 40px ${themeColor}33`,
+                  boxShadow: `-10px 0 40px color-mix(in srgb, ${themeColor} 20%, transparent)`,
                   zIndex: 201,
                   padding: '2rem',
                   display: 'flex',
@@ -2230,7 +2231,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 <div style={{ color: 'var(--text)', lineHeight: 1.6, fontSize: '1.1rem' }}>
                   <p style={{ marginBottom: '1rem' }}>{BUBBLE_OPTIONS.find(o => o.id === activePath)?.description}</p>
                   {activePath === 'codeknights' && (
-                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '0.5rem', marginTop: '1rem' }}>
+                    <div style={{ background: 'var(--panel-bg-hover)', padding: '1rem', borderRadius: '0.5rem', marginTop: '1rem' }}>
                       <h3 style={{ margin: '0 0 0.5rem 0', color: themeColor, fontSize: '1.1rem' }}>Scoring Details:</h3>
                       <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)' }}>
                         <li><strong>EASY:</strong> 10 tests</li>

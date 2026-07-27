@@ -568,7 +568,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
         </div>
 
         {error && (
-          <div style={{ background: 'rgba(255, 85, 85, 0.1)', border: '1px solid #ff555544', color: '#ff5555', padding: '1rem', borderRadius: '0.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ background: 'rgba(255, 85, 85, 0.1)', border: '1px solid var(--color-red)44', color: 'var(--color-red)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <AlertCircle size={18} />
             <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{error}</span>
           </div>
@@ -763,7 +763,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                             type="button"
                             onClick={() => setTargetLanguage(l.value as any)}
                             className="btn"
-                            style={{ flex: '1 1 100px', borderColor: targetLanguage === l.value ? '#50fa7b' : 'var(--line)', color: targetLanguage === l.value ? '#50fa7b' : 'inherit', height: '44px', fontWeight: targetLanguage === l.value ? 700 : 400, cursor: 'pointer', background: targetLanguage === l.value ? 'rgba(80, 250, 123, 0.05)' : 'transparent', minWidth: '100px' }}
+                            style={{ flex: '1 1 100px', borderColor: targetLanguage === l.value ? 'var(--color-green)' : 'var(--line)', color: targetLanguage === l.value ? 'var(--color-green)' : 'inherit', height: '44px', fontWeight: targetLanguage === l.value ? 700 : 400, cursor: 'pointer', background: targetLanguage === l.value ? 'rgba(80, 250, 123, 0.05)' : 'transparent', minWidth: '100px' }}
                           >
                             {l.label}
                           </button>
@@ -943,7 +943,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                                 type="button"
                                 onClick={() => handleDeleteFormTestCase(idx)}
                                 className="twm-btn"
-                                style={{ color: '#ff5555', background: 'rgba(255,85,85,0.05)', border: '1px solid rgba(255,85,85,0.1)', padding: '0.2rem 0.4rem', fontSize: '0.7rem' }}
+                                style={{ color: 'var(--color-red)', background: 'rgba(255,85,85,0.05)', border: '1px solid rgba(255,85,85,0.1)', padding: '0.2rem 0.4rem', fontSize: '0.7rem' }}
                               >
                                 Delete
                               </button>
@@ -1079,7 +1079,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                           <span style={{ opacity: 0.5, marginRight: '0.5rem' }}>#{q.problemId || "?"}</span>
                           {q.title}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: q.referenceCode ? '#ffb86c' : q.brokenCode ? '#50fa7b' : q.difficulty === 'Easy' ? '#50fa7b' : q.difficulty === 'Medium' ? '#ffb86c' : '#ff5555', marginTop: '0.2rem', fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.7rem', color: q.referenceCode ? 'var(--color-orange)' : q.brokenCode ? 'var(--color-green)' : q.difficulty === 'Easy' ? 'var(--color-green)' : q.difficulty === 'Medium' ? 'var(--color-orange)' : 'var(--color-red)', marginTop: '0.2rem', fontWeight: 600 }}>
                           {q.referenceCode ? `HACKBOUNTY (Target: ${q.difficulty})` : q.brokenCode ? `BUGHUNTER (Target: ${q.difficulty})` : q.difficulty === 'Easy' ? 'TARGET PRACTICE' : q.difficulty === 'Medium' ? 'TRIAL DUEL' : 'ROYAL CHALLENGE'}
                         </div>
                       </div>
@@ -1095,7 +1095,7 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                         <button 
                           onClick={() => onDeleteQuestion(q.id)}
                           className="twm-btn" 
-                          style={{ color: '#ff5555', padding: '0.5rem', background: 'rgba(255,255,255,0.03)' }}
+                          style={{ color: 'var(--color-red)', padding: '0.5rem', background: 'rgba(255,255,255,0.03)' }}
                           title="Delete Question"
                         >
                           <Trash2 size={16} />
@@ -1128,14 +1128,14 @@ export const AdminWindow: React.FC<AdminWindowProps> = React.memo(({
                       <div>
                         <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{u.username || u.name || "Unknown User"}</div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontWeight: 600 }}>
-                          {u.email} {u.isAdmin ? <span style={{ color: '#ffb86c' }}>(ADMIN)</span> : ''}
+                          {u.email} {u.isAdmin ? <span style={{ color: 'var(--color-orange)' }}>(ADMIN)</span> : ''}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button 
                           onClick={() => handleDeleteUser(u.id)}
                           className="twm-btn" 
-                          style={{ color: '#ff5555', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', opacity: u.isAdmin ? 0.3 : 1, cursor: u.isAdmin ? 'not-allowed' : 'pointer' }}
+                          style={{ color: 'var(--color-red)', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', opacity: u.isAdmin ? 0.3 : 1, cursor: u.isAdmin ? 'not-allowed' : 'pointer' }}
                           title="Delete User"
                           disabled={u.isAdmin}
                         >

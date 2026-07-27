@@ -71,14 +71,14 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
   }, [cachedLeaderboard, currentUserId]);
 
   const getRankIcon = (index: number) => {
-    if (index === 0) return <Crown size={18} color="#ffd700" style={{ filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.6))' }} />;
+    if (index === 0) return <Crown size={18} color="var(--color-gold)" style={{ filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.6))' }} />;
     if (index === 1) return <Trophy size={16} color="#c0c0c0" style={{ filter: 'drop-shadow(0 0 6px rgba(192, 192, 192, 0.4))' }} />;
     if (index === 2) return <Trophy size={16} color="#cd7f32" style={{ filter: 'drop-shadow(0 0 6px rgba(205, 127, 50, 0.4))' }} />;
     return <span style={{ fontSize: "0.8rem", fontWeight: 700 }}>{index + 1}</span>;
   };
 
   const getPinnedRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown size={18} color="#ffd700" style={{ filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.6))' }} />;
+    if (rank === 1) return <Crown size={18} color="var(--color-gold)" style={{ filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.6))' }} />;
     if (rank === 2) return <Trophy size={16} color="#c0c0c0" style={{ filter: 'drop-shadow(0 0 6px rgba(192, 192, 192, 0.4))' }} />;
     if (rank === 3) return <Trophy size={16} color="#cd7f32" style={{ filter: 'drop-shadow(0 0 6px rgba(205, 127, 50, 0.4))' }} />;
     return <span style={{ fontSize: "0.8rem", fontWeight: 700 }}>#{rank}</span>;
@@ -120,13 +120,13 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
             justifyContent: "center",
             boxShadow: "0 0 15px rgba(255, 215, 0, 0.2)"
           }}>
-            <Crown size={22} color="#ffd700" style={{ filter: 'drop-shadow(0 0 5px rgba(255, 215, 0, 0.5))' }} />
+            <Crown size={22} color="var(--color-gold)" style={{ filter: 'drop-shadow(0 0 5px rgba(255, 215, 0, 0.5))' }} />
           </div>
           <h2 style={{ 
             fontSize: "1.3rem", 
             margin: 0, 
             fontWeight: 900,
-            background: "linear-gradient(135deg, #ffd700, #ffaa00)",
+            background: "linear-gradient(135deg, var(--color-gold), var(--color-orange))",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             letterSpacing: "0.05em",
@@ -140,7 +140,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
           onClick={fetchLeaderboard} 
           disabled={isLoading}
           style={{
-            background: "rgba(255,255,255,0.03)",
+            background: "var(--header-bg)",
             border: "1px solid var(--line)",
             color: "var(--text)",
             borderRadius: "0.4rem",
@@ -154,7 +154,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
             transition: "all 0.15s ease"
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
-          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+          onMouseLeave={(e) => e.currentTarget.style.background = "var(--header-bg)"}
         >
           <RefreshCw size={12} className={isLoading ? "spin" : ""} style={{ animation: isLoading ? "spin 1s linear infinite" : "none" }} />
           Refresh
@@ -171,7 +171,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
               onClick={() => setSelectedGameMode(mode)}
               style={{
                 padding: '0.3rem 0.8rem',
-                background: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
+                background: isActive ? 'var(--accent)' : 'var(--panel-bg-hover)',
                 color: isActive ? '#000' : 'var(--text-muted)',
                 border: 'none',
                 borderRadius: '0.25rem',
@@ -189,7 +189,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
       </div>
 
       {error ? (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px", color: "#ff5555", fontSize: "0.85rem" }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px", color: "var(--color-red)", fontSize: "0.85rem" }}>
           {error}
         </div>
       ) : leaders.length === 0 && !isLoading ? (
@@ -232,7 +232,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
                   e.currentTarget.style.transform = "none";
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "20px", height: "20px", borderRadius: "50%", background: currentUser.globalRank <= 3 ? "rgba(255,255,255,0.03)" : "transparent", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "20px", height: "20px", borderRadius: "50%", background: currentUser.globalRank <= 3 ? "var(--header-bg)" : "transparent", flexShrink: 0 }}>
                   {getPinnedRankIcon(currentUser.globalRank)}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>
@@ -290,9 +290,9 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
             const isMe = leader.id === currentUserId;
             
             // Royal styling for top 3
-            let rowBg = isMe ? "rgba(122, 162, 247, 0.04)" : "rgba(255,255,255,0.02)";
+            let rowBg = isMe ? "rgba(122, 162, 247, 0.04)" : "var(--panel-bg)";
             let rowBorder = isMe ? "1px solid rgba(122, 162, 247, 0.4)" : "1px solid var(--line)";
-            let hoverBg = isMe ? "rgba(122, 162, 247, 0.08)" : "rgba(255,255,255,0.05)";
+            let hoverBg = isMe ? "rgba(122, 162, 247, 0.08)" : "var(--panel-bg-hover)";
             let hoverBorder = "var(--accent)";
 
             if (index === 0) {
@@ -341,7 +341,7 @@ export const LeaderboardWindow: React.FC<LeaderboardWindowProps> = React.memo(({
                   e.currentTarget.style.border = rowBorder;
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "20px", height: "20px", borderRadius: "50%", background: index < 3 ? "rgba(255,255,255,0.03)" : "transparent", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "20px", height: "20px", borderRadius: "50%", background: index < 3 ? "var(--header-bg)" : "transparent", flexShrink: 0 }}>
                   {getRankIcon(index)}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>

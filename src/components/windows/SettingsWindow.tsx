@@ -117,7 +117,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
           style={{
             display: 'flex', alignItems: 'center', gap: '0.5rem',
             padding: '0.5rem 1rem', borderRadius: '0.4rem',
-            background: 'rgba(255,255,255,0.05)', color: 'var(--text)',
+            background: 'var(--panel-bg-hover)', color: 'var(--text)',
             border: '1px solid var(--line)', cursor: 'pointer', fontWeight: 600,
             fontSize: '0.85rem'
           }}
@@ -155,7 +155,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                   color: uiLang === l ? 'var(--accent)' : 'var(--text)',
                   boxShadow: uiLang === l ? `inset 0 0 0 2px var(--accent)` : 'none',
                   transition: 'all 0.2s ease',
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'var(--panel-bg)',
                   cursor: 'pointer',
                   fontWeight: 600,
                   fontSize: '0.8rem'
@@ -218,7 +218,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                     color: tabSize === size ? 'var(--accent)' : 'var(--text)',
                     boxShadow: tabSize === size ? `inset 0 0 0 2px var(--accent)` : 'none',
                     transition: 'all 0.2s ease',
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'var(--panel-bg)',
                     cursor: 'pointer',
                     fontWeight: 600,
                     fontSize: '0.8rem'
@@ -250,7 +250,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                     color: insertSpaces === style.value ? 'var(--accent)' : 'var(--text)',
                     boxShadow: insertSpaces === style.value ? `inset 0 0 0 2px var(--accent)` : 'none',
                     transition: 'all 0.2s ease',
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'var(--panel-bg)',
                     cursor: 'pointer',
                     fontWeight: 600,
                     fontSize: '0.8rem'
@@ -279,7 +279,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
               color: vimMode ? 'var(--accent)' : 'var(--text)',
               boxShadow: vimMode ? `inset 0 0 0 2px var(--accent)` : 'none',
               transition: 'all 0.2s ease',
-              background: 'rgba(255,255,255,0.02)',
+              background: 'var(--panel-bg)',
               cursor: 'pointer',
               fontWeight: 600,
               fontSize: '0.85rem'
@@ -314,7 +314,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                 justifyContent: 'center',
                 boxShadow: fontFamily === f.value ? `inset 0 0 0 2px var(--accent)` : 'none',
                 transition: 'all 0.2s ease',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'var(--panel-bg)',
                 cursor: 'pointer'
               }}
             >
@@ -346,7 +346,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                 color: windowRadius === r.value ? 'var(--accent)' : 'var(--text)',
                 boxShadow: windowRadius === r.value ? `inset 0 0 0 2px var(--accent)` : 'none',
                 transition: 'all 0.2s ease',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'var(--panel-bg)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -389,7 +389,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                 color: windowGap === g.value ? 'var(--accent)' : 'var(--text)',
                 boxShadow: windowGap === g.value ? `inset 0 0 0 2px var(--accent)` : 'none',
                 transition: 'all 0.2s ease',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'var(--panel-bg)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -425,7 +425,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                 color: windowBorderThickness === b.value ? 'var(--accent)' : 'var(--text)',
                 boxShadow: windowBorderThickness === b.value ? `inset 0 0 0 2px var(--accent)` : 'none',
                 transition: 'all 0.2s ease',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'var(--panel-bg)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -445,7 +445,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.75rem' }}>
           {[
             { label: t("solid"), value: 'var(--bg)' },
-            { label: t("glass"), value: 'rgba(255, 255, 255, 0.02)' }
+            { label: t("glass"), value: 'var(--panel-bg)' }
           ].map((n) => (
             <button 
               key={n.value} 
@@ -458,7 +458,7 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
                 color: navStyle === n.value ? 'var(--accent)' : 'var(--text)',
                 boxShadow: navStyle === n.value ? `inset 0 0 0 2px var(--accent)` : 'none',
                 transition: 'all 0.2s ease',
-                background: 'rgba(255, 255, 255, 0.02)',
+                background: 'var(--panel-bg)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: '0.8rem'
@@ -513,13 +513,13 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
 
       {/* 6. Admin Settings */}
       {isAdmin && (
-        <div className="settings-group" style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #ff5555', borderRadius: '0.5rem', background: 'rgba(255, 85, 85, 0.05)' }}>
-          <span className="settings-label" style={{ color: '#ff5555' }}>Admin Settings</span>
+        <div className="settings-group" style={{ marginTop: '2rem', padding: '1rem', border: '1px solid var(--color-red)', borderRadius: '0.5rem', background: 'rgba(255, 85, 85, 0.05)' }}>
+          <span className="settings-label" style={{ color: 'var(--color-red)' }}>Admin Settings</span>
           <div className="settings-options" style={{ marginTop: '1rem' }}>
             <button 
               className="btn btn-secondary"
               onClick={() => onReinitIntro && onReinitIntro()}
-              style={{ width: '100%', border: '1px solid rgba(255, 85, 85, 0.5)', color: '#ff5555' }}
+              style={{ width: '100%', border: '1px solid rgba(255, 85, 85, 0.5)', color: 'var(--color-red)' }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >

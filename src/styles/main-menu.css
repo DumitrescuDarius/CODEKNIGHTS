@@ -990,9 +990,208 @@ body.resizing * {
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
+}
+
+.friend-btn--success {
+  background: rgba(80, 250, 123, 0.1);
+  border-color: rgba(80, 250, 123, 0.3);
+  color: #50fa7b;
+}
+
+.friend-btn--success:hover:not(:disabled) {
+  background: rgba(80, 250, 123, 0.18);
+  border-color: rgba(80, 250, 123, 0.45);
+}
+
+.friend-btn--danger {
+  background: rgba(255, 85, 85, 0.1);
+  border-color: rgba(255, 85, 85, 0.3);
+  color: #ff5555;
+}
+
+.friend-btn--danger:hover:not(:disabled) {
+  background: rgba(255, 85, 85, 0.18);
+  border-color: rgba(255, 85, 85, 0.45);
+}
+
+
+
+.auth-btn-solid {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  height: 48px;
+  border-radius: 0.4rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  transition: all 0.15s ease;
+}
+
+.auth-btn-solid:hover {
+  background: var(--accent-hover, #5a8cf5);
+  color: #000;
+}
+
+.auth-btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  height: 48px;
+  border-radius: 0.4rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  transition: all 0.15s ease;
+}
+
+.auth-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+/* Vim mode command input box theme */
+.vim-status-bar {
+  display: flex;
+  align-items: center;
+}
+
+.vim-status-bar input {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  outline: none;
+  min-width: 150px;
+  margin-left: 0.5rem;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.vim-status-bar input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Markdown body styling for Notes */
+.markdown-body {
+  font-family: inherit;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+.markdown-body h1 {
+  font-size: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+}
+.markdown-body h2 {
+  font-size: 1.25em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+}
+.markdown-body h3 {
+  font-size: 1.1em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+}
+.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 0.5em;
+  white-space: pre-wrap;
+}
+.markdown-body ul, .markdown-body ol {
+  margin-top: 0;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
+}
+.markdown-body code {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+.markdown-body pre {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 0.5em;
+  border-radius: 4px;
+  overflow: auto;
+  margin-bottom: 0.5em;
+}
+.markdown-body pre code {
+  background-color: transparent;
+  padding: 0;
+}
+.markdown-body blockquote {
+  margin: 0 0 0.5em 0;
+  padding-left: 0.5em;
+  border-left: 3px solid var(--accent);
+  color: var(--text-muted);
+}
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .workspace-selector {
+    display: none !important;
+  }
+}
+
+
+@keyframes runPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.7); }
+  50% { transform: scale(1.05); box-shadow: 0 0 15px 5px rgba(var(--accent-rgb), 0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0); }
+}
+
+.run-btn-animated {
+  transition: all 0.2s ease;
+}
+
+.run-btn-animated:hover:not(:disabled) {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+.run-btn-animated.running {
+  animation: runPulse 1.2s infinite ease-in-out;
+  pointer-events: none;
+  opacity: 1 !important;
+  background: var(--accent) !important;
+  color: #000 !important;
+}
+
+.run-btn-animated.running svg {
+  animation: spin 1s linear infinite;
+}
+
+.error-glyph-margin {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ff5555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 2 1.88 1.88'/%3E%3Cpath d='M14.12 3.88 16 2'/%3E%3Cpath d='M9 7.13v-1a3.003 3.003 0 1 1 6 0v1'/%3E%3Cpath d='M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6'/%3E%3Cpath d='M12 20v-9'/%3E%3Cpath d='M6.53 9C4.6 8.8 3 7.1 3 5'/%3E%3Cpath d='M6 13H2'/%3E%3Cpath d='M3 21c0-2.1 1.7-3.9 3.8-4'/%3E%3Cpath d='M20.97 5c-2 .2-3.53 1.9-3.53 3.8'/%3E%3Cpath d='M22 13h-4'/%3E%3Cpath d='M17.2 17c2.1.1 3.8 1.9 3.8 4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
     width: 14px !important;
     height: 14px !important;
     margin-top: 3px;
     margin-left: 6px;
 }
 
+@keyframes pulseGlow { 
+  0% { opacity: 0.3; transform: scale(0.95); } 
+  100% { opacity: 0.8; transform: scale(1.05); } 
+}

@@ -23,7 +23,7 @@ const simpleHighlightCpp = (code: string) => {
   const keywords = /\b(int|float|double|char|bool|void|include|iostream|vector|unordered_map|algorithm|using|namespace|std|return|for|while|if|else|cin|cout|endl)\b/g;
   const parts = code.split(keywords);
   return parts.map((part, i) => {
-    if (keywords.test(part)) return <span key={i} style={{ color: '#ff79c6' }}>{part}</span>;
+    if (keywords.test(part)) return <span key={i} style={{ color: 'var(--color-pink)' }}>{part}</span>;
     return <span key={i} style={{ color: 'var(--text)' }}>{part}</span>;
   });
 };

@@ -321,7 +321,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                 <div className="friend-card-actions">
                   <button className="friend-btn" onClick={() => openProfile(user.id)}>{t("view")}</button>
                   {pendingInviteTargetId === user.id ? (
-                    <button className="friend-btn friend-btn--danger" style={{ background: 'transparent', border: '1px solid #ff5555' }} onClick={() => onCancelInvite && onCancelInvite()}>{t("cancelInvite") || t("cancel")}</button>
+                    <button className="friend-btn friend-btn--danger" style={{ background: 'transparent', border: '1px solid var(--color-red)' }} onClick={() => onCancelInvite && onCancelInvite()}>{t("cancelInvite") || t("cancel")}</button>
                   ) : (
                     <button className="friend-btn friend-btn--danger" onClick={() => { setInviteFlowTarget(user); setInviteFlowStep('MODE'); setUplinkProblems([]); }}>{t("duelBtn")}</button>
                   )}
@@ -470,7 +470,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
             <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>{removeFriendConfirmText}</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <button className="twm-btn" onClick={() => setUnfriendConfirm(null)}>{t("cancel")}</button>
-              <button className="twm-btn twm-btn-primary" style={{ background: '#ff5555', color: '#fff', border: 'none' }} onClick={() => handleUnfriend(unfriendConfirm.id)}>{t("removeBtn") || t("remove")}</button>
+              <button className="twm-btn twm-btn-primary" style={{ background: 'var(--color-red)', color: '#fff', border: 'none' }} onClick={() => handleUnfriend(unfriendConfirm.id)}>{t("removeBtn") || t("remove")}</button>
             </div>
           </div>
         </div>
@@ -493,7 +493,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#38bdf8';
+                  e.currentTarget.style.borderColor = 'var(--color-blue)';
                   e.currentTarget.style.background = 'color-mix(in srgb, var(--bg) 88%, white)';
                 }}
                 onMouseLeave={(e) => {
@@ -505,10 +505,10 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   setInviteFlowStep('CONFIG');
                 }}
               >
-                <div style={{ fontSize: '2.5rem', color: '#38bdf8', filter: 'drop-shadow(0 4px 6px rgba(56,189,248,0.2))', display: 'flex', alignItems: 'center' }}><i className="nf nf-fa-chess_knight"></i></div>
+                <div style={{ fontSize: '2.5rem', color: 'var(--color-blue)', filter: 'drop-shadow(0 4px 6px rgba(56,189,248,0.2))', display: 'flex', alignItems: 'center' }}><i className="nf nf-fa-chess_knight"></i></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text)', letterSpacing: '0.05em' }}>
-                    CODE<span style={{ color: '#38bdf8' }}>KNIGHTS</span>
+                    CODE<span style={{ color: 'var(--color-blue)' }}>KNIGHTS</span>
                   </span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Standard 1v1 Algorithm Battle</span>
                 </div>
@@ -522,7 +522,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#50fa7b';
+                  e.currentTarget.style.borderColor = 'var(--color-green)';
                   e.currentTarget.style.background = 'color-mix(in srgb, var(--bg) 88%, white)';
                 }}
                 onMouseLeave={(e) => {
@@ -534,10 +534,10 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   setInviteFlowStep('CONFIG');
                 }}
               >
-                <div style={{ fontSize: '2.5rem', color: '#50fa7b', filter: 'drop-shadow(0 4px 6px rgba(80,250,123,0.2))', display: 'flex', alignItems: 'center' }}><i className="nf nf-fa-bug"></i></div>
+                <div style={{ fontSize: '2.5rem', color: 'var(--color-green)', filter: 'drop-shadow(0 4px 6px rgba(80,250,123,0.2))', display: 'flex', alignItems: 'center' }}><i className="nf nf-fa-bug"></i></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text)', letterSpacing: '0.05em' }}>
-                    BUG<span style={{ color: '#50fa7b' }}>HUNTER</span>
+                    BUG<span style={{ color: 'var(--color-green)' }}>HUNTER</span>
                   </span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Fix Broken Code Before the Enemy</span>
                 </div>
@@ -552,14 +552,14 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   cursor: 'not-allowed', textAlign: 'left', opacity: 0.5, position: 'relative'
                 }}
               >
-                <div style={{ fontSize: '2.5rem', color: '#ffb86c', display: 'flex', alignItems: 'center' }}><i className="nf nf-fa-coins"></i></div>
+                <div style={{ fontSize: '2.5rem', color: 'var(--color-orange)', display: 'flex', alignItems: 'center' }}><i className="nf nf-fa-coins"></i></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text)', letterSpacing: '0.05em' }}>
-                    HACK<span style={{ color: '#ffb86c' }}>BOUNTY</span>
+                    HACK<span style={{ color: 'var(--color-orange)' }}>BOUNTY</span>
                   </span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Exploit Code Vulnerabilities</span>
                 </div>
-                <div style={{ position: 'absolute', right: '1rem', top: '1rem', background: '#ffb86c', color: '#000', fontSize: '0.6rem', fontWeight: 900, padding: '0.2rem 0.5rem', borderRadius: '0.2rem' }}>WIP</div>
+                <div style={{ position: 'absolute', right: '1rem', top: '1rem', background: 'var(--color-orange)', color: '#000', fontSize: '0.6rem', fontWeight: 900, padding: '0.2rem 0.5rem', borderRadius: '0.2rem' }}>WIP</div>
               </button>
 
               <button 
@@ -571,14 +571,14 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                   cursor: 'not-allowed', textAlign: 'left', opacity: 0.5, position: 'relative'
                 }}
               >
-                <div style={{ fontSize: '2.5rem', color: '#bd93f9', display: 'flex', alignItems: 'center' }}><i className="nf nf-fa-hat_wizard"></i></div>
+                <div style={{ fontSize: '2.5rem', color: 'var(--color-purple)', display: 'flex', alignItems: 'center' }}><i className="nf nf-fa-hat_wizard"></i></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text)', letterSpacing: '0.05em' }}>
-                    ML<span style={{ color: '#bd93f9' }}>MAGES</span>
+                    ML<span style={{ color: 'var(--color-purple)' }}>MAGES</span>
                   </span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Train Models & Optimize Accuracy</span>
                 </div>
-                <div style={{ position: 'absolute', right: '1rem', top: '1rem', background: '#bd93f9', color: '#000', fontSize: '0.6rem', fontWeight: 900, padding: '0.2rem 0.5rem', borderRadius: '0.2rem' }}>WIP</div>
+                <div style={{ position: 'absolute', right: '1rem', top: '1rem', background: 'var(--color-purple)', color: '#000', fontSize: '0.6rem', fontWeight: 900, padding: '0.2rem 0.5rem', borderRadius: '0.2rem' }}>WIP</div>
               </button>
             </div>
 
@@ -598,7 +598,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
       )}
 
       {inviteFlowTarget && inviteFlowStep === 'CONFIG' && (() => {
-        const themeColor = inviteConfig.gameMode === "BUGHUNTER" ? "#50fa7b" : "#ffb86c";
+        const themeColor = inviteConfig.gameMode === "BUGHUNTER" ? "var(--color-green)" : "var(--color-orange)";
         const calculatedUplinkTime = uplinkProblems.reduce((sum, diff) => {
           if (inviteConfig.gameMode === "BUGHUNTER") return sum + 8;
           return sum + (diff === 'EASY' ? 5 : diff === 'MEDIUM' ? 9 : 14);
@@ -647,12 +647,12 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                         onDragEnd={() => setDraggedProblemIndex(null)}
                         style={{ 
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                          background: draggedProblemIndex === idx ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)', 
+                          background: draggedProblemIndex === idx ? 'var(--panel-border)' : 'rgba(0,0,0,0.2)', 
                           border: '1px solid var(--line)', borderRadius: '0.4rem', padding: '0.5rem 0.75rem',
                           cursor: 'grab', opacity: draggedProblemIndex === idx ? 0.5 : 1
                         }}
                       >
-                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color: inviteConfig.gameMode === "BUGHUNTER" ? '#50fa7b' : p === 'EASY' ? '#50fa7b' : p === 'MEDIUM' ? '#ffb86c' : '#bd93f9' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color: inviteConfig.gameMode === "BUGHUNTER" ? 'var(--color-green)' : p === 'EASY' ? 'var(--color-green)' : p === 'MEDIUM' ? 'var(--color-orange)' : 'var(--color-purple)' }}>
                           {idx + 1}. {p} (+{inviteConfig.gameMode === "BUGHUNTER" ? 8 : p === 'EASY' ? 5 : p === 'MEDIUM' ? 9 : 14} mins)
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -672,7 +672,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                           </button>
                           <button
                             onClick={() => setUplinkProblems(prev => prev.filter((_, i) => i !== idx))}
-                            style={{ background: 'transparent', border: 'none', color: '#ff5555', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.2rem', borderRadius: '0.25rem' }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.2rem', borderRadius: '0.25rem' }}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -696,7 +696,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                         style={{
                           flex: '1 1 90px', padding: '0.6rem 0.25rem', borderRadius: '0.4rem',
                           border: '1px solid rgba(80, 250, 123, 0.3)', background: 'rgba(80, 250, 123, 0.05)',
-                          color: '#50fa7b', fontWeight: 900, fontSize: '0.75rem',
+                          color: 'var(--color-green)', fontWeight: 900, fontSize: '0.75rem',
                           cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer',
                           opacity: uplinkProblems.length >= 5 ? 0.3 : 1, transition: 'background 0.2s'
                         }}
@@ -709,21 +709,21 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                       <button
                         disabled={uplinkProblems.length >= 5}
                         onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'EASY'] : prev)}
-                        style={{ flex: 1, padding: '0.6rem 0.25rem', borderRadius: '0.4rem', border: '1px solid rgba(80, 250, 123, 0.3)', background: 'rgba(80, 250, 123, 0.05)', color: '#50fa7b', fontWeight: 900, fontSize: '0.75rem', cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer', opacity: uplinkProblems.length >= 5 ? 0.3 : 1 }}
+                        style={{ flex: 1, padding: '0.6rem 0.25rem', borderRadius: '0.4rem', border: '1px solid rgba(80, 250, 123, 0.3)', background: 'rgba(80, 250, 123, 0.05)', color: 'var(--color-green)', fontWeight: 900, fontSize: '0.75rem', cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer', opacity: uplinkProblems.length >= 5 ? 0.3 : 1 }}
                       >
                         + EASY (+5m)
                       </button>
                       <button
                         disabled={uplinkProblems.length >= 5}
                         onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'MEDIUM'] : prev)}
-                        style={{ flex: 1, padding: '0.6rem 0.25rem', borderRadius: '0.4rem', border: '1px solid rgba(255, 184, 108, 0.3)', background: 'rgba(255, 184, 108, 0.05)', color: '#ffb86c', fontWeight: 900, fontSize: '0.75rem', cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer', opacity: uplinkProblems.length >= 5 ? 0.3 : 1 }}
+                        style={{ flex: 1, padding: '0.6rem 0.25rem', borderRadius: '0.4rem', border: '1px solid rgba(255, 184, 108, 0.3)', background: 'rgba(255, 184, 108, 0.05)', color: 'var(--color-orange)', fontWeight: 900, fontSize: '0.75rem', cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer', opacity: uplinkProblems.length >= 5 ? 0.3 : 1 }}
                       >
                         + MEDIUM (+9m)
                       </button>
                       <button
                         disabled={uplinkProblems.length >= 5}
                         onClick={() => setUplinkProblems(prev => prev.length < 5 ? [...prev, 'HARD'] : prev)}
-                        style={{ flex: 1, padding: '0.6rem 0.25rem', borderRadius: '0.4rem', border: '1px solid rgba(189, 147, 249, 0.3)', background: 'rgba(189, 147, 249, 0.05)', color: '#bd93f9', fontWeight: 900, fontSize: '0.75rem', cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer', opacity: uplinkProblems.length >= 5 ? 0.3 : 1 }}
+                        style={{ flex: 1, padding: '0.6rem 0.25rem', borderRadius: '0.4rem', border: '1px solid rgba(189, 147, 249, 0.3)', background: 'rgba(189, 147, 249, 0.05)', color: 'var(--color-purple)', fontWeight: 900, fontSize: '0.75rem', cursor: uplinkProblems.length >= 5 ? 'not-allowed' : 'pointer', opacity: uplinkProblems.length >= 5 ? 0.3 : 1 }}
                       >
                         + HARD (+14m)
                       </button>
@@ -734,7 +734,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
 
               {/* Time & Type Summary Block */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', border: '1px solid var(--line)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--panel-bg)', padding: '0.6rem 0.8rem', borderRadius: '0.4rem', border: '1px solid var(--line)' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>TOTAL TIME:</span>
                   <span style={{ fontSize: '0.8rem', fontWeight: 900, color: themeColor }}>{calculatedUplinkTime} MINUTES</span>
                 </div>
@@ -748,7 +748,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     <button
                       key={opt.label}
                       onClick={() => setUplinkIsRanked(opt.value)}
-                      style={{ padding: '0.4rem 0.8rem', borderRadius: '0.4rem', border: uplinkIsRanked === opt.value ? `2px solid ${themeColor}` : '1px solid var(--line)', background: uplinkIsRanked === opt.value ? `${themeColor}22` : 'rgba(0,0,0,0.2)', color: uplinkIsRanked === opt.value ? themeColor : 'var(--text)', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer' }}
+                      style={{ padding: '0.4rem 0.8rem', borderRadius: '0.4rem', border: uplinkIsRanked === opt.value ? `2px solid ${themeColor}` : '1px solid var(--line)', background: uplinkIsRanked === opt.value ? `color-mix(in srgb, ${themeColor} 15%, transparent)` : 'rgba(0,0,0,0.2)', color: uplinkIsRanked === opt.value ? themeColor : 'var(--text)', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer' }}
                     >
                       {opt.label}
                     </button>
@@ -763,7 +763,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = React.memo(({ t, open
                     setInviteFlowStep('MODE');
                     setUplinkProblems([]);
                   }}
-                  style={{ flex: 1, padding: '0.75rem', borderRadius: '0.4rem', border: '1px solid var(--line)', background: 'rgba(255,255,255,0.05)', color: 'var(--text)', fontWeight: 900, cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '0.75rem', borderRadius: '0.4rem', border: '1px solid var(--line)', background: 'var(--panel-bg-hover)', color: 'var(--text)', fontWeight: 900, cursor: 'pointer' }}
                 >
                   BACK
                 </button>

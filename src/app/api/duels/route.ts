@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
 
     let parsedProblems = Array.isArray(problems) && problems.length > 0 ? problems : ["EASY"];
     
-    // In HACKBOUNTY, both players get the same problem to break and fix.
-    // Thus we need exactly 1 problem.
+    // In HACKBOUNTY, players receive different problems to break and then swap.
+    // Thus we need exactly 2 problems.
     if (gameMode === "HACKBOUNTY") {
       parsedProblems = ["MIXED", "MIXED"];
     }

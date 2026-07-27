@@ -184,7 +184,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
   const baseDailyWins = profile.dailyWins ? (typeof profile.dailyWins === 'string' ? JSON.parse(profile.dailyWins) : profile.dailyWins) : {};
 
   const getSquareColor = (wins: number) => {
-    if (wins === 0) return 'rgba(255,255,255,0.05)';
+    if (wins === 0) return 'var(--panel-bg-hover)';
     if (wins < 2) return '#0e4429';
     if (wins < 5) return '#006d32';
     if (wins < 10) return '#26a641';
@@ -349,7 +349,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                 onZoomChange={setZoom}
               />
             </div>
-            <div style={{ width: '90%', maxWidth: '500px', marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '1rem' }}>
+            <div style={{ width: '90%', maxWidth: '500px', marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--panel-bg-hover)', padding: '1rem', borderRadius: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: '60px' }}>{t("zoom")}</span>
                  <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent)' }} />
@@ -362,14 +362,14 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
               </div>
             </div>
             <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-               <button className="twm-btn" style={{ padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.1)' }} onClick={() => setIsCropping(false)}>{t("cancel")}</button>
+               <button className="twm-btn" style={{ padding: '0.75rem 1.5rem', background: 'var(--panel-border)' }} onClick={() => setIsCropping(false)}>{t("cancel")}</button>
                <button className="twm-btn" style={{ background: 'var(--accent)', color: '#000', padding: '0.75rem 1.5rem', fontWeight: 600 }} onClick={handleCropSave}>{t("saveCrop")}</button>
             </div>
         </div>,
         document.body
       )}
       {/* Profile Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--panel-bg)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', display: 'flex' }}>
             <DefaultAvatar 
@@ -387,7 +387,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                 width: '18px', 
                 height: '18px', 
                 borderRadius: '50%', 
-                background: isOnline ? '#50fa7b' : 'var(--text-muted)', 
+                background: isOnline ? 'var(--color-green)' : 'var(--text-muted)', 
                 display: 'inline-block',
                 boxShadow: isOnline ? '0 0 10px rgba(80, 250, 123, 0.4)' : 'none',
                 border: '3px solid var(--bg)',
@@ -399,7 +399,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.75rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {profile.username || profile.name || "Knight"}
-                {isRoyal && <Crown size={20} color="#ffd700" fill="#ffd700" style={{ filter: "drop-shadow(0 0 5px rgba(255, 215, 0, 0.6))" }} />}
+                {isRoyal && <Crown size={20} color="var(--color-gold)" fill="var(--color-gold)" style={{ filter: "drop-shadow(0 0 5px rgba(255, 215, 0, 0.6))" }} />}
               </h2>
               {isAdmin && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--accent)', color: '#000', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>
@@ -408,7 +408,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                 </div>
               )}
               {isRoyal && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)', color: '#120824', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', boxShadow: '0 0 10px rgba(255, 215, 0, 0.4)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'linear-gradient(135deg, var(--color-gold) 0%, var(--color-orange) 100%)', color: '#120824', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', boxShadow: '0 0 10px rgba(255, 215, 0, 0.4)' }}>
                   <Crown size={12} fill="currentColor" />
                   ROYAL
                 </div>
@@ -421,15 +421,15 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{selectedGameMode === "BUGHUNTER" ? "BHP" : selectedGameMode === "HACKBOUNTY" ? "HBP" : "CKP"}</span>
-                  <span style={{ color: '#f1fa8c', fontWeight: 700, fontSize: '1.1rem' }}>{rating}</span>
+                  <span style={{ color: 'var(--color-yellow)', fontWeight: 700, fontSize: '1.1rem' }}>{rating}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Global Rank</span>
-                  <span style={{ color: '#bd93f9', fontWeight: 700, fontSize: '1.1rem' }}>#{profile.globalRank || '?'}</span>
+                  <span style={{ color: 'var(--color-purple)', fontWeight: 700, fontSize: '1.1rem' }}>#{profile.globalRank || '?'}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{t("battlesWon")}</span>
-                  <span style={{ color: '#50fa7b', fontWeight: 700, fontSize: '1.1rem' }}>{profile.battlesWon || 0}</span>
+                  <span style={{ color: 'var(--color-green)', fontWeight: 700, fontSize: '1.1rem' }}>{profile.battlesWon || 0}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Joined</span>
@@ -440,9 +440,9 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
         </div>
 
         {(!userId || userId === session?.user?.id) && (
-           <button onClick={() => setIsEditingProfile(!isEditingProfile)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}
-                   onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                   onMouseLeave={(e) => { e.currentTarget.style.background = isEditingProfile ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'; }}>
+           <button onClick={() => setIsEditingProfile(!isEditingProfile)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: isEditingProfile ? 'var(--panel-border)' : 'var(--panel-bg-hover)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}
+                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--panel-border)'; }}
+                   onMouseLeave={(e) => { e.currentTarget.style.background = isEditingProfile ? 'var(--panel-border)' : 'var(--panel-bg-hover)'; }}>
              <Settings size={16} />
              <span>{isEditingProfile ? t("cancel") : t("configureProfile")}</span>
            </button>
@@ -451,7 +451,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
       </div>
 
       {isEditingProfile ? (
-         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+         <div style={{ background: 'var(--panel-bg)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <h2 style={{ margin: 0, color: 'var(--text)', fontSize: '1.25rem' }}>{t("configureProfile")}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t("username") || "Username"}</label>
@@ -469,7 +469,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                     />
                     <label style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t("chooseNewPhoto")}</span>
-                        <div style={{ padding: '0.25rem 0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--line)', borderRadius: '0.3rem', fontSize: '0.8rem', fontWeight: 600 }}>{t("browse")}</div>
+                        <div style={{ padding: '0.25rem 0.75rem', background: 'var(--panel-bg-hover)', border: '1px solid var(--line)', borderRadius: '0.3rem', fontSize: '0.8rem', fontWeight: 600 }}>{t("browse")}</div>
                         <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
                     </label>
                 </div>
@@ -508,7 +508,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                    } finally {
                       setIsSaving(false);
                    }
-                }} style={{ padding: '0.75rem 1.5rem', background: saveSuccess ? '#50fa7b' : 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: isSaving ? 'wait' : 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                }} style={{ padding: '0.75rem 1.5rem', background: saveSuccess ? 'var(--color-green)' : 'var(--accent)', color: '#000', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: isSaving ? 'wait' : 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {isSaving && <Loader2 size={16} className="spin" />}
                   {saveSuccess && <Check size={16} />}
                   {saveSuccess ? t("saveSuccess") || "Saved Successfully!" : isSaving ? t("saving") || "Saving..." : t("saveChanges") || "Save Changes"}
@@ -519,13 +519,13 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t("passwordSettings") || "Password Settings"}</label>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--panel-bg)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--line)' }}>
                   {t("passwordProviderMessage") || "You are authenticated via a third-party provider (GitHub / Google). Password management is handled by your provider."}
                 </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-                <label style={{ fontSize: '0.85rem', color: '#ff5555', fontWeight: 600 }}>{t("dangerZone") || "Danger Zone"}</label>
+                <label style={{ fontSize: '0.85rem', color: 'var(--color-red)', fontWeight: 600 }}>{t("dangerZone") || "Danger Zone"}</label>
                 <div style={{ background: 'rgba(255,85,85,0.05)', border: '1px solid rgba(255,85,85,0.2)', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                     <span style={{ fontSize: '0.9rem', color: 'var(--text)', fontWeight: 600 }}>{t("deleteAccount") || "Delete Account"}</span>
@@ -541,16 +541,16 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                            }
                         });
                      }
-                  }} style={{ padding: '0.5rem 1rem', background: 'transparent', color: '#ff5555', border: '1px solid #ff5555', borderRadius: '0.4rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#ff5555'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ff5555'; }}>{t("deleteAccount") || "Delete Account"}</button>
+                  }} style={{ padding: '0.5rem 1rem', background: 'transparent', color: 'var(--color-red)', border: '1px solid var(--color-red)', borderRadius: '0.4rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-red)'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-red)'; }}>{t("deleteAccount") || "Delete Account"}</button>
                 </div>
             </div>
          </div>
       ) : (
       <>
       {/* Historical Data Wrapper */}
-      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <div style={{ background: 'var(--panel-bg)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text)', fontWeight: 800 }}>{t("historicalData") || "Historical Data"}</h2>
           
@@ -566,7 +566,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                   onClick={() => setSelectedGameMode(mode)}
                   style={{
                     padding: '0.3rem 0.6rem',
-                    background: isActive ? 'var(--accent)' : 'rgba(255, 255, 255, 0.03)',
+                    background: isActive ? 'var(--accent)' : 'var(--header-bg)',
                     color: isActive ? '#000' : 'var(--text-muted)',
                     border: '1px solid ' + (isActive ? 'var(--accent)' : 'var(--line)'),
                     borderRadius: '0.3rem',
@@ -587,7 +587,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive) {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                      e.currentTarget.style.background = 'var(--header-bg)';
                       e.currentTarget.style.color = 'var(--text-muted)';
                     }
                   }}
@@ -597,7 +597,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                     <span style={{ 
                       fontSize: '0.5rem', 
                       background: isActive ? 'rgba(0,0,0,0.15)' : 'rgba(255, 170, 0, 0.15)', 
-                      color: isActive ? '#000' : '#ffaa00', 
+                      color: isActive ? '#000' : 'var(--color-orange)', 
                       padding: '0.05rem 0.25rem', 
                       borderRadius: '0.15rem',
                       fontWeight: 800,
@@ -665,7 +665,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                                       <text x={padding.left - 10} y={yPos} fill="var(--text-muted)" fontSize="10" textAnchor="end" dominantBaseline="middle">
                                           {ratingVal}
                                       </text>
-                                      <line x1={padding.left} y1={yPos} x2={width - padding.right} y2={yPos} stroke="rgba(255,255,255,0.05)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                                      <line x1={padding.left} y1={yPos} x2={width - padding.right} y2={yPos} stroke="var(--panel-bg-hover)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                                   </g>
                               );
                           })}
@@ -687,7 +687,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                               return (
                                   <g key={i} className="chart-node" style={{ cursor: 'pointer' }}>
                                       <circle cx={x} cy={y} r="8" fill="transparent" />
-                                      <circle cx={x} cy={y} r={isPeak ? "5" : "4"} fill={isPeak ? "#f1fa8c" : "var(--accent)"} style={{ filter: isPeak ? 'drop-shadow(0 0 4px rgba(241, 250, 140, 0.8))' : 'none' }}>
+                                      <circle cx={x} cy={y} r={isPeak ? "5" : "4"} fill={isPeak ? "var(--color-yellow)" : "var(--accent)"} style={{ filter: isPeak ? 'drop-shadow(0 0 4px rgba(241, 250, 140, 0.8))' : 'none' }}>
                                       <title>{`${d.name}: ${d.rating} ${selectedGameMode === "BUGHUNTER" ? "BHP" : selectedGameMode === "HACKBOUNTY" ? "HBP" : "CKP"} ${isPeak ? '(Peak)' : ''}`}</title>
                                       </circle>
                                   </g>
@@ -737,7 +737,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 900, fontSize: '1.1rem', color: won ? '#50fa7b' : (isDraw ? 'var(--text-muted)' : '#ff5555') }}>
+                          <div style={{ fontWeight: 900, fontSize: '1.1rem', color: won ? 'var(--color-green)' : (isDraw ? 'var(--text-muted)' : 'var(--color-red)') }}>
                             {won ? "VICTORY" : (isDraw ? "DRAW" : "DEFEAT")}
                           </div>
                           {duel.finishReason && (
@@ -745,7 +745,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                                   {duel.finishReason}
                               </div>
                           )}
-                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: change >= 0 ? '#50fa7b' : '#ff5555' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: change >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
                             {change >= 0 ? `+${change}` : change}
                           </div>
                         </div>
@@ -755,7 +755,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                         <div style={{ marginTop: '1rem', borderTop: '1px dashed var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }} onClick={(e) => e.stopPropagation()}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>Your Code</div>
+                                    <div style={{ background: 'var(--panel-bg-hover)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>Your Code</div>
                                     <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
                                       {isHost ? (duel.hostCode ? (
                                           <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.hostCode); }}>
@@ -769,7 +769,7 @@ Joined: ${profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() :
                                     </div>
                                 </div>
                                 <div style={{ background: 'var(--bg)', borderRadius: '0.5rem', border: '1px solid var(--line)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{opponent?.username || opponent?.name || "Opponent"}&apos;s Code</div>
+                                    <div style={{ background: 'var(--panel-bg-hover)', padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{opponent?.username || opponent?.name || "Opponent"}&apos;s Code</div>
                                     <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
                                       {isHost ? (duel.guestCode ? (
                                           <button className="code-action-btn" onClick={(e) => { e.stopPropagation(); addToEditor?.(duel.guestCode); }}>

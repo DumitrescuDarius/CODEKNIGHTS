@@ -1,0 +1,12 @@
+const fs = require('fs');
+const content = fs.readFileSync('C:/Programming/Projects/fix/CODEKNIGHTS/src/components/windows/BattleWindow.tsx', 'utf8');
+
+const regex = /blur\(10px\)/g;
+let match;
+while ((match = regex.exec(content)) !== null) {
+  const start = Math.max(0, match.index - 200);
+  const end = Math.min(content.length, match.index + 200);
+  console.log(`Found at index ${match.index}:`);
+  console.log(content.substring(start, end));
+  console.log('---');
+}

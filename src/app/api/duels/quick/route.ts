@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       : ["EASY"];
 
     if (gameMode === "HACKBOUNTY") {
-      problemList = ["MIXED"];
+      problemList = ["MIXED", "MIXED"];
     }
 
     // Calculate total time: Easy = 5m, Medium = 9m, Hard = 14m
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
         gameMode: gameMode || 'CODEKNIGHTS',
         expiresAt: new Date(Date.now() + 30 * 60000),
         numProblems: problemList.length,
-        totalTime: calculatedTotalTime,
+        totalTime: gameMode === "HACKBOUNTY" ? 12 : calculatedTotalTime,
         difficulty: problemList.join(", ")
       },
       include: {

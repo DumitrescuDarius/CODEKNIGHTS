@@ -143,73 +143,96 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
         justifyContent: "center",
         padding: "2.5rem",
         boxSizing: "border-box",
-        background: "radial-gradient(circle at center, #1b0f30 0%, var(--bg) 100%)",
+        background: "radial-gradient(ellipse at top center, #261b07 0%, var(--bg) 80%)",
         overflowY: "auto",
         position: "relative"
       }}>
         {loading && <WindowSpinner message="Canceling membership..." />}
+        
+        {/* Animated Glow Behind Card */}
         <div style={{
-          background: "rgba(15, 10, 25, 0.55)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255, 215, 0, 0.25)",
-          borderRadius: "1.5rem",
+          position: "absolute",
+          width: "400px",
+          height: "400px",
+          background: "radial-gradient(circle, rgba(255, 215, 0, 0.08) 0%, rgba(0, 0, 0, 0) 70%)",
+          filter: "blur(40px)",
+          animation: "pulseGlow 4s infinite alternate",
+        }} />
+
+        <div style={{
+          position: "relative",
+          background: "rgba(10, 8, 15, 0.7)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          border: "1px solid rgba(255, 215, 0, 0.15)",
+          borderTop: "1px solid rgba(255, 215, 0, 0.3)",
+          borderRadius: "2rem",
           width: "100%",
-          maxWidth: "540px",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 35px rgba(255, 215, 0, 0.08)",
-          padding: "3rem 2.5rem",
+          maxWidth: "500px",
+          boxShadow: "0 30px 60px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.1)",
+          padding: "3.5rem 3rem",
           boxSizing: "border-box",
           textAlign: "center",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: "1.5rem",
+          gap: "2rem",
+          zIndex: 1
         }}>
           <div style={{
-            width: "70px",
-            height: "70px",
-            background: "linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)",
+            position: "relative",
+            width: "90px",
+            height: "90px",
+            background: "linear-gradient(135deg, #fff2a8 0%, #d4af37 50%, #996515 100%)",
             borderRadius: "50%",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "#120824",
-            boxShadow: "0 0 25px rgba(255, 215, 0, 0.3)",
+            boxShadow: "0 0 0 6px rgba(255, 215, 0, 0.1), 0 0 30px rgba(255, 215, 0, 0.5)",
           }}>
-            <Crown size={32} fill="currentColor" />
+            <Crown size={40} fill="currentColor" strokeWidth={1} />
+            <div style={{
+              position: "absolute",
+              inset: "-4px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 215, 0, 0.4)",
+              animation: "spin 10s linear infinite",
+            }} />
           </div>
 
           <div>
-            <h3 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#ffd700", margin: 0, letterSpacing: "0.02em" }}>
-              Royal Membership Active
+            <h3 style={{ fontSize: "1.8rem", fontWeight: 900, color: "#fff", margin: "0 0 0.5rem 0", letterSpacing: "0.03em" }}>
+              Royal Membership <span style={{ color: "var(--color-gold)" }}>Active</span>
             </h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0.5rem 0 0 0", lineHeight: "1.5" }}>
-              You are currently enjoying full CodeKnights Royal premium features.
+            <p style={{ fontSize: "0.95rem", color: "var(--text-muted)", margin: 0, lineHeight: "1.6" }}>
+              You are currently enjoying unrestricted access to the premium CodeKnights experience.
             </p>
           </div>
 
           <div style={{
-            background: "rgba(255, 255, 255, 0.02)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            borderRadius: "0.8rem",
+            background: "linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            borderRadius: "1rem",
             width: "100%",
-            padding: "1.2rem",
+            padding: "1.5rem",
             display: "flex",
             flexDirection: "column",
-            gap: "0.8rem",
+            gap: "1rem",
             textAlign: "left",
           }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "var(--text-muted)", letterSpacing: "0.05em" }}>INCLUDED BENEFITS</span>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text)" }}>
-                <Check size={14} color="#ffd700" strokeWidth={3} />
+            <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "var(--color-gold)", letterSpacing: "0.1em" }}>YOUR PERKS</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", fontSize: "0.9rem", color: "var(--text)" }}>
+                <div style={{ background: "rgba(255,215,0,0.15)", borderRadius: "50%", padding: "4px" }}><Check size={14} color="var(--color-gold)" strokeWidth={3} /></div>
                 <span>Unlimited AI Assistant Prompts</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text)" }}>
-                <Check size={14} color="#ffd700" strokeWidth={3} />
+              <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", fontSize: "0.9rem", color: "var(--text)" }}>
+                <div style={{ background: "rgba(255,215,0,0.15)", borderRadius: "50%", padding: "4px" }}><Check size={14} color="var(--color-gold)" strokeWidth={3} /></div>
                 <span>Exclusive Gold Crown PFP Badges</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text)" }}>
-                <Check size={14} color="#ffd700" strokeWidth={3} />
+              <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", fontSize: "0.9rem", color: "var(--text)" }}>
+                <div style={{ background: "rgba(255,215,0,0.15)", borderRadius: "50%", padding: "4px" }}><Check size={14} color="var(--color-gold)" strokeWidth={3} /></div>
                 <span>Access to Premium WIP Game Modes</span>
               </div>
             </div>
@@ -217,30 +240,29 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
 
           {validationError && (
             <div style={{
-              background: "rgba(255, 85, 85, 0.08)",
-              border: "1px solid rgba(255, 85, 85, 0.25)",
-              color: "#ff5555",
-              borderRadius: "0.5rem",
-              padding: "0.75rem",
-              fontSize: "0.8rem",
+              background: "rgba(255, 85, 85, 0.1)",
+              borderLeft: "3px solid var(--color-red)",
+              color: "var(--color-red)",
+              borderRadius: "0.4rem",
+              padding: "1rem",
+              fontSize: "0.85rem",
               fontWeight: 600,
               width: "100%",
+              textAlign: "left"
             }}>
               {validationError}
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", width: "100%", marginTop: "0.5rem" }}>
+          <div style={{ width: "100%", marginTop: "1rem" }}>
             <button
               onClick={handleCancelSubscription}
               disabled={loading}
               style={{
-                background: "rgba(255, 85, 85, 0.06)",
-                color: "#ff5555",
-                border: "1px solid rgba(255, 85, 85, 0.2)",
-                borderRadius: "0.6rem",
-                padding: "0.75rem 1rem",
-                fontWeight: 700,
+                background: "transparent",
+                color: "var(--text-muted)",
+                border: "none",
+                fontWeight: 600,
                 fontSize: "0.85rem",
                 cursor: loading ? "not-allowed" : "pointer",
                 display: "flex",
@@ -248,30 +270,27 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
                 justifyContent: "center",
                 gap: "0.5rem",
                 transition: "all 0.2s",
+                padding: "0.75rem 1rem",
+                width: "100%",
+                borderRadius: "0.75rem"
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.background = "rgba(255, 85, 85, 0.12)";
-                  e.currentTarget.style.borderColor = "rgba(255, 85, 85, 0.4)";
+                  e.currentTarget.style.background = "rgba(255, 85, 85, 0.08)";
+                  e.currentTarget.style.color = "var(--color-red)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.background = "rgba(255, 85, 85, 0.06)";
-                  e.currentTarget.style.borderColor = "rgba(255, 85, 85, 0.2)";
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "var(--text-muted)";
                 }
               }}
             >
               {loading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Canceling Membership...
-                </>
+                <><Loader2 size={16} className="animate-spin" /> Canceling Membership...</>
               ) : (
-                <>
-                  <AlertTriangle size={14} />
-                  Cancel Royal Membership
-                </>
+                <><AlertTriangle size={16} /> Cancel Royal Membership</>
               )}
             </button>
           </div>
@@ -290,71 +309,86 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
         alignItems: "center",
         justifyContent: "center",
         padding: "2rem",
-        background: "radial-gradient(circle at center, rgba(30, 20, 50, 0.45) 0%, rgba(12, 8, 23, 0.75) 100%)",
+        background: "radial-gradient(ellipse at top center, #261b07 0%, var(--bg) 100%)",
         textAlign: "center",
-        gap: "1.5rem",
         boxSizing: "border-box",
+        position: "relative"
       }}>
+        {/* Animated Particles/Glow */}
+        <div style={{
+          position: "absolute",
+          width: "500px",
+          height: "500px",
+          background: "radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, rgba(0, 0, 0, 0) 60%)",
+          filter: "blur(50px)",
+          animation: "pulseGlow 3s infinite alternate",
+        }} />
+
         <div style={{
           position: "relative",
+          zIndex: 1,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
+          gap: "1.5rem"
         }}>
           <div style={{
-            position: "absolute",
-            width: "120px",
-            height: "120px",
-            background: "radial-gradient(circle, rgba(255, 215, 0, 0.25) 0%, rgba(255, 215, 0, 0) 70%)",
-            filter: "blur(6px)",
-          }} />
-          <div style={{
-            width: "80px",
-            height: "80px",
-            background: "linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)",
+            width: "100px",
+            height: "100px",
+            background: "linear-gradient(135deg, #fff2a8 0%, #d4af37 50%, #996515 100%)",
             borderRadius: "50%",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "#120824",
-            boxShadow: "0 0 30px rgba(255, 215, 0, 0.4)",
+            boxShadow: "0 0 0 10px rgba(255, 215, 0, 0.1), 0 0 50px rgba(255, 215, 0, 0.6)",
           }}>
-            <Crown size={38} fill="currentColor" />
+            <Crown size={48} fill="currentColor" strokeWidth={1} />
           </div>
+
+          <h3 style={{
+            fontSize: "2.2rem",
+            fontWeight: 900,
+            background: "linear-gradient(135deg, #fff2a8 0%, var(--color-gold) 50%, #d4af37 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            margin: "1rem 0 0 0",
+            letterSpacing: "0.02em",
+          }}>
+            WELCOME TO ROYALTY
+          </h3>
+
+          <p style={{ color: "var(--text-muted)", fontSize: "1.05rem", maxWidth: "480px", margin: 0, lineHeight: "1.6" }}>
+            Your account is now upgraded to <strong style={{ color: "var(--color-gold)" }}>CodeKnights Royal</strong>. Your gold crown badge has been unlocked across the platform.
+          </p>
+
+          <button
+            onClick={() => setSuccess(false)}
+            style={{
+              background: "linear-gradient(135deg, #fff2a8 0%, #d4af37 100%)",
+              border: "none",
+              color: "#120824",
+              padding: "0.8rem 2rem",
+              borderRadius: "2rem",
+              fontSize: "1rem",
+              fontWeight: 800,
+              cursor: "pointer",
+              marginTop: "1.5rem",
+              boxShadow: "0 10px 20px -5px rgba(255, 215, 0, 0.4)",
+              transition: "transform 0.2s, box-shadow 0.2s"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 15px 25px -5px rgba(255, 215, 0, 0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "none";
+              e.currentTarget.style.boxShadow = "0 10px 20px -5px rgba(255, 215, 0, 0.4)";
+            }}
+          >
+            Enter the Arena
+          </button>
         </div>
-
-        <h3 style={{
-          fontSize: "1.8rem",
-          fontWeight: 900,
-          background: "linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          margin: 0,
-          letterSpacing: "0.05em",
-        }}>
-          ROYAL STATUS CONFIRMED!
-        </h3>
-
-        <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", maxWidth: "420px", margin: 0, lineHeight: "1.5" }}>
-          Thank you for subscribing! Your account has been successfully upgraded to <strong style={{ color: "#ffd700" }}>CodeKnights Royal</strong>. Your gold crown badge is now active.
-        </p>
-
-        <button
-          onClick={() => setSuccess(false)}
-          style={{
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid var(--line)",
-            color: "var(--text)",
-            padding: "0.6rem 1.2rem",
-            borderRadius: "0.5rem",
-            fontSize: "0.85rem",
-            fontWeight: 600,
-            cursor: "pointer",
-            marginTop: "0.5rem",
-          }}
-        >
-          Manage Membership
-        </button>
       </div>
     );
   }
@@ -367,74 +401,103 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      padding: "2.5rem",
+      padding: "1rem",
       boxSizing: "border-box",
-      background: "radial-gradient(circle at center, #1b0f30 0%, var(--bg) 100%)",
+      background: "radial-gradient(ellipse at top center, #1e1505 0%, var(--bg) 80%)",
       overflowY: "auto",
       position: "relative"
     }}>
       {loading && <WindowSpinner message="Processing payment..." />}
-      {/* Central Glassmorphic Double-pane Container */}
+      
+      {/* Background Ambience */}
       <div style={{
-        background: "rgba(15, 10, 25, 0.55)",
-        backdropFilter: "blur(20px)",
+        position: "absolute",
+        top: "20%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "70vw",
+        height: "50vh",
+        background: "radial-gradient(ellipse at center, rgba(255, 215, 0, 0.05) 0%, rgba(0,0,0,0) 70%)",
+        filter: "blur(60px)",
+        pointerEvents: "none"
+      }} />
+
+      {/* Main Container - Banner Style */}
+      <div style={{
+        background: "rgba(10, 8, 15, 0.7)",
+        backdropFilter: "blur(30px)",
+        WebkitBackdropFilter: "blur(30px)",
         border: "1px solid rgba(255, 215, 0, 0.15)",
-        borderRadius: "1.5rem",
+        borderTop: "1px solid rgba(255, 215, 0, 0.4)",
+        borderRadius: "1rem",
         width: "100%",
-        maxWidth: "800px",
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.05)",
+        maxWidth: "850px",
+        boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.05)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "row",
-        flexWrap: "wrap",
+        position: "relative",
+        zIndex: 1
       }}>
         {/* Left Pane: Perks list */}
         <div style={{
-          flex: "1 1 350px",
-          padding: "2.5rem",
+          flex: "1 1 50%",
+          padding: "1.5rem 2rem",
           display: "flex",
           flexDirection: "column",
-          gap: "1.5rem",
-          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.01) 0%, rgba(255, 255, 255, 0.02) 100%)",
-          borderRight: "1px solid rgba(255, 255, 255, 0.06)",
+          position: "relative",
+          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)",
+          borderRight: "1px solid rgba(255, 255, 255, 0.05)",
           boxSizing: "border-box",
         }}>
+          {/* Decorative Corner Glow */}
+          <div style={{
+            position: "absolute",
+            top: 0, left: 0,
+            width: "100px", height: "100px",
+            background: "radial-gradient(circle at top left, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0) 70%)",
+            pointerEvents: "none"
+          }} />
+
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-              <Crown size={20} color="#ffd700" fill="#ffd700" />
-              <span style={{ fontSize: "0.75rem", fontWeight: 900, letterSpacing: "0.15em", color: "#ffd700" }}>CODEKNIGHTS ROYAL</span>
+              <div style={{ background: "rgba(255,215,0,0.15)", borderRadius: "6px", padding: "4px" }}>
+                <Crown size={16} color="var(--color-gold)" fill="var(--color-gold)" />
+              </div>
+              <span style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.2em", color: "var(--color-gold)" }}>PREMIUM</span>
             </div>
-            <h3 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)", margin: 0 }}>
-              Unlock Ultimate Perks
+            <h3 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.1 }}>
+              CodeKnights <span style={{ background: "linear-gradient(135deg, #fff2a8 0%, #d4af37 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Royal</span>
             </h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0.25rem 0 0 0", lineHeight: "1.4" }}>
-              Upgrade your coder profile and get unrestricted entry to the premium arenas.
+            <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.6)", margin: "0.5rem 0 0 0", lineHeight: "1.4" }}>
+              Unlock the ultimate competitive coding experience and exclusive gamemodes.
             </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem", marginTop: "0.5rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", marginTop: "1.2rem", flex: 1, justifyContent: "center" }}>
             {[
-              { title: "Gold Royal Badge", desc: "A sleek gold crown badge next to your username on profiles, boards, and invites." },
-              { title: "WIP Game Modes Unlocked", desc: "Instant access to BUG HUNTER, HACK BOUNTY, and MLMAGES modes." },
-              { title: "Unlimited Matches", desc: "Bypass queue rate limits. Battle as much and as fast as you want." },
-              { title: "Elite Profile Glow", desc: "Premium styling configurations for your workspace cards." },
+              { title: "Gold Royal Badge", desc: "A sleek gold crown next to your username." },
+              { title: "WIP Game Modes", desc: "Instant access to BUG HUNTER & MLMAGES." },
+              { title: "Unlimited Matches", desc: "Bypass queue limits. Battle without boundaries." },
+              { title: "Unlimited AI Access", desc: "Query the Agent as much as you want." },
             ].map((perk, i) => (
               <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
                 <div style={{
-                  background: "rgba(255, 215, 0, 0.1)",
-                  color: "#ffd700",
+                  background: "rgba(255, 215, 0, 0.08)",
+                  border: "1px solid rgba(255, 215, 0, 0.2)",
+                  color: "var(--color-gold)",
                   borderRadius: "50%",
-                  padding: "0.2rem",
+                  padding: "0.25rem",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   marginTop: "0.1rem",
                 }}>
-                  <Check size={13} strokeWidth={3} />
+                  <Check size={12} strokeWidth={3} />
                 </div>
                 <div>
-                  <strong style={{ display: "block", fontSize: "0.9rem", color: "var(--text)", fontWeight: 700 }}>{perk.title}</strong>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: "1.4" }}>{perk.desc}</span>
+                  <strong style={{ display: "block", fontSize: "0.85rem", color: "#fff", fontWeight: 700, marginBottom: "0.1rem" }}>{perk.title}</strong>
+                  <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", lineHeight: "1.2", display: "block" }}>{perk.desc}</span>
                 </div>
               </div>
             ))}
@@ -443,19 +506,20 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
 
         {/* Right Pane: Stripe Card Form */}
         <div style={{
-          flex: "1 1 350px",
-          padding: "2.5rem",
+          flex: "1 1 50%",
+          padding: "1.5rem 2rem",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           boxSizing: "border-box",
+          background: "rgba(0,0,0,0.2)"
         }}>
           {infoMessage && (
             <div style={{
-              background: "rgba(80, 250, 123, 0.08)",
-              border: "1px solid rgba(80, 250, 123, 0.25)",
-              color: "#50fa7b",
-              borderRadius: "0.5rem",
+              background: "rgba(80, 250, 123, 0.1)",
+              borderLeft: "3px solid var(--color-green)",
+              color: "var(--color-green)",
+              borderRadius: "0.4rem",
               padding: "0.75rem",
               fontSize: "0.8rem",
               fontWeight: 600,
@@ -468,27 +532,24 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
           <form onSubmit={handlePayment} style={{
             display: "flex",
             flexDirection: "column",
-            gap: "1.25rem",
+            gap: "1rem",
           }}>
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)" }}>PLAN</span>
-                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#ffd700", background: "rgba(255, 215, 0, 0.1)", padding: "0.15rem 0.4rem", borderRadius: "0.25rem" }}>MONTHLY</span>
+            <div style={{ background: "rgba(255,215,0,0.03)", border: "1px solid rgba(255,215,0,0.1)", borderRadius: "0.75rem", padding: "0.75rem 1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <span style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", marginBottom: "0.1rem" }}>SUBSCRIPTION</span>
+                <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>Monthly Plan</span>
               </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginTop: "0.25rem" }}>
-                <span style={{ fontSize: "1.8rem", fontWeight: 900, color: "var(--text)" }}>$9.99</span>
-                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>/ month</span>
+              <div style={{ textAlign: "right" }}>
+                <span style={{ display: "block", fontSize: "1.2rem", fontWeight: 900, color: "var(--color-gold)" }}>$9.99</span>
               </div>
             </div>
 
-            <div style={{ height: "1px", background: "rgba(255,255,255,0.06)" }} />
-
             {validationError && (
               <div style={{
-                background: "rgba(255, 85, 85, 0.08)",
-                border: "1px solid rgba(255, 85, 85, 0.25)",
-                color: "#ff5555",
-                borderRadius: "0.5rem",
+                background: "rgba(255, 85, 85, 0.1)",
+                borderLeft: "3px solid var(--color-red)",
+                color: "var(--color-red)",
+                borderRadius: "0.4rem",
                 padding: "0.75rem",
                 fontSize: "0.8rem",
                 fontWeight: 600,
@@ -497,9 +558,9 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
               </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)" }}>CARDHOLDER NAME</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.05em" }}>CARDHOLDER NAME</label>
                 <input
                   type="text"
                   placeholder="John Doe"
@@ -507,19 +568,22 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
                   onChange={(e) => setCardName(e.target.value)}
                   required
                   style={{
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid var(--line)",
+                    background: "rgba(0,0,0,0.3)",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     borderRadius: "0.5rem",
-                    padding: "0.6rem 0.8rem",
-                    color: "var(--text)",
+                    padding: "0.6rem 0.75rem",
+                    color: "#fff",
                     fontSize: "0.85rem",
                     outline: "none",
+                    transition: "border-color 0.2s"
                   }}
+                  onFocus={(e) => e.target.style.borderColor = "rgba(255,215,0,0.5)"}
+                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
                 />
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)" }}>CARD NUMBER</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.05em" }}>CARD NUMBER</label>
                 <div style={{ position: "relative" }}>
                   <input
                     type="text"
@@ -528,24 +592,28 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
                     onChange={handleCardNumberChange}
                     required
                     style={{
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid var(--line)",
+                      background: "rgba(0,0,0,0.3)",
+                      border: "1px solid rgba(255,255,255,0.1)",
                       borderRadius: "0.5rem",
-                      padding: "0.6rem 0.8rem 0.6rem 2.2rem",
-                      color: "var(--text)",
+                      padding: "0.6rem 0.75rem 0.6rem 2.2rem",
+                      color: "#fff",
                       fontSize: "0.85rem",
                       outline: "none",
                       width: "100%",
                       boxSizing: "border-box",
+                      transition: "border-color 0.2s",
+                      letterSpacing: "1px"
                     }}
+                    onFocus={(e) => e.target.style.borderColor = "rgba(255,215,0,0.5)"}
+                    onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
                   />
-                  <CreditCard size={16} color="var(--text-muted)" style={{ position: "absolute", left: "0.8rem", top: "50%", transform: "translateY(-50%)" }} />
+                  <CreditCard size={14} color="rgba(255,255,255,0.4)" style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)" }} />
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                  <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)" }}>EXPIRY DATE</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.05em" }}>EXPIRY DATE</label>
                   <input
                     type="text"
                     placeholder="MM/YY"
@@ -553,33 +621,39 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
                     onChange={handleExpiryChange}
                     required
                     style={{
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid var(--line)",
+                      background: "rgba(0,0,0,0.3)",
+                      border: "1px solid rgba(255,255,255,0.1)",
                       borderRadius: "0.5rem",
-                      padding: "0.6rem 0.8rem",
-                      color: "var(--text)",
+                      padding: "0.6rem 0.75rem",
+                      color: "#fff",
                       fontSize: "0.85rem",
                       outline: "none",
+                      transition: "border-color 0.2s"
                     }}
+                    onFocus={(e) => e.target.style.borderColor = "rgba(255,215,0,0.5)"}
+                    onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
                   />
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                  <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)" }}>CVC</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.05em" }}>CVC</label>
                   <input
-                    type="password"
-                    placeholder="123"
-                    value={cardCvc}
-                    onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    required
-                    style={{
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid var(--line)",
-                      borderRadius: "0.5rem",
-                      padding: "0.6rem 0.8rem",
-                      color: "var(--text)",
-                      fontSize: "0.85rem",
-                      outline: "none",
-                    }}
+                     type="password"
+                     placeholder="123"
+                     value={cardCvc}
+                     onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                     required
+                     style={{
+                       background: "rgba(0,0,0,0.3)",
+                       border: "1px solid rgba(255,255,255,0.1)",
+                       borderRadius: "0.5rem",
+                       padding: "0.6rem 0.75rem",
+                       color: "#fff",
+                       fontSize: "0.85rem",
+                       outline: "none",
+                       transition: "border-color 0.2s"
+                     }}
+                     onFocus={(e) => e.target.style.borderColor = "rgba(255,215,0,0.5)"}
+                     onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
                   />
                 </div>
               </div>
@@ -589,39 +663,52 @@ export const RoyalWindow: React.FC<RoyalWindowProps> = ({ session, t, onUpgradeS
               type="submit"
               disabled={loading}
               style={{
-                background: "linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)",
+                background: "linear-gradient(135deg, var(--color-gold) 0%, var(--color-orange) 100%)",
                 color: "#120824",
                 border: "none",
                 borderRadius: "0.5rem",
-                padding: "0.8rem 1rem",
-                fontWeight: 800,
-                fontSize: "0.9rem",
+                padding: "0.75rem",
+                fontWeight: 900,
+                fontSize: "0.85rem",
                 cursor: loading ? "not-allowed" : "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "0.5rem",
-                boxShadow: "0 4px 12px rgba(255, 170, 0, 0.3)",
-                transition: "opacity 0.2s",
-                marginTop: "0.5rem",
+                boxShadow: "0 5px 15px -5px rgba(255, 170, 0, 0.4)",
+                transition: "transform 0.2s, box-shadow 0.2s",
+                marginTop: "0.25rem",
+                letterSpacing: "0.02em"
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow = "0 8px 20px -5px rgba(255, 170, 0, 0.5)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "none";
+                  e.currentTarget.style.boxShadow = "0 5px 15px -5px rgba(255, 170, 0, 0.4)";
+                }
               }}
             >
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Processing...
+                  PROCESSING...
                 </>
               ) : (
                 <>
-                  <Lock size={14} />
-                  Secure Stripe Checkout
+                  <Lock size={14} strokeWidth={2.5} />
+                  SECURE CHECKOUT
                 </>
               )}
             </button>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", color: "var(--text-muted)", fontSize: "0.7rem", marginTop: "0.25rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", color: "rgba(255,255,255,0.4)", fontSize: "0.7rem" }}>
               <ShieldCheck size={12} />
-              <span>Stripe payment processing. Encrypted SSL.</span>
+              <span>Stripe 256-bit SSL encrypted payment.</span>
             </div>
           </form>
         </div>
