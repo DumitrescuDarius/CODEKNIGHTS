@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { loader } from "@monaco-editor/react";
-import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag, Zap, Loader2, Sparkles } from "lucide-react";
+import { Settings, Code, Trophy, ArrowLeft, ArrowRight, X, Sword, User, LogOut, ChevronRight, Users, RotateCcw, Wand2, Target, Play, Database, Maximize2, Minimize2, LogIn, AlertCircle, Flame, BookOpen, Github, Shield, FileText, StickyNote, Brain, MessageSquare, Crown, Check, Send, Flag, Zap, Loader2, Sparkles, MousePointer2 } from "lucide-react";
 import { Tour, TourStep } from "./Tour";
 import { initVimMode } from "monaco-vim";
 import { motion, AnimatePresence } from "framer-motion";
@@ -685,14 +685,35 @@ const MainMenu: React.FC = () => {
   }, [showRatingChangePopup]);
 
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
+  const [showDemoPopup, setShowDemoPopup] = useState(false);
+  const [showDragAnimation, setShowDragAnimation] = useState(false);
+
+  const DEMO_STEPS: TourStep[] = useMemo(() => [
+    { target: '[data-tour="battle-btn"]', title: "The Battle Arena", content: "Click here to open the Battle Window and explore the real-time matchmaking system powered by Socket.io and PostgreSQL.", position: "right", nextOnClickTarget: true, disableNext: true, action: () => { setOpenWindows(["editor"]); setWindowFlexes([1]); } },
+    { target: '.window-battle', title: "Battle Window", content: "This window connects to our custom WebSocket layer for live presence and Elo-based matchmaking.", position: "top" },
+    { target: '.battle-mode-selector-btn', title: "Game Modes", content: "Expand this to explore the modular game mode architectures.", position: "right", nextOnClickTarget: true, disableNext: true },
+    { target: '.mode-btn-codeknights', title: "CodeKnights Mode", content: "The classic competitive mode. Code is executed in sandboxed Docker containers with millisecond precision.", position: "right", nextOnClickTarget: true, disableNext: true },
+    { target: '.battle-mode-selector-btn', title: "Change Mode", content: "Click the selector again to see other game modes.", position: "right", nextOnClickTarget: true, disableNext: true },
+    { target: '.mode-btn-bughunter', title: "BugHunter Mode", content: "Select BugHunter mode, which challenges you to find and patch vulnerabilities using a dynamic abstract syntax tree parser.", position: "right", nextOnClickTarget: true, disableNext: true },
+    { target: '.battle-mode-selector-btn', title: "Change Mode", content: "Click the selector one more time.", position: "right", nextOnClickTarget: true, disableNext: true },
+    { target: '.mode-btn-hackbounty', title: "HackBounty Mode", content: "Select HackBounty mode, utilizing our custom reverse-engineering validation engine.", position: "right", nextOnClickTarget: true, disableNext: true },
+    { target: '[data-tour="notes-btn"]', title: "Infinite Notes", content: "Open the Notes canvas. A React Flow-inspired infinite SVG panning surface with local-first persistent storage.", position: "left", nextOnClickTarget: true, disableNext: true, action: () => { setOpenWindows(["editor"]); setWindowFlexes([1]); } },
+    { target: '.window-notes', title: "Write a Note", content: "Double click the canvas to spawn a node, then type inside it to trigger a React state update cycle.", position: "top", advanceOnEvent: 'demo-note-written', disableNext: true, allowInteraction: true },
+    { target: '[data-tour="agent-btn"]', title: "AI Agent", content: "Open the AI Assistant. This leverages Google Gemini and specialized context-windowing for code parsing.", position: "left", nextOnClickTarget: true, disableNext: true, action: () => { setOpenWindows(["editor"]); setWindowFlexes([1]); } },
+    { target: '.window-agent', title: "Drag Context", content: "Drag the title bar of the Editor window and drop it here. Our React HTML5 drag-and-drop layer will dynamically inject the AST context.", position: "top", advanceOnEvent: 'demo-context-dropped', disableNext: true, allowInteraction: "full-screen", action: () => setShowDragAnimation(true) },
+    { target: '.window-agent', title: "Demo Complete", content: "You've explored the platform's core architecture! Built on Next.js 14 App Router and Monaco Editor. Click Finish to exit.", position: "top", action: () => setShowDragAnimation(false) }
+  ], [session]);
   useEffect(() => {
     if (typeof window !== "undefined" && status === "authenticated") {
-      const seen = localStorage.getItem("ck-tutorial-seen");
-      if (!seen) {
-        setShowWelcomePopup(true);
+      const hasUsername = session?.user && (session.user as any).username;
+      if (hasUsername) {
+        const seen = localStorage.getItem("ck-tutorial-seen");
+        if (!seen) {
+          setShowWelcomePopup(true);
+        }
       }
     }
-  }, [status]);
+  }, [status, session]);
 
   const [showWaitingPopup, setShowWaitingPopup] = useState(false);
   const [showInviteSentPopup, setShowInviteSentPopup] = useState(false);
@@ -2557,6 +2578,10 @@ const MainMenu: React.FC = () => {
 
   const toggleWindow = useCallback((id: WindowId) => {
     console.log("[MainMenu] toggleWindow called for:", id);
+
+    if (showDemoPopup && !["editor", "battle", "notes", "agent"].includes(id)) {
+      return; // Block unneeded windows during demo
+    }
     
     if (id === "agent") {
       const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
@@ -2660,7 +2685,7 @@ const MainMenu: React.FC = () => {
         return nextWindows;
       }
     });
-  }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow, setMaximizedWindow, setActiveWindow, setOpenWindows, setWindowFlexes, setActiveQuestion, setTestResults, setShowQuitConfirmation, setShowCancelDuel, setShowLimitWarning, maxWindows, setShowAiDisabledWarning]);
+  }, [activeQuestion, testResults, activeDuel, maximizedWindow, activeWindow, setMaximizedWindow, setActiveWindow, setOpenWindows, setWindowFlexes, setActiveQuestion, setTestResults, setShowQuitConfirmation, setShowCancelDuel, setShowLimitWarning, maxWindows, setShowAiDisabledWarning, showDemoPopup]);
 
   const openAgentWindow = useCallback(() => {
     const isDuelActive = activeDuel && activeDuel.status === "ACTIVE";
@@ -2935,6 +2960,9 @@ const MainMenu: React.FC = () => {
             onReinitIntro={() => {
               localStorage.removeItem("ck-tutorial-seen");
               setShowWelcomePopup(true);
+            }}
+            onStartDemo={() => {
+              setShowDemoPopup(true);
             }}
           />
         );
@@ -3325,6 +3353,29 @@ const MainMenu: React.FC = () => {
           localStorage.setItem("ck-tutorial-seen", "true"); 
         }} 
       />
+
+      <Tour
+        steps={DEMO_STEPS}
+        isOpen={showDemoPopup}
+        onClose={() => setShowDemoPopup(false)}
+        isDemo={true}
+      />
+
+      {showDragAnimation && showDemoPopup && typeof window !== "undefined" && (
+        <motion.div
+          initial={{ x: window.innerWidth * 0.25, y: window.innerHeight * 0.1, opacity: 0 }}
+          animate={{ 
+            x: [window.innerWidth * 0.25, window.innerWidth * 0.25, window.innerWidth * 0.75, window.innerWidth * 0.75],
+            y: [window.innerHeight * 0.1, window.innerHeight * 0.1, window.innerHeight * 0.6, window.innerHeight * 0.6],
+            opacity: [0, 1, 1, 0]
+          }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          style={{ position: 'fixed', zIndex: 10000, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', left: 0, top: 0 }}
+        >
+          <MousePointer2 size={32} color="var(--accent)" fill="var(--accent)" />
+          <div style={{ background: 'var(--accent)', color: '#000', padding: '0.2rem 0.5rem', borderRadius: '0.2rem', fontWeight: 'bold' }}>Drag Editor</div>
+        </motion.div>
+      )}
 
       <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', pointerEvents: 'none' }}>
         <AnimatePresence>
@@ -3767,7 +3818,7 @@ const MainMenu: React.FC = () => {
                     layout: getTransition(),
                     ...(animationSpeed === "none" ? { scale: { duration: 0 }, opacity: { duration: 0 } } : {})
                   }}
-                  className={`twm-window ${draggedWindow === id ? 'twm-window--dragging' : ''} ${activeWindow === id ? 'twm-window--active' : ''}`}
+                  className={`twm-window window-${id} ${draggedWindow === id ? 'twm-window--dragging' : ''} ${activeWindow === id ? 'twm-window--active' : ''}`}
                   style={{ flex: isMax ? 1 : (windowFlexes[originalIdx] || 1) }}
                   onMouseDown={() => setActiveWindow(id)}
                   onDragOver={(e) => e.preventDefault()}

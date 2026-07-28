@@ -853,7 +853,7 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
 
   return (
     <div 
-      className="window-content" 
+      className="window-content notes-window"
       style={{ 
         padding: 0, 
         overflow: 'hidden', 
@@ -1342,7 +1342,10 @@ export const NotesWindow: React.FC<NotesWindowProps> = ({ t, openAgentWindow, se
               {editingNodeId === node.id ? (
                 <textarea
                   value={node.content}
-                  onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, content: e.target.value } : n))}
+                  onChange={(e) => {
+                    setNodes(nodes.map(n => n.id === node.id ? { ...n, content: e.target.value } : n));
+                    window.dispatchEvent(new CustomEvent('demo-note-written'));
+                  }}
                   style={{
                     flex: 1,
                     background: 'transparent',

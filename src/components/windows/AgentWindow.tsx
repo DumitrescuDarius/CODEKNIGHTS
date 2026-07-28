@@ -146,6 +146,7 @@ const TypewriterMarkdown = React.memo(({ content, isNew, setCode, scrollContaine
 export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code, setCode, isBattleActive, session }) => {
   const isRoyal = !!(session?.user as any)?.isRoyal;
   const chatContainerRef = React.useRef<HTMLDivElement>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
   type ChatMessage = {role: 'user'|'assistant', content: string, displayContent?: string, contextTags?: string[], customContexts?: {title: string}[], isNew?: boolean};
   type ChatSession = { id: string; title: string; updatedAt: number; messages: ChatMessage[] };
 
@@ -170,13 +171,24 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
   useEffect(() => {
     if (chatContainerRef.current) {
       const container = chatContainerRef.current;
-      container.scrollTop = container.scrollHeight;
+      const scrollDown = () => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'instant', block: 'end' });
+        } else if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      };
+      scrollDown();
       
-      const timer = setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-      }, 50);
+      const t1 = setTimeout(scrollDown, 50);
+      const t2 = setTimeout(scrollDown, 150);
+      const t3 = setTimeout(scrollDown, 300);
       
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
     }
   }, [messages, isLoading]);
 
@@ -358,7 +370,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)', position: 'relative' }}>
+    <div className="agent-window" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)', position: 'relative' }}>
 
       {/* History Overlay Menu */}
       {showHistory && (
@@ -436,8 +448,9 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
 
       {/* Chat History */}
       <div ref={chatContainerRef} style={{ flex: 1, padding: '3.5rem 1.5rem 1.5rem 1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ flex: 1, minHeight: '1px' }} />
         {messages.length === 0 && !isLoading && (
-          <div style={{ margin: 'auto', color: 'var(--text-muted)', textAlign: 'center', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ margin: '0 auto', color: 'var(--text-muted)', textAlign: 'center', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Brain size={32} color="var(--text-muted)" />
             </div>
@@ -502,6 +515,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
             <div className="loading-spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px' }} /> {t("thinking")}...
           </div>
         )}
+        <div ref={messagesEndRef} style={{ float: "left", clear: "both" }} />
       </div>
 
       {/* Input Area */}
@@ -520,6 +534,7 @@ export const AgentWindow: React.FC<AgentWindowProps> = ({ t, lang, setLang, code
           } else {
             window.dispatchEvent(new CustomEvent('request_ai_context', { detail: windowId }));
           }
+          window.dispatchEvent(new CustomEvent('demo-context-dropped'));
         }}
       >
         {(contextTags.length > 0 || customContexts.length > 0) && (

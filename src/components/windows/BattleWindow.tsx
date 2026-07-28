@@ -301,11 +301,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               justifyContent: 'center',
               gap: '0.75rem',
               padding: '1rem', 
-              background: 'var(--panel-bg-hover)', 
+              background: 'transparent', 
               color: 'var(--text)', 
-              border: '1px solid var(--panel-border)', 
+              border: '1px solid var(--accent)', 
               borderRadius: '0.75rem', 
-              fontWeight: 600,
+              fontWeight: 700,
               fontSize: '1rem',
               cursor: 'pointer',
               boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
@@ -330,11 +330,11 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               justifyContent: 'center',
               gap: '0.75rem',
               padding: '1rem', 
-              background: 'var(--panel-bg)', 
+              background: 'transparent', 
               color: 'var(--text)', 
-              border: 'none', 
+              border: '1px solid var(--accent)', 
               borderRadius: '0.75rem', 
-              fontWeight: 600,
+              fontWeight: 700,
               fontSize: '1rem',
               cursor: 'pointer',
               boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
@@ -355,7 +355,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
               padding: '1rem', 
               background: 'transparent', 
               color: 'var(--text)', 
-              border: '1px solid var(--panel-border)', 
+              border: '1px solid var(--accent)', 
               borderRadius: '0.75rem', 
               fontWeight: 700,
               fontSize: '1rem',
@@ -1672,11 +1672,12 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
   }
 
   return (
-    <div style={{ padding: '2.5rem 1.5rem', height: '100%', overflow: 'hidden', position: 'relative', containerType: 'inline-size' }}>
+    <div className="battle-window" style={{ padding: '2.5rem 1.5rem', height: '100%', overflow: 'hidden', position: 'relative', containerType: 'inline-size' }}>
 
       {/* Top Left Path Selector Button */}
       {(!activeDuel || activeDuel.status !== 'ACTIVE') && !isCreating && !isJoining && (
         <button
+          className="battle-mode-selector-btn"
           onClick={(e) => {
             e.stopPropagation();
             setShowBubbles(!showBubbles);
@@ -1793,6 +1794,7 @@ export const BattleWindow: React.FC<BattleWindowProps> = React.memo(({
                 return (
                   <motion.button
                     key={b.id}
+                    className={`mode-btn-${b.id}`}
                     onClick={() => {
                       setSelectedBubble(null);
                       setActivePath(b.id);

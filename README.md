@@ -1,9 +1,14 @@
 # CodeKnights ⚔️
 
 CodeKnights is a premier competitive programming platform that brings developers together in high-stakes, real-time coding duels. Built with performance and user experience in mind, CodeKnights features a full-stack Next.js environment, sandboxed code execution, real-time Socket.io synchronization, and an innovative draggable window UI interface.
-
 ---
 
+## 🌐 Live Platform
+
+You can access the live, hosted version of CodeKnights on Google Cloud here:
+👉 **[http://34.116.250.11.nip.io/](http://34.116.250.11.nip.io/)**
+
+---
 ## 🌟 Game Modes
 
 CodeKnights offers a variety of game modes to test different programming skills:

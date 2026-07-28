@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   try {
     if (!userId) {
-      const image = `https://api.dicebear.com/9.x/adventurer/svg?seed=${Math.random().toString(36).substring(7)}`;
+      const image = `https://api.dicebear.com/9.x/bottts/svg?seed=${Math.random().toString(36).substring(7)}`;
       const newUser = await prisma.user.create({ data: { username: userName, rating: 1000, image } });
       userId = newUser.id;
     }

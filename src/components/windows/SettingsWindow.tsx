@@ -37,13 +37,14 @@ interface SettingsWindowProps {
   t: (key: TranslationKey) => string;
   isAdmin?: boolean;
   onReinitIntro?: () => void;
+  onStartDemo?: () => void;
 }
 
 export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
   themeIndex, setThemeIndex, fontFamily, setFontFamily, fontSize, setFontSize,
   terminalFontSize, setTerminalFontSize, vimMode, setVimMode, uiLang, setUiLang,
   animationSpeed, setAnimationSpeed, windowRadius, setWindowRadius, windowGap, setWindowGap, windowBorderThickness, setWindowBorderThickness, navStyle, setNavStyle,
-  tabSize, setTabSize, insertSpaces, setInsertSpaces, t, isAdmin, onReinitIntro
+  tabSize, setTabSize, insertSpaces, setInsertSpaces, t, isAdmin, onReinitIntro, onStartDemo
 }) => {
   const handleExport = () => {
     const settings = {
@@ -516,15 +517,25 @@ export const SettingsWindow: React.FC<SettingsWindowProps> = React.memo(({
         <div className="settings-group" style={{ marginTop: '2rem', padding: '1rem', border: '1px solid var(--color-red)', borderRadius: '0.5rem', background: 'rgba(255, 85, 85, 0.05)' }}>
           <span className="settings-label" style={{ color: 'var(--color-red)' }}>Admin Settings</span>
           <div className="settings-options" style={{ marginTop: '1rem' }}>
-            <button 
-              className="btn btn-secondary"
-              onClick={() => onReinitIntro && onReinitIntro()}
-              style={{ width: '100%', border: '1px solid rgba(255, 85, 85, 0.5)', color: 'var(--color-red)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              Reinitiate Introductory Animation
-            </button>
+              <button 
+                className="btn btn-secondary"
+                onClick={() => onReinitIntro && onReinitIntro()}
+                style={{ width: '100%', border: '1px solid rgba(255, 85, 85, 0.5)', color: 'var(--color-red)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 85, 85, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                Reinitiate Introductory Animation
+              </button>
+              
+              <button 
+                className="btn btn-primary"
+                onClick={() => onStartDemo && onStartDemo()}
+                style={{ width: '100%', border: '1px solid var(--accent)', color: 'var(--accent)', background: 'transparent', marginTop: '1rem' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                Start Interactive Platform Demo
+              </button>
           </div>
         </div>
       )}
