@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       if (gameMode === "BUGHUNTER") {
         queryCond.brokenCode = { not: null };
       } else if (gameMode === "HACKBOUNTY") {
-        queryCond.referenceCode = { not: null };
+        queryCond.referenceCode = { not: null }; queryCond.brokenCode = null;
       } else {
         queryCond.brokenCode = null;
         queryCond.referenceCode = null;
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
         if (gameMode === "BUGHUNTER") {
           fallbackCond.brokenCode = { not: null };
         } else if (gameMode === "HACKBOUNTY") {
-          fallbackCond.referenceCode = { not: null };
+          fallbackCond.referenceCode = { not: null }; fallbackCond.brokenCode = null;
         } else {
           fallbackCond.brokenCode = null;
           fallbackCond.referenceCode = null;
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
         if (gameMode === "BUGHUNTER") {
           finalFallbackCond.brokenCode = { not: null };
         } else if (gameMode === "HACKBOUNTY") {
-          finalFallbackCond.referenceCode = { not: null };
+          finalFallbackCond.referenceCode = { not: null }; finalFallbackCond.brokenCode = null;
         } else {
           finalFallbackCond.brokenCode = null;
           finalFallbackCond.referenceCode = null;
