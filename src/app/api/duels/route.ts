@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
           difficulty: chosenDifficulty,
           questionIds: selectedIds,
           phase: isHackBounty ? "BREAKING" : null,
-          phaseEndsAt: isHackBounty ? new Date(Date.now() + 120 * 1000) : null,
+          phaseEndsAt: isHackBounty ? new Date(Date.now() + 60 * 1000) : null,
         },
         include: {
           question: true,
