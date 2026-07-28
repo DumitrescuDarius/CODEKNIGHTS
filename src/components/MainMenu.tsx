@@ -2237,9 +2237,6 @@ const MainMenu: React.FC = () => {
       
       details.forEach((tc: any, i: number) => {
         outStr += `Test ${i + 1}: ${tc.passed ? "PASS" : "FAIL"}\n`;
-        if (!tc.passed && tc.expected !== "HIDDEN" && tc.expected !== "HIDDEN TEST CASE") {
-           outStr += `Expected:\n${tc.expected}\nActual:\n${tc.actual}\n\n`;
-        }
       });
       
       if (passed === allTestsLength && allTestsLength > 0) {
