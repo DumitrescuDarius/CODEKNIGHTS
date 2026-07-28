@@ -2327,7 +2327,12 @@ const MainMenu: React.FC = () => {
           const timeFraction = Math.min(1, elapsed / limit);
           const reduction = Math.floor(timeFraction * 20); // 0 to 20 max reduction per test
           
-          currentProblemScore = Math.max(0, passed * (50 - reduction) - submissionPenalty);
+          let adjustedPassed = passed;
+          const defaultCode = LANG_CONFIG[lang as Language]?.defaultCode || "";
+          if (code.replace(/\\s+/g, '') === defaultCode.replace(/\\s+/g, '')) {
+              adjustedPassed = 0;
+          }
+          currentProblemScore = Math.max(0, adjustedPassed * (50 - reduction) - submissionPenalty);
         }
 
         setProblemScores(prev => {
@@ -3503,7 +3508,7 @@ const MainMenu: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div className={`loading-overlay ${(isLoaded && status !== "loading") ? "loading-overlay--hidden" : ""}`}>
+      <div className={`loading-overlay ${(isLoaded && status !== "loading" && !showUsernamePrompt) ? "loading-overlay--hidden" : ""}`}>
         <div className="loading-spinner" />
         <div><span style={{ color: 'var(--accent)' }}>CODE</span>&nbsp;KNIGHTS</div>
       </div>
@@ -4174,7 +4179,7 @@ const MainMenu: React.FC = () => {
               position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
               background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              zIndex: 9999
+              zIndex: 10001
             }}
           >
             <motion.div
