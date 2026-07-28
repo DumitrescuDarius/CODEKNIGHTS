@@ -1350,11 +1350,11 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', width: '100%' }}>
-                    <div style={{ background: 'var(--panel-bg)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid var(--header-bg)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid var(--header-bg)', minWidth: 0, display: 'flex', flexDirection: 'column', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Input</div>
                       <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: 'var(--text)', fontFamily: '"Fira Code", monospace', maxHeight: '250px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{tc.input}</pre>
                     </div>
-                    <div style={{ background: 'var(--panel-bg)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid var(--header-bg)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid var(--header-bg)', minWidth: 0, display: 'flex', flexDirection: 'column', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Output</div>
                       <pre style={{ margin: 0, padding: 0, background: 'transparent', fontSize: '0.85rem', overflow: 'auto', color: 'var(--color-green)', fontFamily: '"Fira Code", monospace', maxHeight: '250px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{tc.output}</pre>
                     </div>
