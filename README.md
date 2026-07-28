@@ -68,7 +68,7 @@ CodeKnights offers a variety of game modes to test different programming skills:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/codeknights.git
+   git clone https://github.com/DumitrescuDarius/CODEKNIGHTS.git
    cd codeknights
    ```
 
