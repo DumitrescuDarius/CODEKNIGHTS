@@ -55,9 +55,7 @@ export async function POST(req: NextRequest) {
                     }
                 }
                 const dist = dp[cleanOriginal.length][cleanCurrent.length];
-                if (dist > cleanOriginal.length * 0.1) {
-                    finalCodeToSave = originalCode; // Fallback to original if they broke more than 10%
-                }
+                    // finalCodeToSave = originalCode; // Removed: let user submit >10% changes
             }
         } catch (e) {}
     }
