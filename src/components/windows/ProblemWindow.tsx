@@ -450,10 +450,7 @@ export const ProblemWindow: React.FC<ProblemWindowProps> = React.memo(({
       if (allProblemsSolved) {
         handleFinalSubmit();
       } else {
-        if (activeDuel?.gameMode === "BUGHUNTER" || activeDuel?.gameMode === "HACKBOUNTY") {
-          alert(t("bugHunterMustPassAll") || "In BugHunter mode, you must pass all tests to submit and end the battle!");
-          return;
-        }
+
         setShowFinalizeConfirmation(true);
       }
     };
