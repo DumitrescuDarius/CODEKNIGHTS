@@ -35,7 +35,30 @@ export async function POST(req: NextRequest) {
     const targetQuestion = await prisma.question.findUnique({ where: { id: userQuestionId } });
     let finalCodeToSave = code;
 
-
+    if (targetQuestion?.referenceCode) {
+        try {
+            const parsed = JSON.parse(targetQuestion.referenceCode);
+            // Default to cpp or the first available language
+            const originalCode = parsed["cpp"] || Object.values(parsed)[0] || "";
+            const cleanOriginal = (originalCode as string).replace(/\s+/g, '');
+            const cleanCurrent = code.replace(/\s+/g, '');
+            
+            if (cleanOriginal.length > 0) {
+                // Levenshtein distance calculation
+                const dp = Array(cleanOriginal.length + 1).fill(null).map(() => Array(cleanCurrent.length + 1).fill(0));
+                for (let i = 0; i <= cleanOriginal.length; i++) dp[i][0] = i;
+                for (let j = 0; j <= cleanCurrent.length; j++) dp[0][j] = j;
+                for (let i = 1; i <= cleanOriginal.length; i++) {
+                    for (let j = 1; j <= cleanCurrent.length; j++) {
+                        const cost = cleanOriginal[i - 1] === cleanCurrent[j - 1] ? 0 : 1;
+                        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+                    }
+                }
+                const dist = dp[cleanOriginal.length][cleanCurrent.length];
+                    // finalCodeToSave = originalCode; // Removed: let user submit >10% changes
+            }
+        } catch (e) {}
+    }
 
     const updateData: any = {};
     if (isHost) {

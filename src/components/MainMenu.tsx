@@ -659,7 +659,7 @@ const MainMenu: React.FC = () => {
         if (cleanOriginal.length > 0) {
           const dist = levenshtein(cleanOriginal, cleanCurrent);
           if (dist > cleanOriginal.length * 0.1) {
-            setSabotageWarning("Warning: You have modified more than 10% of the code! Press Ctrl + Z to revert changes. Try to keep modifications minimal.");
+            setSabotageWarning("Warning: You have modified more than 10% of the code! Press Ctrl + Z to revert changes. Keep modifications minimal to give your opponent a fair challenge.");
           } else {
             setSabotageWarning(null);
           }
